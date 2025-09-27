@@ -20,4 +20,10 @@ class Paciente extends Model
         'sesiones_a_favor',
         'activo'
     ];
+
+    protected $casts = [
+        'fecha_nac' => 'date',
+        'fecha_ingreso' => 'date',
+        'activo' => 'boolean'
+    ];
 }
