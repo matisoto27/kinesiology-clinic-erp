@@ -26,4 +26,9 @@ class Turno extends Model
     {
         return $this->belongsTo(ActividadPaciente::class, 'id_act_pac');
     }
+
+    public function notas()
+    {
+        return $this->hasMany(NotaTurno::class, 'id_turno');
+    }
 }

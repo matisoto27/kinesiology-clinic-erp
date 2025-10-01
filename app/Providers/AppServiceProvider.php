@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Actividad;
+use Carbon\Carbon;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\View;
@@ -22,7 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        View::composer('inicio', function ($view) {
+        Carbon::setLocale('es');
+
+        View::composer(['inicio', 'turnos.calendario'], function ($view) {
             $view->with('actividades', Cache::remember('todas_actividades', now()->addHours(12), function () {
                 return Actividad::all();
             }));
