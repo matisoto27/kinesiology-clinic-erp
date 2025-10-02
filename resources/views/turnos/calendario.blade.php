@@ -5,7 +5,7 @@
 @section('content')
 
     <div class="bg-white border max-w-screen-xl mx-auto mt-5 w-full">
-  
+
         <form method="GET" id="filtros-form">
 
             <input type="hidden" value="{{ ($cantSemanas ?? 0) }}" name="semana" id="semana-input">
@@ -171,6 +171,6 @@
 @endsection
 
 @push('scripts')
-@vite('resources/js/pages/calendario.js')
+    @vite('resources/js/pages/calendario.js')
     <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Flechas -->
 @endpush

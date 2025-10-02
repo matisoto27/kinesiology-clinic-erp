@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Actividad;
+use App\Models\TipoSintoma;
 use Carbon\Carbon;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Cache;
@@ -28,6 +29,12 @@ class AppServiceProvider extends ServiceProvider
         View::composer(['inicio', 'turnos.calendario'], function ($view) {
             $view->with('actividades', Cache::remember('todas_actividades', now()->addHours(12), function () {
                 return Actividad::all();
+            }));
+        });
+
+        View::composer(['pacientes.crear'], function ($view) {
+            $view->with('tipos_sintomas', Cache::remember('todos_tipos_sintomas', now()->addHours(12), function () {
+                return TipoSintoma::all();
             }));
         });
     }
