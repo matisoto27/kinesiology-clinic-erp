@@ -8,7 +8,8 @@
     <title>Punto Kinésico</title>
     <link rel="icon" type="image/x-icon" href="{{ asset('img/icono.ico') }}">
     @stack('styles')
-    
+
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
 </head>
 

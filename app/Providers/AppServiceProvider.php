@@ -32,6 +32,12 @@ class AppServiceProvider extends ServiceProvider
             }));
         });
 
+        View::composer(['actividades-pacientes.crear'], function ($view) {
+            $view->with('actividades', Cache::remember('actividades_generales', now()->addHours(12), function () {
+                return Actividad::obtenerActividadesGenerales();
+            }));
+        });
+
         View::composer(['pacientes.crear'], function ($view) {
             $view->with('tipos_sintomas', Cache::remember('todos_tipos_sintomas', now()->addHours(12), function () {
                 return TipoSintoma::all();

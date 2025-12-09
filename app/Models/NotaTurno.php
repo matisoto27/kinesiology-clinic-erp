@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class NotaTurno extends Model
 {
-    protected $table = 'notas_turnos';
+    protected $table = 'notas';
 
     public $timestamps = false;
 

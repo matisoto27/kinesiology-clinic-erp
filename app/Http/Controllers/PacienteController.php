@@ -6,15 +6,24 @@ use App\Models\Paciente;
 use App\Models\SintomaPaciente;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class PacienteController extends Controller
 {
+    public function paginaCrear()
+    {
+        return view('pacientes.crear');
+    }
+
     public function crearPaciente(Request $request)
     {
+        DB::beginTransaction();
+        
         try {
             $datosValidados = $request->validate([
                 'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
@@ -33,8 +42,6 @@ class PacienteController extends Controller
             $datosValidados['fecha_ingreso'] = Carbon::now();
             $datosValidados['sesiones_a_favor'] = 0;
             $datosValidados['activo'] = 1;
-
-            DB::beginTransaction();
 
             $sintomas = $datosValidados['sintomas'] ?? [];
 
@@ -57,12 +64,46 @@ class PacienteController extends Controller
 
         } catch (ValidationException $ex) {
             throw $ex;
-        } catch (Exception $ex) {
+        } catch (Throwable $ex) {
             DB::rollBack();
-            Log::error('Error al registrar paciente', ['exception' => $ex]);
+            Log::error('Error al registrar el paciente', ['excepción' => $ex->getMessage()]);
             return back()
-                ->with('error', 'Se ha producido un error inesperado.')
+                ->with('error', 'Se ha producido un error inesperado al registrar el paciente.')
                 ->withInput();
+        }
+    }
+
+    public function obtenerActividadesGeneralesSinSuscripcion(int $id)
+    {
+        try {
+
+            $paciente = Paciente::findOrFail($id);
+
+            $actividades = $paciente->obtenerActividadesGeneralesSinSuscripcion();
+
+            return response()->json($actividades);
+
+        } catch (ModelNotFoundException $ex) {
+
+            Log::info('[PacienteController@obtenerActividadesGeneralesSinSuscripcion] Paciente no encontrado', [
+                'id_paciente' => $id,
+                'excepción' => $ex->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Paciente no encontrado.'
+            ], 404);
+
+        } catch (Throwable $ex) {
+
+            Log::error('[PacienteController@obtenerActividadesGeneralesSinSuscripcion] Error al obtener las actividades sin suscripción', [
+                'id_paciente' => $id,
+                'excepción' => $ex->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Se ha producido un error inesperado al obtener las actividades sin suscripción.'
+            ], 500);
         }
     }
 
@@ -72,25 +113,38 @@ class PacienteController extends Controller
         return view('pacientes.inicio', compact('pacientes'));
     }
 
-    public function paginaCrear()
-    {
-        return view('pacientes.crear');
-    }
-
     public function buscarPorApellidoNombre(Request $request)
     {
-        $query = $request->input('query');
+        try {
 
-        if (strlen($query) < 2) {
-            return response()->json([]);
+            $nombre = $request->input('query');
+
+            if (strlen($nombre) < 2) {
+                return response()->json([
+                    'pacientes' => []
+                ], 200);
+            }
+
+            $pacientes = Paciente::select('id', 'nombre', 'apellido')->where('nombre', 'like', "$nombre%")
+                ->limit(10)
+                ->orderBy('apellido')
+                ->orderBy('nombre')
+                ->get();
+
+            return response()->json([
+                'pacientes' => $pacientes
+            ], 200);
+
+        } catch (Throwable $ex) {
+
+            Log::error('[PacienteController@buscarPorApellidoNombre]', [
+                'nombre' => $nombre,
+                'excepción' => $ex->getMessage()
+            ]);
+
+            return response()->json([
+                'error' => 'Falla interna del servidor. Por favor, inténtelo de nuevo más tarde.'
+            ], 500);
         }
-
-        $pacientes = Paciente::select('id', 'nombre', 'apellido')->where('nombre', 'like', "$query%")
-            ->limit(10)
-            ->orderBy('apellido')
-            ->orderBy('nombre')
-            ->get();
-
-        return response()->json($pacientes);
     }
 }

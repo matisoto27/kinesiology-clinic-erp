@@ -111,5 +111,4 @@
 
 @push('scripts')
     @vite('resources/js/pages/pacientes/crear.js')
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @endpush
