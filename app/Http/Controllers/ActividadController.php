@@ -16,15 +16,26 @@ class ActividadController extends Controller
     {
         try {
 
-            $actividad = Actividad::findOrFail($id);
+            $actividad = Actividad::with([
+                'actividadCombos' => function ($consulta) {
 
-            $combosQuery = $actividad->combos();
+                    $consulta->where('activo', true);
 
-            if (request()->boolean('con_precio')) {
-                $combosQuery->whereHas('precios');
-            }
+                    if (request()->boolean('con_precio')) {
+                        $consulta->whereHas('precios');
+                    }
 
-            $combos = $combosQuery->get();
+                    $consulta->with('combo');
+                }
+            ])->findOrFail($id);
+
+            $combos = $actividad->actividadCombos->map(function ($actividadCombo) {
+                return [
+                    'id_actividad_combo' => $actividadCombo->id,
+                    'nombre' => $actividadCombo->combo->nombre,
+                    'cantidad_sesiones' => $actividadCombo->combo->cantidad_sesiones
+                ];
+            });
 
             return response()->json($combos);
 

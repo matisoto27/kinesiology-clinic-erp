@@ -5,26 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 class Actividad extends Model
 {
-    use SoftDeletes;
-
     protected $table = 'actividades';
 
     public $timestamps = false;
 
     protected $fillable = [
-        'id_tipo_actividad',
-        'nro_actividad',
         'nombre',
-        'activo'
-    ];
-
-    protected $casts = [
-        'activo' => 'boolean'
+        'id_tipo_actividad'
     ];
 
     public function tipo(): BelongsTo
@@ -32,38 +25,42 @@ class Actividad extends Model
         return $this->belongsTo(TipoActividad::class, 'id_tipo_actividad');
     }
 
-    public function scopeGeneral(Builder $consulta): void
+    public function actividadCombos(): HasMany
     {
-        $idTipoGeneral = TipoActividad::where('descripcion', 'General')->value('id');
-        if ($idTipoGeneral) {
-            $consulta->where('id_tipo_actividad', $idTipoGeneral);
-        }
+        return $this->hasMany(ActividadCombo::class, 'id_actividad');
     }
 
-    public function scopeActivo(Builder $consulta): void
+    public function combos(): BelongsToMany
     {
-        $consulta->where('activo', 1);
+        return $this->belongsToMany(Combo::class, 'actividades_combos', 'id_actividad', 'id_combo');
     }
 
-    public static function obtenerActividadesGenerales(): Collection
-    {
-        return self::general()->activo()->get();
-    }
-
-    public function combos()
-    {
-        return $this->hasMany(ComboActividad::class, 'id_actividad');
-    }
-
-    public function horarios()
+    public function horarios(): BelongsToMany
     {
         return $this->belongsToMany(Horario::class, 'horarios_actividades', 'id_actividad', 'id_horario');
     }
 
+    public function scopePorTipoDescripcion(Builder $consulta, string $descripcion): void
+    {
+        $consulta->whereHas('tipo', function (Builder $subconsulta) use ($descripcion) {
+            $subconsulta->where('descripcion', $descripcion);
+        });
+    }
+
+    public static function obtenerActividadesGenerales(): Collection
+    {
+        return self::porTipoDescripcion('General')->get();
+    }
+
+    public static function obtenerActividadesKinesiologia(): Collection
+    {
+        return self::porTipoDescripcion('Kinesiología')->get();
+    }
+
     public function obtenerHorasDeInicio() {
         return $this->horarios()
-                    ->pluck('hora_inicio')
-                    ->sort()
-                    ->values();
+            ->pluck('hora_inicio')
+            ->sort()
+            ->values();
     }
 }
