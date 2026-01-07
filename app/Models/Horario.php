@@ -12,7 +12,6 @@ class Horario extends Model
 
     protected $fillable = [
         'hora_inicio',
-        'hora_fin',
         'franja',
         'activo'
     ];

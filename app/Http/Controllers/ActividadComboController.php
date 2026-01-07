@@ -21,7 +21,7 @@ class ActividadComboController extends Controller
 
             Log::info('[ActividadComboController@obtenerPrecioActual] Recurso no encontrado', [
                 'id' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
@@ -32,7 +32,7 @@ class ActividadComboController extends Controller
 
             Log::error('[ActividadComboController@obtenerPrecioActual] Error al obtener el precio actual del combo de la actividad', [
                 'id' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([

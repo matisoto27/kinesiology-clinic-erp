@@ -23,7 +23,7 @@ class ActividadPaciente extends Model
     ];
 
     protected $casts = [
-        'fecha_comienzo' => 'date',
+        'fecha_comienzo' => 'datetime',
         'es_fijo' => 'boolean',
         'total_a_pagar' => 'decimal:2',
         'fecha_emision_ord' => 'date',

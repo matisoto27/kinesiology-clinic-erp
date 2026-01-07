@@ -2,28 +2,32 @@
 
 @section('content')
     <div class="mx-auto py-5 max-w-4xl w-full">
-        <form method="POST" class="bg-[#006E6B] rounded-xl shadow-lg p-8" id="formulario"> <!-- Falta poner la accion -->
+        <form data-url="{{ route('actividades-pacientes.almacenar') }}" method="POST" class="bg-[#006E6B] rounded-xl shadow-lg p-8" id="formulario">
             @csrf
 
-            <label class="mb-4 block font-semibold text-2xl text-center text-white">Registrar comienzo de actividad</label>
+            <input type="hidden" name="paciente" id="id-paciente-input">
+
+            <h2 class="mb-4 block font-semibold text-2xl text-center text-white">Registrar comienzo de actividad</h2>
 
             <div class="mb-4 flex text-white">
 
                 <div class="flex flex-col gap-1">
+
                     <div class="flex gap-1">
                         <label class="font-medium text-lg">Paciente</label>
                         <button type="button" class="cursor-pointer hidden" id="eliminar-button">
                             <i class="align-middle fa-solid fa-xmark hover:text-red-900 text-red-600 text-xl"></i>
                         </button>
                     </div>
-                    <div class="relative">
-                        <input type="hidden" name="paciente" id="id-paciente-input">
-                        <input type="text" placeholder="Ingrese el nombre" class="bg-[#3A8F8E] rounded-md text-xl p-2 focus:outline-none focus:ring-2 focus:ring-[#F6BA00] focus:ring-offset-2" id="nombre-input" required>
-                        <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-xl"></i>
+
+                    <div class="bg-[#3A8F8E] rounded-xl relative" id="nombre-div">
+                        <i class="fa-solid fa-magnifying-glass ml-3 text-xl"></i>
+                        <input type="text" placeholder="Ingrese el nombre" class="text-xl p-2 focus:outline-none" id="nombre-input" required>
                         <ul id="sugerencias" class="absolute left-0 right-0 max-h-60 overflow-auto z-10 hidden">
                             <!-- Pacientes sugeridos -->
                         </ul>
                     </div>
+
                 </div>
 
             </div>
@@ -67,7 +71,6 @@
 
 @push('scripts')
     @vite('resources/js/shared.js')
-    @vite('resources/js/pages/actividades-pacientes/crear.js')
+    @vite('resources/js/pages/actividades-pacientes/general/crear.js')
     <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Icono Lupa -->
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script> <!-- Calendario -->
 @endpush

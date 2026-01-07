@@ -1,15 +1,40 @@
 import {
     actividadSelect,
+    actualizarDiasDeshabilitados,
+    actualizarPrimeraFechaFueSeleccionada,
+    actualizarDesdeActual,
+    agregarOpcion,
     apiFetch,
+    cantidadSelect,
+    cargarHorarios,
+    crearOpcionPorDefecto,
+    consolidarTurnosPorDia,
+    contenedorTurnos,
+    convertirFechaParaMostrar,
+    desdeActual,
+    deshabilitarHoraSeleccionada,
+    DIAS_SEMANA,
     eliminarButton,
+    formulario,
+    habilitarNombre,
+    habilitarSelect,
     idPacienteInput,
     inicializarSugerenciasListeners,
+    mostrarErrorTurnosInsuficientes,
     mostrarAlerta,
     nombreInput,
     limpiarSugerencias,
+    limpiarTurnos,
+    obtenerTurnosSemanasCriticas,
+    obtenerTurnosSemana,
+    primeraFechaFueSeleccionada,
+    renderizarTurnosFijos,
+    semanaCubreFrecuencia,
     sugerencias,
-    token
-} from '../../shared.js';
+    token,
+    transformarFecha,
+    turnosCheckbox
+} from '../../../shared.js';
 
 function crearLiPaciente(paciente, esUltimo) {
 
@@ -25,55 +50,6 @@ function crearLiPaciente(paciente, esUltimo) {
     return li;
 }
 
-function habilitarNombreInput(confirma) {
-
-    nombreInput.disabled = !confirma;
-    nombreInput.classList.toggle('bg-[#3A8F8E]', confirma);
-    nombreInput.classList.toggle('bg-[#6BA9A9]', !confirma);
-}
-
-/**
- * Crea y devuelve la cadena HTML para un elemento <option> que se utiliza como opción por defecto.
- * @param {string} contenidoTextual - El texto visible que contendrá.
- * @returns {string} La cadena HTML completa: '<option value="" disabled selected>...</option>'.
- */
-function crearOpcionPorDefecto(contenidoTextual) {
-    return `<option value="" disabled selected>${contenidoTextual}</option>`;
-}
-
-/**
- * Crea, configura y añade un nuevo elemento <option> del DOM al <select> especificado.
- * @param {HTMLSelectElement} select - El elemento <select> requerido al que se debe añadir la opción.
- * @param {string} valor - El valor interno que tendrá la opción.
- * @param {string} contenidoTextual - El texto visible que mostrará la opción.
- * @param {boolean} [deshabilitada=false] - Indica si la opción debe estar deshabilitada (atributo 'disabled'). Por defecto es false.
- * @param {boolean} [seleccionada=false] - Indica si la opción debe estar seleccionada por defecto (atributo 'selected'). Por defecto es false.
- * @returns {void} No devuelve ningún valor.
- */
-function agregarOpcion(select, valor, contenidoTextual, deshabilitada = false, seleccionada = false) {
-
-    const option = document.createElement('option');
-
-    option.value = valor;
-    option.textContent = contenidoTextual;
-    option.disabled = deshabilitada;
-    option.selected = seleccionada;
-
-    select.appendChild(option);
-}
-
-function habilitarSelect(elementoSelect, confirma) {
-    if (confirma) {
-        elementoSelect.classList.remove('bg-[#6BA9A9]', 'cursor-not-allowed', 'text-[#E0F0F0]');
-        elementoSelect.classList.add('bg-[#3A8F8E]', 'text-white');
-        elementoSelect.disabled = false;
-    } else {
-        elementoSelect.classList.remove('bg-[#3A8F8E]', 'text-white');
-        elementoSelect.classList.add('bg-[#6BA9A9]', 'cursor-not-allowed', 'text-[#E0F0F0]');
-        elementoSelect.disabled = true;
-    }
-}
-
 function reiniciarPrecio() {
     precioInput.value = "$0,00";
 }
@@ -83,231 +59,27 @@ function deshabilitarCantidadSelect() {
     habilitarSelect(cantidadSelect, false);
 }
 
-function limpiarTurnos() {
-    contenedorTurnos.innerHTML = '';
-}
-
-/**
- * Filtra los turnos para una semana específica y los agrupa por fecha.
- * @param {Array<string>} turnosDisponibles - Array de 'YYYY-MM-DD HH:MM'.
- * @param {number} desplazamiento - Desplazamiento semanal (0=Actual, 1=Sig.).
- * @returns {Record<string, string[]>} Objeto de turnos por fecha { 'YYYY-MM-DD': ['HH:MM', ...] }.
- */
-function obtenerTurnosSemana(turnosDisponibles, desplazamiento) {
-
-    const hoy = new Date();
-    const [inicio, fin] = obtenerLunesViernesSemana(hoy, desplazamiento);
-    const inicioISO = obtenerFechaISO(inicio);
-    const finISO = obtenerFechaISO(fin);
-
-    const turnosSemana = {};
-
-    turnosDisponibles.forEach(turno => {
-
-        const [fecha, hora] = turno.split(' ');
-
-        if (fecha >= inicioISO && fecha <= finISO) {
-            turnosSemana[fecha] = turnosSemana[fecha] || [];
-            turnosSemana[fecha].push(hora);
-        }
-    });
-
-    return turnosSemana;
-}
-
-/**
- * @param {Date} fechaBase
- * @param {number} desplazamiento
- * @returns {[Date, Date]} [Lunes, Viernes] de la semana deseada.
- */
-function obtenerLunesViernesSemana(fechaBase, desplazamiento) {
-
-    const copiaFecha = new Date(fechaBase);
-    const diaHoy = copiaFecha.getDay();
-
-    const diasAlLunes = (diaHoy === 0) ? 6 : diaHoy - 1;
-
-    copiaFecha.setDate(copiaFecha.getDate() - diasAlLunes + (desplazamiento * 7));
-    copiaFecha.setHours(0, 0, 0, 0);
-    const lunes = new Date(copiaFecha);
-
-    copiaFecha.setDate(lunes.getDate() + 4);
-    copiaFecha.setHours(23, 59, 59, 999);
-    const viernes = copiaFecha;
-
-    return [lunes, viernes];
-}
-
-/**
- * @param {Date} fechaHora
- * @returns {string} Fecha en formato 'YYYY-MM-DD'.
- */
-function obtenerFechaISO(fechaHora) {
-    return fechaHora.toISOString().split('T')[0];
-}
-
-/**
- * Consolida turnos de varias semanas por Día de la Semana y Hora.
- * @param {Record<string, string[]>[]} turnosPorSemana - Array de objetos de turnos por fecha.
- * @returns {Record<string, Record<string, number>>} { 'Lunes': { '08:00': 4 } }.
- */
-function consolidarTurnosPorDia(turnosPorSemana) {
-
-    const turnosPorDia = {};
-
-    for (const objetoTurnosSemana of turnosPorSemana) {
-        for (const [fechaStr, horas] of Object.entries(objetoTurnosSemana)) {
-
-            const fecha = new Date(`${fechaStr}T12:00:00`);
-            const indiceDia = fecha.getDay();
-
-            if (indiceDia === 0 || indiceDia === 6) continue;
-
-            const diaSemana = DIAS_SEMANA[indiceDia - 1];
-
-            turnosPorDia[diaSemana] ||= {};
-
-            for (const hora of horas) {
-                turnosPorDia[diaSemana][hora] ||= 0;
-                turnosPorDia[diaSemana][hora] += 1;
-            }
-        }
-    }
-
-    return turnosPorDia;
-}
-
-/**
- * Renderiza el HTML de los selects para la selección de turnos fijos.
- * @param {number} frecuenciaSemanal - Cantidad de turnos a seleccionar.
- * @param {string[]} diasConTurnos - Días de la semana disponibles.
- * @param {HTMLElement} contenedor - El contenedor donde inyectar el HTML.
- */
-function renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedor) {
-
-    let turnoHTML = '';
-    
-    for (let i = 1; i <= frecuenciaSemanal; i++) {
-
-        turnoHTML += `
-            <div class="mb-4 flex gap-5 text-white turno">
-                <div class="flex flex-col">
-                    <label class="font-medium text-lg">Turno ${i}</label>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="font-medium text-lg">Día de la semana</label>
-                    <select class="bg-[#3A8F8E] rounded-md text-lg p-3 dia-select" required>
-                        <option value="" disabled selected>Seleccione un día</option>
-                        ${diasConTurnos.map(dia => `<option value="${dia}">${dia}</option>`).join('')}
-                    </select>
-                </div>
-
-                <div class="flex flex-col gap-1">
-                    <label class="font-medium text-lg">Hora de inicio</label>
-                    <select class="bg-[#6BA9A9] rounded-md text-lg p-3 cursor-not-allowed text-[#E0F0F0] hora-select" disabled required>
-                        <option value="" disabled selected>Seleccione un horario</option>
-                    </select>
-                </div>
-            </div>
-        `;
-    }
-    contenedor.innerHTML = turnoHTML;
-}
-
-/**
- * Deshabilita los días de la semana ya seleccionados en otros selects.
- * @param {NodeListOf<HTMLSelectElement>} diaSelects - Todos los selects de día.
- */
-function actualizarDiasDeshabilitados(diaSelects) {
-
-    const diasSeleccionados = Array.from(diaSelects)
-        .map(s => s.value)
-        .filter(v => v);
-
-    diaSelects.forEach(select => {
-        Array.from(select.options).forEach(option => {
-
-            if (option.value === '') return;
-
-            option.disabled = diasSeleccionados.includes(option.value) && option.value !== select.value;
-        });
-    });
-}
-
-/**
- * Carga los horarios disponibles en el select de hora correspondiente.
- * @param {HTMLSelectElement} select - El select de día que disparó el evento.
- * @param {Record<string, Record<string, number>>} turnosPorDia - Datos consolidados de disponibilidad.
- */
-function cargarHorarios(select, turnosPorDia) {
-
-    const diaSeleccionado = select.value;
-    const horariosDisponibles = turnosPorDia[diaSeleccionado] ?? {};
-    const horas = Object.keys(horariosDisponibles).sort();
-
-    const turnoDiv = select.closest('.turno');
-    const horaSelect = turnoDiv.querySelector('.hora-select');
-
-    horaSelect.innerHTML = crearOpcionPorDefecto('Seleccione un horario');
-
-    horas.forEach(hora => {
-        const [hh, mm] = hora.split(':');
-        const horaConvertida = `${hh}:${mm}hs (${horariosDisponibles[hora]} / 4 turnos disponibles)`;
-        agregarOpcion(horaSelect, hora, horaConvertida);
-    });
-
-    habilitarSelect(horaSelect, !!diaSeleccionado);
-}
-
-function convertirFechaParaMostrar(fechaStr) {
-
-    const opcionesFormato = {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long'
-    };
-    const [anio, mes, dia] = fechaStr.split('-');
-    const fecha = new Date(anio, mes - 1, dia);
-
-    return fecha.toLocaleDateString('es-ES', opcionesFormato);
-}
-
-function transformarFecha(fecha) {
-
-    const año = fecha.getFullYear();
-    const mes = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dia = String(fecha.getDate()).padStart(2, '0');
-    const hora = String(fecha.getHours()).padStart(2, '0');
-    const minutos = String(fecha.getMinutes()).padStart(2, '0');
-    const segundos = String(fecha.getSeconds()).padStart(2, '0');
-
-    return `${año}-${mes}-${dia} ${hora}:${minutos}:${segundos}`;
-}
-
 async function gestionarCambiosDeCantidad() {
     try {
-
+        const idPaciente = parseInt(idPacienteInput.value);
         const idActividad = parseInt(actividadSelect.value);
         const frecuenciaSemanal = parseInt(cantidadSelect.value);
 
-        if (!idActividad || !frecuenciaSemanal) return;
+        const opcionSeleccionada = cantidadSelect.options[cantidadSelect.selectedIndex];
+        const idActividadCombo = opcionSeleccionada.dataset.id;
 
-        const precio = await apiFetch(`/combos-actividad/${frecuenciaSemanal}/precio-actual`);
+        if (!idPaciente || !idActividad || !frecuenciaSemanal || !idActividadCombo) return;
+
+        const precio = await apiFetch(`/actividades-combos/${idActividadCombo}/precio-actual`);
         totalAPagar = precio;
         precioInput.value = '$' + precio;
         limpiarTurnos();
 
-        const turnos = await apiFetch(`/actividades/${idActividad}/turnos-disponibles`);
-
-        const turnosSemanaUno = obtenerTurnosSemana(turnos, 1);
-        const turnosSemanaDos = obtenerTurnosSemana(turnos, 2);
-        const turnosSemanaTres = obtenerTurnosSemana(turnos, 3);
-
-        const turnosSemanasCriticas = [turnosSemanaUno, turnosSemanaDos, turnosSemanaTres];
+        const turnos = await apiFetch(`/actividades/${idActividad}/turnos-disponibles?id_paciente=${idPaciente}&cantidad_semanas=4`);
+        const turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, 4);
 
         const insuficiente = turnosSemanasCriticas.some(semana => {
-            return Object.keys(semana).length < frecuenciaSemanal;
+            return !semanaCubreFrecuencia(semana, frecuenciaSemanal);
         });
 
         if (insuficiente) {
@@ -318,11 +90,8 @@ async function gestionarCambiosDeCantidad() {
         const turnosSemanaActual = obtenerTurnosSemana(turnos, 0);
         const turnosSemanaCuatro = obtenerTurnosSemana(turnos, 4);
 
-        const diasDisponiblesActual = Object.keys(turnosSemanaActual).length;
-        const diasDisponiblesCuatro = Object.keys(turnosSemanaCuatro).length;
-
-        const semanaActualCubre = diasDisponiblesActual >= frecuenciaSemanal;
-        const semanaCuatroCubre = diasDisponiblesCuatro >= frecuenciaSemanal;
+        const semanaActualCubre = semanaCubreFrecuencia(turnosSemanaActual, frecuenciaSemanal);
+        const semanaCuatroCubre = semanaCubreFrecuencia(turnosSemanaCuatro, frecuenciaSemanal);
 
         if (!semanaActualCubre && !semanaCuatroCubre) {
             await mostrarErrorTurnosInsuficientes();
@@ -344,15 +113,12 @@ async function gestionarCambiosDeCantidad() {
                     cancelButtonText: 'Semana que viene'
                 });
 
-                if (eleccion.isDismissed) return;
+                if (eleccion.dismiss === Swal.DismissReason.backdrop) return;
 
                 if (eleccion.isConfirmed) {
-
                     turnosPorSemana = [turnosSemanaActual, ...turnosSemanasCriticas];
-                    desdeActual = true;
-
+                    actualizarDesdeActual(true);
                 } else {
-
                     turnosPorSemana = [...turnosSemanasCriticas, turnosSemanaCuatro];
                 }
 
@@ -367,9 +133,7 @@ async function gestionarCambiosDeCantidad() {
 
             const turnosPorDia = consolidarTurnosPorDia(turnosPorSemana);
 
-            // Obtener y ordenar los días disponibles
-            const diasConTurnos = Object.keys(turnosPorDia);
-            diasConTurnos.sort((diaA, diaB) => {
+            const diasConTurnos = Object.keys(turnosPorDia).sort((diaA, diaB) => {
                 return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
             });
 
@@ -387,8 +151,10 @@ async function gestionarCambiosDeCantidad() {
 
         } else {
 
+            const turnosPrimeraSemana = turnosSemanasCriticas[0];
+
             const fechasSemanaActual = Object.keys(turnosSemanaActual);
-            const fechasSemanaUno = Object.keys(turnosSemanaUno);
+            const fechasSemanaUno = Object.keys(turnosPrimeraSemana);
 
             const opcionesPrimeraSemana = semanaActualCubre
                 ? [...fechasSemanaActual, ...fechasSemanaUno]
@@ -467,7 +233,7 @@ async function gestionarCambiosDeCantidad() {
                     habilitarSelect(select, true);
                 });
 
-                primeraFechaFueSeleccionada = true;
+                actualizarPrimeraFechaFueSeleccionada(true);
             });
 
             fechaSelects.forEach(select => {
@@ -502,6 +268,7 @@ async function gestionarCambiosDeCantidad() {
                     });
 
                     habilitarSelect(horaSelect, true);
+                    horaSelect.addEventListener('change', deshabilitarHoraSeleccionada);
                 });
             });
 
@@ -509,31 +276,14 @@ async function gestionarCambiosDeCantidad() {
         }
 
     } catch (error) {
-
         console.error('Error en el gestor de cambios de frecuencia semanal:', error);
-        await mostrarAlerta('error', 'Error inesperado', error);
+        await mostrarAlerta('error', 'Error inesperado', error.message);
     }
 }
 
-async function mostrarErrorTurnosInsuficientes() {
-    await mostrarAlerta(
-        'error',
-        'Turnos insuficientes',
-        'No hay suficientes turnos disponibles como para cubrir la frecuencia semanal seleccionada.'
-    );
-}
-
-let valorAnterior = actividadSelect.value || '';
-let primeraFechaFueSeleccionada = false;
-let totalAPagar = 0;
-let desdeActual = false;
-
-const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
-const cantidadSelect = document.getElementById('cantidad-select');
-const contenedorTurnos = document.getElementById('contenedor-turnos');
-const formulario = document.getElementById('formulario');
 const precioInput = document.getElementById('precio-input');
-const turnosCheckbox = document.getElementById('turnos-checkbox');
+let ultimaActividadValida = '';
+let totalAPagar = 0;
 
 sugerencias.addEventListener('click', async function(e) {
     try {
@@ -548,10 +298,9 @@ sugerencias.addEventListener('click', async function(e) {
 
         idPacienteInput.value = idPaciente;
         nombreInput.value = elementoClickeado.textContent;
-        habilitarNombreInput(false);
+        habilitarNombre(false);
 
-        eliminarButton.classList.remove('hidden');
-        valorAnterior = actividadSelect.value || '';
+        ultimaActividadValida = '';
         limpiarSugerencias();
 
         const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
@@ -577,12 +326,8 @@ sugerencias.addEventListener('click', async function(e) {
 
 eliminarButton.addEventListener('click', function() {
 
-    idPacienteInput.value = 0;
-
-    nombreInput.value = '';
-    habilitarNombreInput(true);
-
-    eliminarButton.classList.add('hidden');
+    idPacienteInput.value = '';
+    habilitarNombre(true);
 
     actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
     habilitarSelect(actividadSelect, false);
@@ -593,23 +338,18 @@ eliminarButton.addEventListener('click', function() {
     reiniciarPrecio();
     limpiarTurnos();
 
-    primeraFechaFueSeleccionada = false;
+    actualizarPrimeraFechaFueSeleccionada(false);
 });
 
 actividadSelect.addEventListener('change', async function() {
-
-    const idActividad = parseInt(this.value);
-    if (!idActividad) return;
-
-    this.disabled = true;
-
     try {
+        const idActividad = parseInt(this.value);
+        if (!idActividad) return;
 
         const combos = await apiFetch(`/actividades/${idActividad}/combos?con_precio=true`);
 
         if (combos.length === 0) {
-
-            this.value = valorAnterior;
+            this.value = ultimaActividadValida;
             mostrarAlerta('error', 'No hay combos disponibles', 'No existen combos con un precio registrado para la actividad seleccionada.');
             return;
         }
@@ -617,29 +357,26 @@ actividadSelect.addEventListener('change', async function() {
         reiniciarPrecio();
         deshabilitarCantidadSelect();
         limpiarTurnos();
-        valorAnterior = this.value;
+        ultimaActividadValida = this.value;
 
         combos.forEach(combo => {
             const sesionesPorSemana = combo.cantidad_sesiones / 4;
             const contenidoTextual = `${sesionesPorSemana} ${sesionesPorSemana === 1 ? 'vez' : 'veces'} por semana`;
-            agregarOpcion(cantidadSelect, sesionesPorSemana, contenidoTextual);
+            const atributos = { id: combo.id_actividad_combo };
+            agregarOpcion(cantidadSelect, sesionesPorSemana, contenidoTextual, false, false, atributos);
         });
 
         habilitarSelect(cantidadSelect, true);
 
     } catch (error) {
-
-        this.value = valorAnterior;
+        this.value = ultimaActividadValida;
         console.error(error);
         await mostrarAlerta('error', 'Error al cargar combos', error.message);
-    }
-    finally {
-
-        this.disabled = false;
     }
 });
 
 cantidadSelect.addEventListener('change', async function() {
+    actualizarPrimeraFechaFueSeleccionada(false);
     await gestionarCambiosDeCantidad();
 });
 
@@ -719,6 +456,7 @@ formulario.addEventListener('submit', async (e) => {
             }
         }
 
+        const url = formulario.dataset.url;
         const cantSesiones = frecuenciaSemanal * 4;
         const options = {
             method: 'POST',
@@ -734,11 +472,12 @@ formulario.addEventListener('submit', async (e) => {
                 total_a_pagar: totalAPagar,
                 autogenerados: turnosAutogenerados,
                 desde_actual: desdeActual,
-                turnos: turnos
+                turnos,
+                frecuencia_semanal: frecuenciaSemanal
             })
         };
 
-        await apiFetch(`/actividades-pacientes`, options);
+        await apiFetch(url, options);
 
         await mostrarAlerta(
             'success', 

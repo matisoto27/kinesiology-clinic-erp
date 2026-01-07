@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Collection as SupportCollection;
 
 class Turno extends Model
 {
@@ -33,110 +33,47 @@ class Turno extends Model
     {
         return $this->hasMany(NotaTurno::class, 'id_turno');
     }
-    
-    public static function estaOcupado(int $idActividad, string $fechaHora): bool
+
+    public function scopeConActPac(Builder $consulta): Builder
     {
-        return self::where('fecha_hora', $fechaHora)
-            ->whereHas('actividadPaciente', function ($query) use ($idActividad) {
-                $query->where('id_actividad', $idActividad);
-            })
-            ->exists();
+        return $consulta->join('actividades_pacientes', 'turnos.id_act_pac', '=', 'actividades_pacientes.id');
     }
 
-    public static function yaPaso(string $fechaHora): bool
+    public function scopeDeLaActividad(Builder $consulta, int $idActividad): Builder
     {
-        $fechaHoraTurno = Carbon::parse($fechaHora);
-        return $fechaHoraTurno->isPast();
+        return $consulta->where('actividades_pacientes.id_actividad', $idActividad);
     }
 
-    public static function buscarReemplazo(int $idActividad, Carbon $fechaHoraInicial, array $turnosAsignados): ?string
+    public function scopeDelPaciente(Builder $consulta, int $idPaciente): Builder
     {
-        $actividad = Actividad::find($idActividad);
-        if (!$actividad) return null;
-
-        $horasDeInicio = $actividad->obtenerHorasDeInicio();
-
-        $lunes = $fechaHoraInicial->copy()->startOfWeek(Carbon::MONDAY);
-        $viernes = $lunes->copy()->addDays(4);
-
-        $fechaBase = $lunes->copy();
-        $ahora = Carbon::now();
-        $turnosPosibles = collect();
-
-        while ($fechaBase->lessThanOrEqualTo($viernes)) {
-
-            foreach ($horasDeInicio as $horaStr) {
-
-                $fechaHoraTurno = $fechaBase->copy()->setTimeFromTimeString($horaStr);
-                if ($fechaHoraTurno->greaterThan($ahora)) {
-                    $turnosPosibles->push($fechaHoraTurno->toDateTimeString());
-                }
-            }
-
-            $fechaBase->addDay();
-        }
-
-        $fechasAsignadas = collect($turnosAsignados)->map(function ($fechaHoraStr) {
-            return Carbon::parse($fechaHoraStr)->toDateString();
-        })->unique()->toArray();
-
-        $turnosDisponibles = [];
-
-        foreach ($turnosPosibles as $fechaHoraStr) {
-
-            $fechaStr = Carbon::parse($fechaHoraStr)->toDateString();
-
-            if (self::estaOcupado($idActividad, $fechaHoraStr) || in_array($fechaStr, $fechasAsignadas))
-                continue;
-
-            $turnosDisponibles[] = $fechaHoraStr;
-        }
-
-        $turnoIdealStr = $fechaHoraInicial->toDateTimeString();
-
-        $posteriores = array_filter($turnosDisponibles, fn($t) => $t > $turnoIdealStr);
-        $anteriores = array_filter($turnosDisponibles, fn($t) => $t < $turnoIdealStr);
-
-        
-
-        // Gimnasio
-        if ($idActividad === 1) {
-
-            if (!empty($posteriores)) {
-
-                $resultadoEnPunto = self::buscarTurnoEnPunto($posteriores);
-
-                if ($resultadoEnPunto) {
-                    return $resultadoEnPunto;
-                }
-            }
-
-            if (!empty($anteriores)) {
-
-                $resultadoEnPunto = self::buscarTurnoEnPunto($anteriores);
-
-                if ($resultadoEnPunto) {
-                    return $resultadoEnPunto;
-                }
-            }
-        }
-
-        if (!empty($posteriores)) {
-            return array_values($posteriores)[0];
-        }
-
-        if (!empty($anteriores)) {
-            // Ordenar los anteriores en orden descendente y devolver el más cercano
-            rsort($anteriores);
-            return $anteriores[0];
-        }
-
-        return null;
+        return $consulta->where('actividades_pacientes.id_paciente', $idPaciente);
     }
 
-    private static function buscarTurnoEnPunto($turnos) {
-        return collect($turnos)->first(function ($turno) {
-            return Carbon::parse($turno)->minute === 0;
-        });
+    public function scopeConActividad(Builder $consulta): Builder
+    {
+        return $consulta->join('actividades', 'actividades_pacientes.id_actividad', '=', 'actividades.id');
+    }
+
+    public function scopeDeTipo(Builder $consulta, int $idTipoActividad): Builder
+    {
+        return $consulta->where('actividades.id_tipo_actividad', $idTipoActividad);
+    }
+
+    public function scopeEntreFechas(Builder $consulta, string $limiteInferior, string $limiteSuperior): Builder
+    {
+        return $consulta->whereBetween('fecha_hora', [$limiteInferior, $limiteSuperior]);
+    }
+
+    public function scopeCantidadMayorIgualQue(Builder $consulta, int $cantidad): Builder
+    {
+        return $consulta->havingRaw('COUNT(*) >= ?', [$cantidad]);
+    }
+
+    public static function pacienteEntreFechas(int $idPaciente, string $limiteInferior, string $limiteSuperior): SupportCollection
+    {
+        return self::conActPac()
+            ->delPaciente($idPaciente)
+            ->entreFechas($limiteInferior, $limiteSuperior)
+            ->pluck('fecha_hora');
     }
 }

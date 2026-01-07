@@ -29,15 +29,15 @@
                 </div>
 
                 <div>
-                    <div class="relative inline-block">
-                        @if($paciente)
-                            <button type="button" class="cursor-pointer" id="eliminar-button">
-                                <i class="fa-solid fa-xmark hover:text-red-900 p-1 text-red-600 text-xl"></i>
-                            </button>
-                        @endif
+                    @if($paciente)
+                        <button type="button" class="cursor-pointer" id="eliminar-button">
+                            <i class="fa-solid fa-xmark hover:text-red-900 p-1 text-red-600 text-xl"></i>
+                        </button>
+                    @endif
+                    <div class="{{ $paciente ? 'bg-[#6BA9A9]' : 'bg-[#3A8F8E]' }} rounded-xl relative inline-block" id="nombre-div">
                         <input type="hidden" name="paciente" id="id-paciente-input" value="{{ $paciente->id ?? 0 }}">
-                        <input placeholder="Ingrese el nombre" class="{{ $paciente ? 'bg-[#6BA9A9]' : 'bg-[#3A8F8E]' }} rounded-md text-xl p-2 focus:outline-none" value="{{ $paciente ? $paciente->apellido . ' ' . $paciente->nombre : '' }}" id="nombre-input" {{ $paciente ? 'disabled' : '' }}>
-                        <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-xl"></i>
+                        <i class="fa-solid fa-magnifying-glass ml-3 text-xl"></i>
+                        <input placeholder="Ingrese el nombre" class="text-xl p-2 focus:outline-none" value="{{ $paciente ? $paciente->apellido . ' ' . $paciente->nombre : '' }}" id="nombre-input" {{ $paciente ? 'disabled' : '' }}>
                         <ul id="sugerencias" class="absolute left-0 right-0 max-h-60 overflow-auto z-10 hidden">
                             <!-- Pacientes sugeridos -->
                         </ul>

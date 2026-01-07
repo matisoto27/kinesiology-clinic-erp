@@ -123,4 +123,7 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'max_turnos_generales' => env('MAX_TURNOS_GENERALES', 6),
+    'max_turnos_kinesiologia' => env('MAX_TURNOS_KINESIOLOGIA', 4)
+
 ];

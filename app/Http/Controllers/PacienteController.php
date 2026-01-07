@@ -66,7 +66,7 @@ class PacienteController extends Controller
             throw $ex;
         } catch (Throwable $ex) {
             DB::rollBack();
-            Log::error('Error al registrar el paciente', ['excepción' => $ex->getMessage()]);
+            Log::error('Error al registrar el paciente', ['excepcion' => $ex->getMessage()]);
             return back()
                 ->with('error', 'Se ha producido un error inesperado al registrar el paciente.')
                 ->withInput();
@@ -87,7 +87,7 @@ class PacienteController extends Controller
 
             Log::info('[PacienteController@obtenerActividadesGeneralesSinSuscripcion] Paciente no encontrado', [
                 'id_paciente' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
@@ -98,7 +98,7 @@ class PacienteController extends Controller
 
             Log::error('[PacienteController@obtenerActividadesGeneralesSinSuscripcion] Error al obtener las actividades sin suscripción', [
                 'id_paciente' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
@@ -139,7 +139,7 @@ class PacienteController extends Controller
 
             Log::error('[PacienteController@buscarPorApellidoNombre]', [
                 'nombre' => $nombre,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([

@@ -3,15 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Actividad;
-use App\Models\Turno;
 use Carbon\Carbon;
-use Carbon\CarbonPeriod;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ActividadController extends Controller
 {
+    public function index(Request $request)
+    {
+        $descripcion = $request->query('descripcion');
+
+        $consulta = Actividad::query();
+
+        if ($descripcion) {
+            $consulta->porTipoDescripcion($descripcion);
+        }
+
+        $actividades = $consulta->get();
+
+        return response()->json($actividades);
+    }
+
     public function obtenerCombos($id)
     {
         try {
@@ -43,7 +58,7 @@ class ActividadController extends Controller
 
             Log::info('[ActividadController@obtenerCombos] Actividad no encontrada', [
                 'id_actividad' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
@@ -54,7 +69,7 @@ class ActividadController extends Controller
 
             Log::error('[ActividadController@obtenerCombos] Error al obtener los combos de la actividad', [
                 'id_actividad' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
@@ -63,50 +78,36 @@ class ActividadController extends Controller
         }
     }
 
-    public function obtenerTurnosDisponibles($id)
+    public function obtenerTurnosDisponibles(int $id, Request $request)
     {
+        $actividad = Actividad::find($id);
+        $ahora = Carbon::now();
+
+        // REGLA DE NEGOCIO: Mínimo 1 hora antes del último turno para incluir la semana actual.
+        $limite = $ahora->copy()->startOfWeek()->addDays(4);
+        $actividad->esActividadGeneral() ? $limite->setTime(18, 00, 0) : $limite->setTime(18, 30, 0);
+        $incluirSemanaActual = $ahora->lessThanOrEqualTo($limite);
+
         try {
-            $actividad = Actividad::findOrFail($id);
 
-            $horasInicio = $actividad->horarios()->pluck('hora_inicio');
+            $validados = $request->validate([
+                'id_paciente' => ['required', 'integer', 'exists:pacientes,id'],
+                'cantidad_semanas' => ['required', 'integer', 'min:1']
+            ]);
 
-            $turnosOcupados = Turno::whereHas('actividadPaciente', function($query) use ($id) {
-                $query->where('id_actividad', $id);
-            })
-            ->where('fecha_hora', '>', now())
-            ->select('fecha_hora')
-            ->groupBy('fecha_hora')
-            ->havingRaw('COUNT(*) >= 1')
-            ->pluck('fecha_hora');
+            $cantidadSemanas = (int) $validados['cantidad_semanas'];
 
-            $fechaComienzo = Carbon::today();
-            $fechaFin = $fechaComienzo->copy()->addWeeks(4)->endOfWeek(Carbon::SUNDAY);
-            $fechasPeriodo = CarbonPeriod::create($fechaComienzo, $fechaFin);
+            $fechaComienzo = $incluirSemanaActual
+                ? $ahora->copy()->startOfWeek()
+                : $ahora->copy()->next(Carbon::MONDAY);
 
-            $fechasHabiles = collect();
-            foreach ($fechasPeriodo as $fecha) {
-                if ($fecha->isWeekday()) {
-                    $fechasHabiles->push($fecha->format('Y-m-d'));
-                }
-            }
+            $semanasAdicionales = $incluirSemanaActual
+                ? $cantidadSemanas
+                : $cantidadSemanas - 1;
 
-            $turnosPosibles = collect();
-            foreach ($fechasHabiles as $fecha) {
-                foreach ($horasInicio as $hora) {
+            $fechaFin = $fechaComienzo->copy()->addWeeks($semanasAdicionales)->endOfWeek(Carbon::FRIDAY);
 
-                    $fechaHora = Carbon::parse("$fecha $hora");
-
-                    if ($fechaHora->isPast()) {
-                        continue;
-                    }
-
-                    $turnosPosibles->push($fechaHora->format('Y-m-d H:i:s'));
-                }
-            }
-
-            $turnosDisponibles = $turnosPosibles
-                ->reject(fn($t) => in_array($t, $turnosOcupados->toArray()))
-                ->values();
+            $turnosDisponibles = Actividad::findOrFail($id)->turnosDisponibles($validados['id_paciente'], $fechaComienzo, $fechaFin);
 
             return response()->json($turnosDisponibles);
 
@@ -114,18 +115,29 @@ class ActividadController extends Controller
 
             Log::info('[ActividadController@obtenerTurnosDisponibles] Actividad no encontrada', [
                 'id_actividad' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
                 'error' => 'Actividad no encontrada.'
             ], 404);
 
+        } catch (ValidationException $ex) {
+
+            Log::warning('[ActividadController@obtenerTurnosDisponibles] Fallo en la validación', [
+                'id_actividad' => $id,
+                'excepcion' => $ex->getMessage()
+            ]);
+
+            return response()->json([
+                'errores' => $ex->errors()
+            ], 422);
+
         } catch (Throwable $ex) {
 
             Log::error('[ActividadController@obtenerTurnosDisponibles] Error al obtener los turnos disponibles', [
                 'id_actividad' => $id,
-                'excepción' => $ex->getMessage()
+                'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
