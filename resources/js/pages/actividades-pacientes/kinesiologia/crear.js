@@ -344,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     try {
         inicializarSugerenciasListeners(crearLiPaciente);
 
-        const actividades = await apiFetch('/actividades?descripcion=Kinesiología');
+        const actividades = await apiFetch('/actividades?id_tipo_actividad=2');
         actividades.forEach(actividad => {
             agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
         });

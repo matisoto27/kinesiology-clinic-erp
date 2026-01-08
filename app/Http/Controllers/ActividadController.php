@@ -14,12 +14,12 @@ class ActividadController extends Controller
 {
     public function index(Request $request)
     {
-        $descripcion = $request->query('descripcion');
+        $idTipoActividad = $request->query('id_tipo_actividad');
 
         $consulta = Actividad::query();
 
-        if ($descripcion) {
-            $consulta->porTipoDescripcion($descripcion);
+        if ($idTipoActividad) {
+            $consulta->porTipo($idTipoActividad);
         }
 
         $actividades = $consulta->get();

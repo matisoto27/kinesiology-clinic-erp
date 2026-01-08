@@ -62,8 +62,8 @@ export function limpiarTurnos() {
 }
 
 function redondearNombre(confirma) {
-    nombreDiv.classList.toggle('rounded-xl', confirma);
-    nombreDiv.classList.toggle('rounded-t-xl', !confirma);
+    nombreDiv.classList.toggle('rounded-b-xl', confirma);
+    nombreDiv.classList.toggle('rounded-b-none', !confirma);
 }
 
 export function habilitarNombre(confirma) {
@@ -480,15 +480,12 @@ export function inicializarSugerenciasListeners(crearLiPaciente) {
                 redondearNombre(false);
                 sugerencias.classList.remove('hidden');
 
-                
-                    
                 } catch (error) {
 
                     console.error('Error en el gestor de cambios de nombre:', error);
                     await mostrarAlerta('error', 'Error inesperado', error);
 
                 } finally {
-
                     abortController = null;
                 }
 

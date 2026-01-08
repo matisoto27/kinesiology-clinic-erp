@@ -8,3 +8,69 @@
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+@layer components {
+    #formulario {
+        @apply bg-[#006E6B] rounded-xl shadow-lg p-8;
+    }
+
+    #turnos-checkbox {
+        @apply accent-[#F5D500] h-4 w-4;
+    }
+
+    #nombre-div {
+        @apply bg-[#3A8F8E] rounded-t-xl rounded-b-xl relative;
+    }
+
+    #nombre-input {
+        @apply p-2 text-xl text-white focus:outline-none w-full;
+    }
+
+    #sugerencias {
+        @apply absolute left-0 right-0 max-h-60 overflow-auto z-10;
+    }
+
+    .contenedor {
+        @apply  mx-auto py-5 w-full;
+    }
+
+    .titulo-formulario {
+        @apply mb-4 block font-semibold text-2xl text-center text-white;
+    }
+
+    .fila-formulario {
+        @apply mb-4 flex gap-5;
+    }
+
+    .ultima-fila-formulario {
+        @apply mb-4 flex items-center gap-1;
+    }
+
+    .columna-campo {
+        @apply flex flex-col gap-1;
+    }
+
+    .etiqueta-formulario {
+        @apply font-medium text-lg text-white;
+    }
+
+    .entrada {
+        @apply bg-[#3A8F8E] p-2 rounded-xl text-xl text-white;
+    }
+
+    .entrada-deshabilitada {
+        @apply bg-[#6BA9A9] p-2 rounded-xl text-xl text-[#E0F0F0] cursor-not-allowed;
+    }
+
+    .icono-lupa {
+        @apply ml-3 text-xl text-white;
+    }
+
+    .icono-eliminar {
+        @apply align-middle hover:text-red-900 text-red-600 text-xl;
+    }
+
+    .boton-registrar {
+        @apply py-2 active:scale-95 bg-[#3A8F8E] cursor-pointer font-semibold text-white hover:bg-[#F5D500] hover:scale-105 hover:text-black transform transition-all ease-in-out duration-300 rounded-md w-full;
+    }
+}
