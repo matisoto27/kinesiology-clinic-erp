@@ -113,6 +113,6 @@
 @endsection
 
 @push('scripts')
-    @vite('resources/js/pages/actividades-pacientes/kinesiologia/crear.js')
+    @vite('resources/js/pages/actividades-pacientes/kinesiologia/con-orden/crear.js')
     <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Icono Lupa -->
 @endpush

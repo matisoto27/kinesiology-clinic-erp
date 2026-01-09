@@ -5,9 +5,9 @@ import {
     actualizarTotalAPagar,
     actualizarDesdeActual,
     actualizarUltimaActividadValida,
+    actualizarUltimaFrecuenciaValida,
     agregarOpcion,
     apiFetch,
-    cantidadSelect,
     cargarHorarios,
     crearOpcionPorDefecto,
     consolidarTurnosPorDia,
@@ -18,6 +18,7 @@ import {
     DIAS_SEMANA,
     eliminarButton,
     formulario,
+    frecuenciaSelect,
     habilitarNombre,
     habilitarSelect,
     idPacienteInput,
@@ -25,14 +26,15 @@ import {
     mostrarErrorTurnosInsuficientes,
     mostrarAlerta,
     nombreInput,
-    reiniciarPrecio,
     limpiarSugerencias,
     limpiarTurnos,
     obtenerTurnosSemanasCriticas,
     obtenerTurnosSemana,
     precioInput,
     primeraFechaFueSeleccionada,
+    reiniciarPrecio,
     renderizarTurnosFijos,
+    restaurarFrecuenciaAnterior,
     semanaCubreFrecuencia,
     sugerencias,
     token,
@@ -40,10 +42,9 @@ import {
     transformarFecha,
     turnosCheckbox,
     ultimaActividadValida
-} from '../../../shared.js';
+} from '../../../../shared.js';
 
 function crearLiPaciente(paciente, esUltimo) {
-
     const li = document.createElement('li');
     const idPaciente = paciente.id;
     const apellidoNombre = `${paciente.apellido} ${paciente.nombre}`;
@@ -56,56 +57,98 @@ function crearLiPaciente(paciente, esUltimo) {
     return li;
 }
 
-function deshabilitarCantidadSelect() {
-    cantidadSelect.innerHTML = '<option value="" disabled selected>Seleccione una frecuencia</option>';
-    habilitarSelect(cantidadSelect, false);
+function manejarSeleccion(liSeleccionado) {
+    const idPaciente = parseInt(liSeleccionado.dataset.idPaciente);
+    if (!idPaciente) return;
+
+    idPacienteInput.value = idPaciente;
+    nombreInput.value = liSeleccionado.textContent;
+    habilitarNombre(false);
+    limpiarSugerencias();
 }
 
-async function gestionarCambiosDeCantidad() {
+function obtenerDatosFormulario() {
+    const datos = {
+        idPaciente: parseInt(idPacienteInput.value),
+        idActividad: parseInt(actividadSelect.value),
+        cantidadSesiones: cantidadInput.valueAsNumber,
+        frecuenciaSemanal: parseInt(frecuenciaSelect.value)
+    };
+
+    const esValido = !isNaN(datos.idPaciente) &&
+                     !isNaN(datos.idActividad) &&
+                     validarCantidad(datos.cantidadSesiones) &&
+                     !isNaN(datos.frecuenciaSemanal);
+
+    return esValido ? datos : null;
+}
+
+function validarCantidad(valueAsNumber) {
+    return !isNaN(valueAsNumber) && valueAsNumber >= 1 && valueAsNumber <= 20;
+}
+
+async function intentarActualizarPagina() {
+    const datos = obtenerDatosFormulario();
+    if (!datos) return;
+
+    if (controladorAbortar) controladorAbortar.abort();
+    controladorAbortar = new AbortController();
+
     try {
-        const idPaciente = parseInt(idPacienteInput.value);
-        const idActividad = parseInt(actividadSelect.value);
-        const frecuenciaSemanal = parseInt(cantidadSelect.value);
+        await actualizarPagina(datos, controladorAbortar.signal);
+    } catch (error) {
+        if (error.name === 'AbortError') return;
+        console.error('Error al intentar actualizar la página', error.message);
+    }
+}
 
-        const opcionSeleccionada = cantidadSelect.options[cantidadSelect.selectedIndex];
-        const idActividadCombo = opcionSeleccionada.dataset.id;
+async function actualizarPagina(datos, signal) {
+    try {
+        const cantidadSesiones = datos.cantidadSesiones;
+        const frecuenciaSemanal = datos.frecuenciaSemanal;
 
-        if (!idPaciente || !idActividad || !frecuenciaSemanal || !idActividadCombo) return;
+        const cantidadSemanas = Math.ceil(cantidadSesiones / frecuenciaSemanal);
+        const tieneMasDeUnaSemana = cantidadSemanas > 1;
 
-        const precio = await apiFetch(`/actividades-combos/${idActividadCombo}/precio-actual`);
-        actualizarTotalAPagar(precio);
-        precioInput.value = '$' + precio;
-        limpiarTurnos();
+        const turnos = await apiFetch(`/actividades/${datos.idActividad}/turnos-disponibles?id_paciente=${datos.idPaciente}&cantidad_semanas=${cantidadSemanas}`, { signal });
 
-        const turnos = await apiFetch(`/actividades/${idActividad}/turnos-disponibles?id_paciente=${idPaciente}&cantidad_semanas=4`);
-        const turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, 4);
+        let turnosSemanasCriticas = [];
 
-        const insuficiente = turnosSemanasCriticas.some(semana => {
-            return !semanaCubreFrecuencia(semana, frecuenciaSemanal);
-        });
+        if (tieneMasDeUnaSemana) {
 
-        if (insuficiente) {
-            await mostrarErrorTurnosInsuficientes();
-            return;
+            turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, cantidadSemanas);
+
+            const insuficiente = turnosSemanasCriticas.some(semana => {
+                return !semanaCubreFrecuencia(semana, frecuenciaSemanal);
+            });
+
+            if (insuficiente) {
+                await mostrarErrorTurnosInsuficientes();
+                restaurarFrecuenciaAnterior();
+                return;
+            }
         }
 
         const turnosSemanaActual = obtenerTurnosSemana(turnos, 0);
-        const turnosSemanaCuatro = obtenerTurnosSemana(turnos, 4);
+        const turnosUltimaSemana = obtenerTurnosSemana(turnos, cantidadSemanas);
 
         const semanaActualCubre = semanaCubreFrecuencia(turnosSemanaActual, frecuenciaSemanal);
-        const semanaCuatroCubre = semanaCubreFrecuencia(turnosSemanaCuatro, frecuenciaSemanal);
+        const semanaUltimaCubre = semanaCubreFrecuencia(turnosUltimaSemana, frecuenciaSemanal);
 
-        if (!semanaActualCubre && !semanaCuatroCubre) {
+        if (!semanaActualCubre && !semanaUltimaCubre) {
             await mostrarErrorTurnosInsuficientes();
+            restaurarFrecuenciaAnterior();
             return;
         }
+
+        actualizarUltimaFrecuenciaValida(frecuenciaSemanal);
 
         let turnosPorSemana;
         let turnoHTML = '';
 
         if (turnosCheckbox.checked) {
 
-            if (semanaActualCubre && semanaCuatroCubre) {
+            if (semanaActualCubre && semanaUltimaCubre) {
 
                 const eleccion = await Swal.fire({
                     title: '¿Desea generar los turnos a partir de la semana actual o a partir de la semana que viene?',
@@ -115,13 +158,16 @@ async function gestionarCambiosDeCantidad() {
                     cancelButtonText: 'Semana que viene'
                 });
 
-                if (eleccion.dismiss === Swal.DismissReason.backdrop) return;
+                if (eleccion.isDismissed) return;
 
                 if (eleccion.isConfirmed) {
+
                     turnosPorSemana = [turnosSemanaActual, ...turnosSemanasCriticas];
                     actualizarDesdeActual(true);
+
                 } else {
-                    turnosPorSemana = [...turnosSemanasCriticas, turnosSemanaCuatro];
+
+                    turnosPorSemana = [...turnosSemanasCriticas, turnosUltimaSemana];
                 }
 
             } else if (semanaActualCubre) {
@@ -130,7 +176,7 @@ async function gestionarCambiosDeCantidad() {
 
             } else {
 
-                turnosPorSemana = [...turnosSemanasCriticas, turnosSemanaCuatro];
+                turnosPorSemana = [...turnosSemanasCriticas, turnosUltimaSemana];
             }
 
             const turnosPorDia = consolidarTurnosPorDia(turnosPorSemana);
@@ -142,18 +188,20 @@ async function gestionarCambiosDeCantidad() {
             renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
 
             const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
-            
+
             diaSelects.forEach(select => {
                 select.addEventListener('change', function() {
 
                     actualizarDiasDeshabilitados(diaSelects);
-                    cargarHorarios(this, turnosPorDia); 
+                    cargarHorarios(this, turnosPorDia, cantidadSemanas);
                 });
             });
 
         } else {
 
-            const turnosPrimeraSemana = turnosSemanasCriticas[0];
+            const turnosPrimeraSemana =  tieneMasDeUnaSemana
+                ? turnosSemanasCriticas[0]
+                : turnosUltimaSemana;
 
             const fechasSemanaActual = Object.keys(turnosSemanaActual);
             const fechasSemanaUno = Object.keys(turnosPrimeraSemana);
@@ -162,10 +210,17 @@ async function gestionarCambiosDeCantidad() {
                 ? [...fechasSemanaActual, ...fechasSemanaUno]
                 : fechasSemanaUno;
 
-            for (let i = 1; i <= 4; i++) {
+            let turnosGenerados = 0;
+
+            for (let i = 1; i <= cantidadSemanas; i++) {
                 turnoHTML += `<h3 class="mb-4 border-t font-medium text-xl text-[#F5D500]">Semana ${i}</h3>`;
 
                 for (let j = 1; j <= frecuenciaSemanal; j++) {
+
+                    if (turnosGenerados >= cantidadSesiones) break;
+
+                    turnosGenerados++;
+
                     turnoHTML += `
                         <div class="mb-4 flex gap-5 turno" data-semana="${i}">
 
@@ -206,7 +261,7 @@ async function gestionarCambiosDeCantidad() {
 
                 turnosPorSemana = comienzaSemanaActual
                     ? [turnosSemanaActual, ...turnosSemanasCriticas]
-                    : [...turnosSemanasCriticas, turnosSemanaCuatro];
+                    : [...turnosSemanasCriticas, turnosUltimaSemana];
 
                 turnosPorFecha = Object.assign({}, ...turnosPorSemana);
 
@@ -278,62 +333,55 @@ async function gestionarCambiosDeCantidad() {
         }
 
     } catch (error) {
-        console.error('Error en el gestor de cambios de frecuencia semanal:', error);
-        await mostrarAlerta('error', 'Error inesperado', error.message);
+        if (error.name === 'AbortError') throw error;
+        console.error('Error en el gestor de cambios de frecuencia semanal', error);
+        await mostrarAlerta('error', 'Error al actualizar la pagina', error.message);
     }
 }
 
-sugerencias.addEventListener('click', async function(e) {
+function limpiarFrecuenciaPrecioTurnos() {
+    frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
+    habilitarSelect(frecuenciaSelect, false);
+    reiniciarPrecio();
+    contenedorTurnos.innerHTML = '';
+}
+
+const cantidadInput = document.getElementById('cantidad-input');
+let combosActividad;
+let controladorAbortar = null;
+
+document.addEventListener('DOMContentLoaded', async function() {
     try {
+        inicializarSugerenciasListeners(crearLiPaciente);
 
-        const elementoClickeado = e.target;
-        const nombreElemento = elementoClickeado.tagName.toLowerCase();
-
-        if (nombreElemento !== 'li') return;
-
-        const idPaciente = parseInt(elementoClickeado.dataset.idPaciente);
-        if (!idPaciente) return;
-
-        idPacienteInput.value = idPaciente;
-        nombreInput.value = elementoClickeado.textContent;
-        habilitarNombre(false);
-
-        actualizarUltimaActividadValida('');
-        limpiarSugerencias();
-
-        const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
-
-        if (actividades.length === 0) {
-            actividadSelect.innerHTML = crearOpcionPorDefecto('Paciente suscripto a todas');
-            return;
-        }
-
-        actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
-
+        const actividades = await apiFetch('/actividades?id_tipo_actividad=2');
         actividades.forEach(actividad => {
             agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
         });
 
-        habilitarSelect(actividadSelect, true);
+        cantidadInput.addEventListener('input', intentarActualizarPagina);
+        [actividadSelect, frecuenciaSelect, turnosCheckbox].forEach(elemento => {
+            elemento.addEventListener('change', intentarActualizarPagina);
+        });
 
     } catch (error) {
         console.error(error);
-        mostrarAlerta('error', 'Error al seleccionar paciente', error.message);
+        mostrarAlerta('error', 'Error al cargar la página', error.message);
     }
 });
 
-eliminarButton.addEventListener('click', function() {
+sugerencias.addEventListener('click', function(e) {
+    const liSeleccionado = e.target.closest('li');
+    if (!liSeleccionado) return;
 
+    manejarSeleccion(liSeleccionado);
+    intentarActualizarPagina();
+});
+
+eliminarButton.addEventListener('click', function() {
     idPacienteInput.value = '';
     habilitarNombre(true);
 
-    actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
-    habilitarSelect(actividadSelect, false);
-
-    cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
-    habilitarSelect(cantidadSelect, false);
-
-    reiniciarPrecio();
     limpiarTurnos();
 
     actualizarPrimeraFechaFueSeleccionada(false);
@@ -348,23 +396,19 @@ actividadSelect.addEventListener('change', async function() {
 
         if (combos.length === 0) {
             this.value = ultimaActividadValida;
-            mostrarAlerta('error', 'No hay combos disponibles', 'No existen combos con un precio registrado para la actividad seleccionada.');
+            await mostrarAlerta('error', 'No hay combos disponibles', 'No existen combos con un precio registrado para la actividad seleccionada.');
             return;
         }
 
-        reiniciarPrecio();
-        deshabilitarCantidadSelect();
-        limpiarTurnos();
         actualizarUltimaActividadValida(idActividad);
 
-        combos.forEach(combo => {
-            const sesionesPorSemana = combo.cantidad_sesiones / 4;
-            const contenidoTextual = `${sesionesPorSemana} ${sesionesPorSemana === 1 ? 'vez' : 'veces'} por semana`;
-            const atributos = { id: combo.id_actividad_combo };
-            agregarOpcion(cantidadSelect, sesionesPorSemana, contenidoTextual, false, false, atributos);
-        });
+        habilitarSelect(cantidadInput, true);
+        reiniciarPrecio();
+        limpiarTurnos();
 
-        habilitarSelect(cantidadSelect, true);
+        combosActividad = Object.fromEntries(
+            combos.map(combo => [combo.cantidad_sesiones, combo.precio_actual])
+        );
 
     } catch (error) {
         this.value = ultimaActividadValida;
@@ -373,29 +417,63 @@ actividadSelect.addEventListener('change', async function() {
     }
 });
 
-cantidadSelect.addEventListener('change', async function() {
-    actualizarPrimeraFechaFueSeleccionada(false);
-    await gestionarCambiosDeCantidad();
+cantidadInput.addEventListener('input', async function() {
+    try {
+        const cantidadIngresada = cantidadInput.valueAsNumber;
+        if (!validarCantidad(cantidadIngresada)) {
+            limpiarFrecuenciaPrecioTurnos();
+            return;
+        }
+
+        const frecuenciaSeleccionada = parseInt(frecuenciaSelect.value);
+
+        frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
+        agregarOpcion(frecuenciaSelect, 1, '1 vez por semana');
+        for (let i = 2; i <= 5 && i <= cantidadIngresada; i++) {
+            agregarOpcion(frecuenciaSelect, i, `${i} veces por semana`);
+        }
+        habilitarSelect(frecuenciaSelect, true);
+
+        if (frecuenciaSeleccionada) {
+            frecuenciaSelect.value = frecuenciaSeleccionada <= cantidadIngresada
+                ? frecuenciaSeleccionada
+                : Math.min(cantidadIngresada, 5);
+        }
+
+        if (!combosActividad[1]) {
+            precioInput.value = 'ERROR AL CARGAR';
+            return;
+        }
+
+        const precio = combosActividad[cantidadIngresada] ?? (combosActividad[1] * cantidadIngresada);
+        actualizarTotalAPagar(precio);
+        precioInput.value = `$${precio}`;
+
+        await intentarActualizarPagina();
+
+    } catch (error) {
+        console.error(error);
+        await mostrarAlerta('error', 'Error al ingresar cantidad de sesiones', error.message);
+    }
 });
 
 formulario.addEventListener('submit', async (e) => {
     try {
-
         e.preventDefault();
 
-        const idActividad = parseInt(actividadSelect.value);
-        const idPaciente = parseInt(idPacienteInput.value);
-
-        if (!idActividad || !idPaciente) {
-            throw new Error('Por favor, seleccione un paciente y una actividad.');
+        const datos = obtenerDatosFormulario();
+        if (!datos) {
+            throw new Error('Por favor, ingrese todos los datos requeridos en el formulario.');
         }
 
+        const frecuenciaSemanal = datos.frecuenciaSemanal;
+        const cantidadSesiones = datos.cantidadSesiones;
+
         const turnosAutogenerados = turnosCheckbox.checked;
-        const frecuenciaSemanal = cantidadSelect.value;
 
         const cantidadTurnos = turnosAutogenerados
             ? frecuenciaSemanal
-            : frecuenciaSemanal * 4;
+            : cantidadSesiones;
 
         const divsTurnos = contenedorTurnos.querySelectorAll('.turno');
         const cantidadTurnosReal = divsTurnos.length;
@@ -455,7 +533,6 @@ formulario.addEventListener('submit', async (e) => {
         }
 
         const url = formulario.dataset.url;
-        const cantSesiones = frecuenciaSemanal * 4;
         const options = {
             method: 'POST',
             headers: {
@@ -464,9 +541,9 @@ formulario.addEventListener('submit', async (e) => {
                 'X-CSRF-TOKEN': token
             },
             body: JSON.stringify({
-                id_actividad: idActividad,
-                id_paciente: idPaciente,
-                cant_sesiones: cantSesiones,
+                id_actividad: datos.idActividad,
+                id_paciente: datos.idPaciente,
+                cant_sesiones: cantidadSesiones,
                 total_a_pagar: totalAPagar,
                 autogenerados: turnosAutogenerados,
                 desde_actual: desdeActual,
@@ -492,7 +569,7 @@ formulario.addEventListener('submit', async (e) => {
         });
 
         if (eleccion.dismiss === Swal.DismissReason.cancel) {
-            window.location.href = '/';
+            window.location.replace('/');
         } else {
             window.location.href = '/pagos';
         }
@@ -501,12 +578,4 @@ formulario.addEventListener('submit', async (e) => {
         console.error(error);
         await mostrarAlerta('error', 'Error al registrar los turnos', error.message);
     }
-});
-
-turnosCheckbox.addEventListener('change', async function() {
-    await gestionarCambiosDeCantidad();
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-    inicializarSugerenciasListeners(crearLiPaciente);
 });

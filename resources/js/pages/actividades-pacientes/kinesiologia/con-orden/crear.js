@@ -1,8 +1,9 @@
 import {
     actividadSelect,
     actualizarDiasDeshabilitados,
-    actualizarPrimeraFechaFueSeleccionada,
     actualizarDesdeActual,
+    actualizarPrimeraFechaFueSeleccionada,
+    actualizarUltimaFrecuenciaValida,
     agregarOpcion,
     apiFetch,
     cantidadSelect,
@@ -16,6 +17,7 @@ import {
     DIAS_SEMANA,
     eliminarButton,
     formulario,
+    frecuenciaSelect,
     habilitarNombre,
     habilitarSelect,
     idPacienteInput,
@@ -29,12 +31,13 @@ import {
     obtenerTurnosSemana,
     primeraFechaFueSeleccionada,
     renderizarTurnosFijos,
+    restaurarFrecuenciaAnterior,
     semanaCubreFrecuencia,
     sugerencias,
     token,
     transformarFecha,
     turnosCheckbox
-} from '../../../shared.js';
+} from '../../../../shared.js';
 
 function crearLiPaciente(paciente, esUltimo) {
     const li = document.createElement('li');
@@ -76,7 +79,6 @@ function actualizarDias() {
 
 async function actualizarPagina() {
     try {
-
         if (!validarPrimeraParte()) return;
 
         const idActividad = parseInt(actividadSelect.value);
@@ -84,14 +86,14 @@ async function actualizarPagina() {
         const cantidadSesiones = parseInt(cantidadSelect.value);
         const frecuenciaSemanal = parseInt(frecuenciaSelect.value);
 
-        // Ejemplo: 5 sesiones : 2 veces por semana = 2.5 semanas (redondeado son 3 semanas)
         const cantidadSemanas = Math.ceil(cantidadSesiones / frecuenciaSemanal);
+        const tieneMasDeUnaSemana = cantidadSemanas > 1;
 
         const turnos = await apiFetch(`/actividades/${idActividad}/turnos-disponibles?id_paciente=${idPaciente}&cantidad_semanas=${cantidadSemanas}`);
 
         let turnosSemanasCriticas = [];
 
-        if (cantidadSemanas > 1) {
+        if (tieneMasDeUnaSemana) {
 
             turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, cantidadSemanas);
 
@@ -118,7 +120,7 @@ async function actualizarPagina() {
             return;
         }
 
-        ultimaFrecuenciaValida = frecuenciaSemanal;
+        actualizarUltimaFrecuenciaValida(frecuenciaSemanal);
 
         let turnosPorSemana;
         let turnoHTML = '';
@@ -176,7 +178,9 @@ async function actualizarPagina() {
 
         } else {
 
-            const turnosPrimeraSemana = turnosSemanasCriticas[0];
+            const turnosPrimeraSemana =  tieneMasDeUnaSemana
+                ? turnosSemanasCriticas[0]
+                : turnosUltimaSemana;
 
             const fechasSemanaActual = Object.keys(turnosSemanaActual);
             const fechasSemanaUno = Object.keys(turnosPrimeraSemana);
@@ -329,16 +333,9 @@ function validarPrimeraParte() {
     return todosValidos;
 }
 
-function restaurarFrecuenciaAnterior() {
-    frecuenciaSelect.value = ultimaFrecuenciaValida;
-}
-
-const frecuenciaSelect = document.getElementById('frecuencia-select');
 const mesSelect = document.getElementById('mes-select');
 const diaSelect = document.getElementById('dia-select');
 const elementosRequeridos = [actividadSelect, mesSelect, diaSelect, cantidadSelect, frecuenciaSelect, turnosCheckbox];
-
-let ultimaFrecuenciaValida = '';
 
 document.addEventListener('DOMContentLoaded', async function() {
     try {

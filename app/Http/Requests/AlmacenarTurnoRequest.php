@@ -37,7 +37,7 @@ class AlmacenarTurnoRequest extends FormRequest
             'mes' => [Rule::requiredIf($esConOrden), 'integer', 'min:1', 'max:12'],
             'dia' => [Rule::requiredIf($esConOrden), 'integer', 'min:1', 'max:31'],
 
-            'cant_sesiones' => [Rule::requiredIf(!$esConOrden), 'integer', 'in:4,8,12,16,20'],
+            'cant_sesiones' => [Rule::requiredIf(!$esConOrden), 'integer', 'min:1', 'max:20'],
             'total_a_pagar' => [Rule::requiredIf(!$esConOrden), 'numeric', 'gt:0'],
 
             'turnos' => [

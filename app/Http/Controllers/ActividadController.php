@@ -48,7 +48,8 @@ class ActividadController extends Controller
                 return [
                     'id_actividad_combo' => $actividadCombo->id,
                     'nombre' => $actividadCombo->combo->nombre,
-                    'cantidad_sesiones' => $actividadCombo->combo->cantidad_sesiones
+                    'cantidad_sesiones' => $actividadCombo->combo->cantidad_sesiones,
+                    'precio_actual' => $actividadCombo->precioActual()
                 ];
             });
 
@@ -88,13 +89,12 @@ class ActividadController extends Controller
         $actividad->esActividadGeneral() ? $limite->setTime(18, 00, 0) : $limite->setTime(18, 30, 0);
         $incluirSemanaActual = $ahora->lessThanOrEqualTo($limite);
 
+        $validados = $request->validate([
+            'id_paciente' => ['required', 'integer', 'exists:pacientes,id'],
+            'cantidad_semanas' => ['required', 'integer', 'min:1']
+        ]);
+
         try {
-
-            $validados = $request->validate([
-                'id_paciente' => ['required', 'integer', 'exists:pacientes,id'],
-                'cantidad_semanas' => ['required', 'integer', 'min:1']
-            ]);
-
             $cantidadSemanas = (int) $validados['cantidad_semanas'];
 
             $fechaComienzo = $incluirSemanaActual
@@ -121,17 +121,6 @@ class ActividadController extends Controller
             return response()->json([
                 'error' => 'Actividad no encontrada.'
             ], 404);
-
-        } catch (ValidationException $ex) {
-
-            Log::warning('[ActividadController@obtenerTurnosDisponibles] Fallo en la validación', [
-                'id_actividad' => $id,
-                'excepcion' => $ex->getMessage()
-            ]);
-
-            return response()->json([
-                'errores' => $ex->errors()
-            ], 422);
 
         } catch (Throwable $ex) {
 

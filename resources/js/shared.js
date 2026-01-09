@@ -32,7 +32,7 @@ export async function apiFetch(url, options = {}) {
 
     if (!respuesta.ok) {
 
-        const errores = datos?.errores;
+        const errores = datos?.errors;
         let mensaje;
 
         if (errores) {
@@ -48,6 +48,10 @@ export async function apiFetch(url, options = {}) {
     }
 
     return datos;
+}
+
+export function reiniciarPrecio() {
+    precioInput.value = "$0,00";
 }
 
 export function limpiarSugerencias() {
@@ -427,6 +431,22 @@ export function actualizarPrimeraFechaFueSeleccionada(valor) {
     primeraFechaFueSeleccionada = valor;
 }
 
+export function actualizarTotalAPagar(valor) {
+    totalAPagar = valor;
+}
+
+export function actualizarUltimaActividadValida(valor) {
+    ultimaActividadValida = valor;
+}
+
+export function actualizarUltimaFrecuenciaValida(valor) {
+    ultimaFrecuenciaValida = valor;
+}
+
+export function restaurarFrecuenciaAnterior() {
+    frecuenciaSelect.value = ultimaFrecuenciaValida;
+}
+
 export function transformarFecha(fecha) {
 
     const año = fecha.getFullYear();
@@ -534,11 +554,16 @@ export const cantidadSelect = document.getElementById('cantidad-select');
 export const contenedorTurnos = document.getElementById('contenedor-turnos');
 export const eliminarButton = document.getElementById('eliminar-button');
 export const formulario = document.getElementById('formulario');
+export const frecuenciaSelect = document.getElementById('frecuencia-select');
 export const idPacienteInput = document.getElementById('id-paciente-input');
 export const nombreDiv = document.getElementById('nombre-div');
 export const nombreInput = document.getElementById('nombre-input');
+export const precioInput = document.getElementById('precio-input');
 export const sugerencias = document.getElementById('sugerencias');
 export const token = document.querySelector('meta[name="csrf-token"]').content;
 export const turnosCheckbox = document.getElementById('turnos-checkbox');
 export let desdeActual = false;
 export let primeraFechaFueSeleccionada = false;
+export let totalAPagar = 0;
+export let ultimaActividadValida = '';
+let ultimaFrecuenciaValida = '';

@@ -26,6 +26,11 @@ class ActividadPacienteController extends Controller
         return view('actividades-pacientes.kinesiologia.con-orden.crear');
     }
 
+    public function crearKinesiologiaSinOrden()
+    {
+        return view('actividades-pacientes.kinesiologia.sin-orden.crear');
+    }
+
     public function almacenar(AlmacenarTurnoRequest $request)
     {
         $esConOrden = !$request->has('total_a_pagar') || $request->has('mes') || $request->has('dia');
@@ -36,27 +41,21 @@ class ActividadPacienteController extends Controller
         try {
             $validados = $request->validated();
 
-            $validados['fecha_comienzo'] = $ahora;
-            if (!isset($validados['cant_sesiones'])) {
-                $validados['cant_sesiones'] = $validados['sesiones_cubiertas'];
-            }
-            $validados['es_fijo'] = false;
-            $validados['pago_completado'] = $esConOrden;
-
-            $idActividad = $validados['id_actividad'];
-            
-            $turnos = $validados['turnos'];
-
             if ($esConOrden) {
-                $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar($idActividad, $validados['sesiones_cubiertas']);
+                $validados['cant_sesiones'] = $validados['sesiones_cubiertas'];
+                $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar($validados['id_actividad'], $validados['sesiones_cubiertas']);
                 $validados['fecha_emision_ord'] = Carbon::create($ahora->year, $validados['mes'], $validados['dia']);
             }
+
+            $validados['fecha_comienzo'] = $ahora;
+            $validados['es_fijo'] = false;
+            $validados['pago_completado'] = $esConOrden;
 
             $actividadPaciente = ActividadPaciente::create($validados);
 
             $turnosParaInsertar = $validados['autogenerados']
                 ? $this->prepararTurnosAutomaticos($ahora, $validados, $actividadPaciente)
-                : $this->prepararTurnosManuales($turnos, $actividadPaciente);
+                : $this->prepararTurnosManuales($validados['turnos'], $actividadPaciente);
 
             if (!empty($turnosParaInsertar)) {
                 Turno::insert($turnosParaInsertar);
@@ -64,16 +63,6 @@ class ActividadPacienteController extends Controller
 
             DB::commit();
             return response()->noContent();
-
-        } catch (ValidationException $ex) {
-
-            Log::warning('[ActividadController@obtenerTurnosDisponibles] Fallo en la validación', [
-                'excepcion' => $ex->getMessage()
-            ]);
-
-            return response()->json([
-                'errores' => $ex->errors()
-            ], 422);
 
         } catch (Throwable $ex) {
 

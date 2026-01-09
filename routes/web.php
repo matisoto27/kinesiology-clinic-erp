@@ -20,6 +20,8 @@ Route::get('/actividades-pacientes/general/crear', [ActividadPacienteController:
     ->name('actividades-pacientes.general.crear');
 Route::get('/actividades-pacientes/kinesiologia/orden/crear', [ActividadPacienteController::class, 'crearKinesiologiaConOrden'])
     ->name('actividades-pacientes.kinesiologia-orden.crear');
+Route::get('/actividades-pacientes/kinesiologia/sin-orden/crear', [ActividadPacienteController::class, 'crearKinesiologiaSinOrden'])
+    ->name('actividades-pacientes.kinesiologia-sin-orden.crear');
 Route::post('/actividades-pacientes', [ActividadPacienteController::class, 'almacenar'])
     ->name('actividades-pacientes.almacenar');
 
