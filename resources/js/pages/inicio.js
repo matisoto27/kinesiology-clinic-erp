@@ -1,9 +1,5 @@
-import {
-    inicializarSugerenciasListeners,
-    actividadSelect,
-    eliminarButton,
-    idPacienteInput
-} from '../shared.js';
+import { inicializarSugerenciasListeners } from '@compartido/buscador-pacientes.js';
+import { obtenerElementosBuscador } from '@compartido/referencias-dom.js';
 
 function actualizarFechaHora() {
     const ahora = new Date();
@@ -49,9 +45,12 @@ function crearLiPaciente(pac, esUltimo) {
     return li;
 };
 
+const actividadSelect = document.getElementById('actividad-select');
 const fecha = document.getElementById('fecha');
 const formulario = document.getElementById('filtros-form');
+const { eliminarButton } = obtenerElementosBuscador();
 const horaActual = document.getElementById('hora-actual');
+const idPacienteInput = document.getElementById('id-paciente-input');
 const tabla = document.getElementById('turnos-tbody');
 
 actividadSelect.addEventListener('change', enviarFormulario);

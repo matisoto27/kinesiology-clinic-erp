@@ -1,43 +1,46 @@
 import {
-    actividadSelect,
-    actualizarDiasDeshabilitados,
-    actualizarDesdeActual,
-    actualizarPrimeraFechaFueSeleccionada,
-    actualizarUltimaFrecuenciaValida,
+    habilitarNombre,
+    inicializarSugerenciasListeners,
+    limpiarSugerencias
+} from '@compartido/buscador-pacientes.js';
+
+import {
     agregarOpcion,
     apiFetch,
-    cantidadSelect,
-    cargarHorarios,
     crearOpcionPorDefecto,
-    consolidarTurnosPorDia,
-    contenedorTurnos,
     convertirFechaParaMostrar,
-    desdeActual,
-    deshabilitarHoraSeleccionada,
     DIAS_SEMANA,
-    eliminarButton,
-    formulario,
-    frecuenciaSelect,
-    habilitarNombre,
     habilitarSelect,
-    idPacienteInput,
-    inicializarSugerenciasListeners,
-    mostrarErrorTurnosInsuficientes,
     mostrarAlerta,
-    nombreInput,
-    limpiarSugerencias,
+    transformarFecha
+} from '@compartido/general.js';
+
+import {
+    obtenerElementosBuscador,
+    contenedorTurnos
+} from '@compartido/referencias-dom.js';
+
+import {
+    obtenerDesdeActual,
+    actualizarDesdeActual,
+    obtenerPrimeraFechaFueSeleccionada,
+    actualizarPrimeraFechaFueSeleccionada,
+    obtenerUltimaFrecuenciaValida,
+    actualizarUltimaFrecuenciaValida
+} from '../../componentes/gestor-estado.js';
+
+import {
+    actualizarDiasDeshabilitados,
+    cargarHorarios,
+    consolidarTurnosPorDia,
+    deshabilitarHoraSeleccionada,
+    mostrarErrorTurnosInsuficientes,
     limpiarTurnos,
     obtenerTurnosSemanasCriticas,
     obtenerTurnosSemana,
-    primeraFechaFueSeleccionada,
     renderizarTurnosFijos,
-    restaurarFrecuenciaAnterior,
-    semanaCubreFrecuencia,
-    sugerencias,
-    token,
-    transformarFecha,
-    turnosCheckbox
-} from '../../../../shared.js';
+    semanaCubreFrecuencia
+} from '../../componentes/logica-turnos.js';
 
 function crearLiPaciente(paciente, esUltimo) {
     const li = document.createElement('li');
@@ -103,7 +106,7 @@ async function actualizarPagina() {
 
             if (insuficiente) {
                 await mostrarErrorTurnosInsuficientes();
-                restaurarFrecuenciaAnterior();
+                frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
                 return;
             }
         }
@@ -116,7 +119,7 @@ async function actualizarPagina() {
 
         if (!semanaActualCubre && !semanaUltimaCubre) {
             await mostrarErrorTurnosInsuficientes();
-            restaurarFrecuenciaAnterior();
+            frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
             return;
         }
 
@@ -164,7 +167,7 @@ async function actualizarPagina() {
                 return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
             });
 
-            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
+            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos);
 
             const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
 
@@ -233,7 +236,7 @@ async function actualizarPagina() {
 
             primerFechaSelect.addEventListener('change', function () {
 
-                if (primeraFechaFueSeleccionada) return;
+                if (obtenerPrimeraFechaFueSeleccionada()) return;
 
                 const fechaSeleccionada = this.value;
                 const comienzaSemanaActual = fechasSemanaActual.includes(fechaSeleccionada);
@@ -333,8 +336,17 @@ function validarPrimeraParte() {
     return todosValidos;
 }
 
-const mesSelect = document.getElementById('mes-select');
+const { eliminarButton, nombreInput, sugerencias } = obtenerElementosBuscador();
+const actividadSelect = document.getElementById('actividad-select');
+const cantidadSelect = document.getElementById('cantidad-select');
 const diaSelect = document.getElementById('dia-select');
+const formulario = document.getElementById('formulario');
+const frecuenciaSelect = document.getElementById('frecuencia-select');
+const idPacienteInput = document.getElementById('id-paciente-input');
+const mesSelect = document.getElementById('mes-select');
+const token = document.querySelector('meta[name="csrf-token"]').content;
+const turnosCheckbox = document.getElementById('turnos-checkbox');
+
 const elementosRequeridos = [actividadSelect, mesSelect, diaSelect, cantidadSelect, frecuenciaSelect, turnosCheckbox];
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -367,9 +379,7 @@ sugerencias.addEventListener('click', function(e) {
 eliminarButton.addEventListener('click', function() {
     idPacienteInput.value = '';
     habilitarNombre(true);
-
     limpiarTurnos();
-
     actualizarPrimeraFechaFueSeleccionada(false);
 });
 
@@ -475,7 +485,7 @@ formulario.addEventListener('submit', async (e) => {
                 sesiones_cubiertas: sesionesCubiertas,
                 autogenerados: turnosAutogenerados,
                 turnos,
-                desde_actual: desdeActual,
+                desde_actual: obtenerDesdeActual(),
                 frecuencia_semanal: frecuenciaSemanal
             })
         };

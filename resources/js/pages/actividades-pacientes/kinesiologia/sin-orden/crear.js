@@ -1,48 +1,52 @@
 import {
-    actividadSelect,
-    actualizarDiasDeshabilitados,
-    actualizarPrimeraFechaFueSeleccionada,
-    actualizarTotalAPagar,
-    actualizarDesdeActual,
-    actualizarUltimaActividadValida,
-    actualizarUltimaFrecuenciaValida,
+    habilitarNombre,
+    inicializarSugerenciasListeners,
+    limpiarSugerencias
+} from '@compartido/buscador-pacientes.js';
+
+import {
     agregarOpcion,
     apiFetch,
-    cargarHorarios,
     crearOpcionPorDefecto,
-    consolidarTurnosPorDia,
-    contenedorTurnos,
     convertirFechaParaMostrar,
-    desdeActual,
-    deshabilitarHoraSeleccionada,
     DIAS_SEMANA,
-    eliminarButton,
-    formulario,
-    frecuenciaSelect,
-    habilitarNombre,
     habilitarSelect,
-    idPacienteInput,
-    inicializarSugerenciasListeners,
-    mostrarErrorTurnosInsuficientes,
     mostrarAlerta,
-    nombreInput,
-    limpiarSugerencias,
+    transformarFecha
+} from '@compartido/general.js';
+
+import {
+    obtenerElementosBuscador,
+    contenedorTurnos,
+    precioInput
+} from '@compartido/referencias-dom.js';
+
+import {
+    obtenerDesdeActual,
+    actualizarDesdeActual,
+    obtenerPrimeraFechaFueSeleccionada,
+    actualizarPrimeraFechaFueSeleccionada,
+    obtenerTotalAPagar,
+    actualizarTotalAPagar,
+    obtenerUltimaActividadValida,
+    actualizarUltimaActividadValida,
+    obtenerUltimaFrecuenciaValida,
+    actualizarUltimaFrecuenciaValida
+} from '../../componentes/gestor-estado.js';
+
+import {
+    actualizarDiasDeshabilitados,
+    cargarHorarios,
+    consolidarTurnosPorDia,
+    deshabilitarHoraSeleccionada,
+    mostrarErrorTurnosInsuficientes,
     limpiarTurnos,
     obtenerTurnosSemanasCriticas,
     obtenerTurnosSemana,
-    precioInput,
-    primeraFechaFueSeleccionada,
     reiniciarPrecio,
     renderizarTurnosFijos,
-    restaurarFrecuenciaAnterior,
-    semanaCubreFrecuencia,
-    sugerencias,
-    token,
-    totalAPagar,
-    transformarFecha,
-    turnosCheckbox,
-    ultimaActividadValida
-} from '../../../../shared.js';
+    semanaCubreFrecuencia
+} from '../../componentes/logica-turnos.js';
 
 function crearLiPaciente(paciente, esUltimo) {
     const li = document.createElement('li');
@@ -115,7 +119,6 @@ async function actualizarPagina(datos, signal) {
         let turnosSemanasCriticas = [];
 
         if (tieneMasDeUnaSemana) {
-
             turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, cantidadSemanas);
 
             const insuficiente = turnosSemanasCriticas.some(semana => {
@@ -124,7 +127,7 @@ async function actualizarPagina(datos, signal) {
 
             if (insuficiente) {
                 await mostrarErrorTurnosInsuficientes();
-                restaurarFrecuenciaAnterior();
+                frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
                 return;
             }
         }
@@ -137,7 +140,7 @@ async function actualizarPagina(datos, signal) {
 
         if (!semanaActualCubre && !semanaUltimaCubre) {
             await mostrarErrorTurnosInsuficientes();
-            restaurarFrecuenciaAnterior();
+            frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
             return;
         }
 
@@ -185,7 +188,7 @@ async function actualizarPagina(datos, signal) {
                 return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
             });
 
-            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
+            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos);
 
             const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
 
@@ -254,7 +257,7 @@ async function actualizarPagina(datos, signal) {
 
             primerFechaSelect.addEventListener('change', function () {
 
-                if (primeraFechaFueSeleccionada) return;
+                if (obtenerPrimeraFechaFueSeleccionada()) return;
 
                 const fechaSeleccionada = this.value;
                 const comienzaSemanaActual = fechasSemanaActual.includes(fechaSeleccionada);
@@ -346,8 +349,15 @@ function limpiarFrecuenciaPrecioTurnos() {
     contenedorTurnos.innerHTML = '';
 }
 
+const { eliminarButton, nombreInput, sugerencias } = obtenerElementosBuscador();
+const actividadSelect = document.getElementById('actividad-select');
 const cantidadInput = document.getElementById('cantidad-input');
-let combosActividad;
+const formulario = document.getElementById('formulario');
+const frecuenciaSelect = document.getElementById('frecuencia-select');
+const idPacienteInput = document.getElementById('id-paciente-input');
+const token = document.querySelector('meta[name="csrf-token"]').content;
+const turnosCheckbox = document.getElementById('turnos-checkbox');
+let combosActividad = null;
 let controladorAbortar = null;
 
 document.addEventListener('DOMContentLoaded', async function() {
@@ -395,7 +405,7 @@ actividadSelect.addEventListener('change', async function() {
         const combos = await apiFetch(`/actividades/${idActividad}/combos?con_precio=true`);
 
         if (combos.length === 0) {
-            this.value = ultimaActividadValida;
+            this.value = obtenerUltimaActividadValida();
             await mostrarAlerta('error', 'No hay combos disponibles', 'No existen combos con un precio registrado para la actividad seleccionada.');
             return;
         }
@@ -411,7 +421,7 @@ actividadSelect.addEventListener('change', async function() {
         );
 
     } catch (error) {
-        this.value = ultimaActividadValida;
+        this.value = obtenerUltimaActividadValida();
         console.error(error);
         await mostrarAlerta('error', 'Error al cargar combos', error.message);
     }
@@ -544,9 +554,9 @@ formulario.addEventListener('submit', async (e) => {
                 id_actividad: datos.idActividad,
                 id_paciente: datos.idPaciente,
                 cant_sesiones: cantidadSesiones,
-                total_a_pagar: totalAPagar,
+                total_a_pagar: obtenerTotalAPagar(),
                 autogenerados: turnosAutogenerados,
-                desde_actual: desdeActual,
+                desde_actual: obtenerDesdeActual(),
                 turnos,
                 frecuencia_semanal: frecuenciaSemanal
             })

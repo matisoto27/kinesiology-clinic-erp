@@ -1,46 +1,50 @@
 import {
-    actividadSelect,
-    actualizarDiasDeshabilitados,
-    actualizarPrimeraFechaFueSeleccionada,
-    actualizarTotalAPagar,
-    actualizarDesdeActual,
-    actualizarUltimaActividadValida,
+    habilitarNombre,
+    inicializarSugerenciasListeners,
+    limpiarSugerencias
+} from '@compartido/buscador-pacientes.js';
+
+import {
     agregarOpcion,
     apiFetch,
-    cantidadSelect,
-    cargarHorarios,
     crearOpcionPorDefecto,
-    consolidarTurnosPorDia,
-    contenedorTurnos,
     convertirFechaParaMostrar,
-    desdeActual,
-    deshabilitarHoraSeleccionada,
     DIAS_SEMANA,
-    eliminarButton,
-    formulario,
-    habilitarNombre,
     habilitarSelect,
-    idPacienteInput,
-    inicializarSugerenciasListeners,
-    mostrarErrorTurnosInsuficientes,
     mostrarAlerta,
-    nombreInput,
+    transformarFecha
+} from '@compartido/general.js';
+
+import {
+    obtenerElementosBuscador,
+    contenedorTurnos,
+    precioInput
+} from '@compartido/referencias-dom.js';
+
+import {
+    obtenerDesdeActual,
+    actualizarDesdeActual,
+    obtenerPrimeraFechaFueSeleccionada,
+    actualizarPrimeraFechaFueSeleccionada,
+    obtenerTotalAPagar,
+    actualizarTotalAPagar,
+    obtenerUltimaActividadValida,
+    actualizarUltimaActividadValida
+} from '../componentes/gestor-estado.js';
+
+import {
+    actualizarDiasDeshabilitados,
+    cargarHorarios,
+    consolidarTurnosPorDia,
+    deshabilitarHoraSeleccionada,
+    mostrarErrorTurnosInsuficientes,
     reiniciarPrecio,
-    limpiarSugerencias,
     limpiarTurnos,
     obtenerTurnosSemanasCriticas,
     obtenerTurnosSemana,
-    precioInput,
-    primeraFechaFueSeleccionada,
     renderizarTurnosFijos,
-    semanaCubreFrecuencia,
-    sugerencias,
-    token,
-    totalAPagar,
-    transformarFecha,
-    turnosCheckbox,
-    ultimaActividadValida
-} from '../../../shared.js';
+    semanaCubreFrecuencia
+} from '../componentes/logica-turnos.js';
 
 function crearLiPaciente(paciente, esUltimo) {
 
@@ -139,7 +143,7 @@ async function gestionarCambiosDeCantidad() {
                 return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
             });
 
-            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
+            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos);
 
             const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
             
@@ -199,7 +203,7 @@ async function gestionarCambiosDeCantidad() {
 
             primerFechaSelect.addEventListener('change', function () {
 
-                if (primeraFechaFueSeleccionada) return;
+                if (obtenerPrimeraFechaFueSeleccionada()) return;
 
                 const fechaSeleccionada = this.value;
                 const comienzaSemanaActual = fechasSemanaActual.includes(fechaSeleccionada);
@@ -283,6 +287,14 @@ async function gestionarCambiosDeCantidad() {
     }
 }
 
+const { eliminarButton, nombreInput, sugerencias } = obtenerElementosBuscador();
+const actividadSelect = document.getElementById('actividad-select');
+const cantidadSelect = document.getElementById('cantidad-select');
+const formulario = document.getElementById('formulario');
+const idPacienteInput = document.getElementById('id-paciente-input');
+const token = document.querySelector('meta[name="csrf-token"]').content;
+const turnosCheckbox = document.getElementById('turnos-checkbox');
+
 sugerencias.addEventListener('click', async function(e) {
     try {
 
@@ -347,7 +359,7 @@ actividadSelect.addEventListener('change', async function() {
         const combos = await apiFetch(`/actividades/${idActividad}/combos?con_precio=true`);
 
         if (combos.length === 0) {
-            this.value = ultimaActividadValida;
+            this.value = obtenerUltimaActividadValida();
             mostrarAlerta('error', 'No hay combos disponibles', 'No existen combos con un precio registrado para la actividad seleccionada.');
             return;
         }
@@ -367,7 +379,7 @@ actividadSelect.addEventListener('change', async function() {
         habilitarSelect(cantidadSelect, true);
 
     } catch (error) {
-        this.value = ultimaActividadValida;
+        this.value = obtenerUltimaActividadValida();
         console.error(error);
         await mostrarAlerta('error', 'Error al cargar combos', error.message);
     }
@@ -467,9 +479,9 @@ formulario.addEventListener('submit', async (e) => {
                 id_actividad: idActividad,
                 id_paciente: idPaciente,
                 cant_sesiones: cantSesiones,
-                total_a_pagar: totalAPagar,
+                total_a_pagar: obtenerTotalAPagar(),
                 autogenerados: turnosAutogenerados,
-                desde_actual: desdeActual,
+                desde_actual: obtenerDesdeActual(),
                 turnos,
                 frecuencia_semanal: frecuenciaSemanal
             })
