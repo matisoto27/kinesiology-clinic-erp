@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ActividadPaciente extends Model
 {
@@ -30,18 +33,28 @@ class ActividadPaciente extends Model
         'pago_completado' => 'boolean'
     ];
 
-    public function actividad()
+    public function actividad(): BelongsTo
     {
         return $this->belongsTo(Actividad::class, 'id_actividad');
     }
 
-    public function paciente()
+    public function paciente(): BelongsTo
     {
         return $this->belongsTo(Paciente::class, 'id_paciente');
     }
 
-    public function turnos()
+    public function turnos(): HasMany
     {
         return $this->hasMany(Turno::class, 'id_act_pac');
+    }
+
+    public function pagos(): HasMany
+    {
+        return $this->hasMany(Pago::class, 'id_act_pac');
+    }
+
+    public function scopeSinPagar(Builder $consulta): Builder
+    {
+        return $consulta->where('pago_completado', false);
     }
 }

@@ -5,6 +5,7 @@ use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ActividadPacienteController;
 use App\Http\Controllers\NotaTurnoController;
 use App\Http\Controllers\PacienteController;
+use App\Http\Controllers\PagoController;
 use App\Http\Controllers\TurnoController;
 use Illuminate\Support\Facades\Route;
 
@@ -31,6 +32,11 @@ Route::get('/pacientes', [PacienteController::class, 'paginaInicio']);
 Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', [PacienteController::class, 'obtenerActividadesGeneralesSinSuscripcion']);
 Route::get('/buscar-pacientes', [PacienteController::class, 'buscarPorApellidoNombre']);
 Route::delete('/notas/{id}', [NotaTurnoController::class, 'eliminarNota']);
+
+Route::controller(PagoController::class)->group(function () {
+    Route::get('/pagos/crear', 'crear')->name('pagos.crear');
+    Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
+});
 
 Route::post('/turnos/{id}/confirmar-asistencia', [TurnoController::class, 'confirmarAsistencia'])->name('turnos.confirmarAsistencia');
 Route::post('/turnos/{idTurno}/notas', [NotaTurnoController::class, 'crearNota']);

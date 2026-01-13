@@ -7,12 +7,11 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ActividadController extends Controller
 {
-    public function index(Request $request)
+    public function inicio(Request $request)
     {
         $idTipoActividad = $request->query('id_tipo_actividad');
 

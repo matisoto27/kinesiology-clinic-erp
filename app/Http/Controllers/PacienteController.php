@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Paciente;
 use App\Models\SintomaPaciente;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +14,12 @@ use Throwable;
 
 class PacienteController extends Controller
 {
-    public function paginaCrear()
+    public function crear()
     {
         return view('pacientes.crear');
     }
 
-    public function crearPaciente(Request $request)
+    public function almacenar(Request $request)
     {
         DB::beginTransaction();
         
@@ -107,13 +106,13 @@ class PacienteController extends Controller
         }
     }
 
-    public function paginaInicio()
+    public function inicio()
     {
         $pacientes = Paciente::all();
         return view('pacientes.inicio', compact('pacientes'));
     }
 
-    public function buscarPorApellidoNombre(Request $request)
+    public function buscarPorNombre(Request $request)
     {
         try {
 
@@ -137,7 +136,7 @@ class PacienteController extends Controller
 
         } catch (Throwable $ex) {
 
-            Log::error('[PacienteController@buscarPorApellidoNombre]', [
+            Log::error('[PacienteController@buscarPorNombre]', [
                 'nombre' => $nombre,
                 'excepcion' => $ex->getMessage()
             ]);

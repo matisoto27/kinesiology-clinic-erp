@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 
 class TurnoController extends Controller
 {
-    public function paginaInicio()
+    public function inicio()
     {
         $horaActual = Carbon::now();
         $limInferior = $horaActual->copy()->startOfHour()->subHour();
@@ -37,7 +37,7 @@ class TurnoController extends Controller
         return view('inicio', compact('turnos', 'paciente'));
     }
 
-    public function paginaCalendario(Request $request)
+    public function calendario(Request $request)
     {
         // Parámetro
         $cantSemanas = (int) $request->input('semana', 0);

@@ -498,7 +498,7 @@ formulario.addEventListener('submit', async (e) => {
             'Los turnos del paciente han sido registrados correctamente.'
         );
 
-        window.location.href = '/';
+        window.location.replace('/');
 
     } catch (error) {
         console.error(error);

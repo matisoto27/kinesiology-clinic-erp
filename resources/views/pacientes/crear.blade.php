@@ -3,7 +3,7 @@
 @section('content')
     <div class="w-full max-w-lg mx-auto my-5">
 
-        <form method="POST" action="/pacientes" class="bg-[#006E6B] shadow-lg rounded-xl p-8" id="formulario">
+        <form method="POST" action="/pacientes" class="formulario" id="formulario">
 
             @csrf
 

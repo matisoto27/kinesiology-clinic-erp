@@ -10,10 +10,10 @@ use Illuminate\Http\Request;
 
 class NotaTurnoController extends Controller
 {
-    public function crearNota(Request $request, $idTurno)
+    public function almacenar(Request $request, $id)
     {
         try {
-            $turno = Turno::find($idTurno);
+            $turno = Turno::find($id);
             if (!$turno) {
                 return response()->json(['mensaje' => 'Turno no encontrado.'], 404);
             }
@@ -33,10 +33,10 @@ class NotaTurnoController extends Controller
         }
     }
 
-    public function obtenerNotasDesdeTurno($idTurno)
+    public function obtenerNotasDesdeTurno($id)
     {
         try {
-            $turno = Turno::find($idTurno);
+            $turno = Turno::find($id);
             if (!$turno) {
                 return response()->json(['mensaje' => 'Turno no encontrado.'], 404);
             }
@@ -48,7 +48,7 @@ class NotaTurnoController extends Controller
         }
     }
 
-    public function eliminarNota($id)
+    public function eliminar($id)
     {
         try {
             $nota = NotaTurno::find($id);

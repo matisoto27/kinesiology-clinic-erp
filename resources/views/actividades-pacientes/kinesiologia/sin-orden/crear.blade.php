@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="contenedor max-w-3xl">
-        <form data-url="{{ route('actividades-pacientes.almacenar') }}" method="POST" id="formulario">
+        <form data-url="{{ route('actividades-pacientes.almacenar') }}" method="POST" class="formulario" id="formulario">
             @csrf
 
             <input type="hidden" name="paciente" id="id-paciente-input" required>

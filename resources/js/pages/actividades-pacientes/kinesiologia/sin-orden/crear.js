@@ -562,7 +562,8 @@ formulario.addEventListener('submit', async (e) => {
             })
         };
 
-        await apiFetch(url, options);
+        const respuesta = await apiFetch(url, options);
+        const idActPac = respuesta.id_act_pac;
 
         await mostrarAlerta(
             'success', 
@@ -578,10 +579,10 @@ formulario.addEventListener('submit', async (e) => {
             cancelButtonText: 'Volver al inicio'
         });
 
-        if (eleccion.dismiss === Swal.DismissReason.cancel) {
-            window.location.replace('/');
+        if (eleccion.isConfirmed) {
+            window.location.href = `/pagos/crear?id_act_pac=${idActPac}`;
         } else {
-            window.location.href = '/pagos';
+            window.location.replace('/');
         }
 
     } catch (error) {

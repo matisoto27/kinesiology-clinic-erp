@@ -10,10 +10,6 @@
 }
 
 @layer components {
-    #formulario {
-        @apply bg-[#006E6B] rounded-xl shadow-lg p-8;
-    }
-
     #turnos-checkbox {
         @apply accent-[#F5D500] h-4 w-4;
     }
@@ -28,6 +24,10 @@
 
     #sugerencias {
         @apply absolute left-0 right-0 max-h-60 overflow-auto z-10;
+    }
+
+    .formulario {
+        @apply bg-[#006E6B] rounded-xl shadow-lg p-8;
     }
 
     .contenedor {

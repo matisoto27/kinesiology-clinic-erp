@@ -11,7 +11,6 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class ActividadPacienteController extends Controller
@@ -62,7 +61,7 @@ class ActividadPacienteController extends Controller
             }
 
             DB::commit();
-            return response()->noContent();
+            return response()->json(['id_act_pac' => $actividadPaciente->id], 201);
 
         } catch (Throwable $ex) {
 
