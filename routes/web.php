@@ -9,36 +9,44 @@ use App\Http\Controllers\PagoController;
 use App\Http\Controllers\TurnoController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [TurnoController::class, 'paginaInicio']);
+Route::controller(ActividadController::class)->group(function () {
+    Route::get('/actividades', 'inicio')->name('actividades.inicio');
+    Route::get('/actividades/{id}/combos', 'obtenerCombos');
+    Route::get('/actividades/{id}/turnos-disponibles', 'obtenerTurnosDisponibles');
+});
 
-Route::get('/actividades', [ActividadController::class, 'index']);
-Route::get('/actividades/{id}/combos', [ActividadController::class, 'obtenerCombos']);
-Route::get('/actividades/{id}/turnos-disponibles', [ActividadController::class, 'obtenerTurnosDisponibles']);
+Route::controller(ActividadComboController::class)->group(function () {
+    Route::get('/actividades-combos/{id}/precio-actual', 'obtenerPrecioActual');
+});
 
-Route::get('/actividades-combos/{id}/precio-actual', [ActividadComboController::class, 'obtenerPrecioActual']);
+Route::controller(ActividadPacienteController::class)->group(function () {
+    Route::get('/actividades-pacientes/general/crear', 'crearGeneral')->name('actividades-pacientes.general.crear');
+    Route::get('/actividades-pacientes/kinesiologia/orden/crear', 'crearKinesiologiaConOrden')->name('actividades-pacientes.kinesiologia.con-orden.crear');
+    Route::get('/actividades-pacientes/kinesiologia/sin-orden/crear', 'crearKinesiologiaSinOrden')->name('actividades-pacientes.kinesiologia.sin-orden.crear');
+    Route::post('/actividades-pacientes', 'almacenar')->name('actividades-pacientes.almacenar');
+});
 
-Route::get('/actividades-pacientes/general/crear', [ActividadPacienteController::class, 'crearGeneral'])
-    ->name('actividades-pacientes.general.crear');
-Route::get('/actividades-pacientes/kinesiologia/orden/crear', [ActividadPacienteController::class, 'crearKinesiologiaConOrden'])
-    ->name('actividades-pacientes.kinesiologia-orden.crear');
-Route::get('/actividades-pacientes/kinesiologia/sin-orden/crear', [ActividadPacienteController::class, 'crearKinesiologiaSinOrden'])
-    ->name('actividades-pacientes.kinesiologia-sin-orden.crear');
-Route::post('/actividades-pacientes', [ActividadPacienteController::class, 'almacenar'])
-    ->name('actividades-pacientes.almacenar');
-
-Route::get('/pacientes/registrar', [PacienteController::class, 'paginaCrear'])->name('pacientes.paginaCrear');
-Route::post('/pacientes', [PacienteController::class, 'crearPaciente']);
-Route::get('/pacientes', [PacienteController::class, 'paginaInicio']);
-Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', [PacienteController::class, 'obtenerActividadesGeneralesSinSuscripcion']);
-Route::get('/buscar-pacientes', [PacienteController::class, 'buscarPorApellidoNombre']);
-Route::delete('/notas/{id}', [NotaTurnoController::class, 'eliminarNota']);
+Route::controller(PacienteController::class)->group(function () {
+    Route::get('/pacientes', 'inicio')->name('pacientes.inicio');
+    Route::get('/pacientes/crear', 'crear')->name('pacientes.crear');
+    Route::post('/pacientes', 'almacenar')->name('pacientes.almacenar');
+    Route::get('/buscar-pacientes', 'buscarPorNombre');
+    Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
+});
 
 Route::controller(PagoController::class)->group(function () {
     Route::get('/pagos/crear', 'crear')->name('pagos.crear');
     Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
 });
 
-Route::post('/turnos/{id}/confirmar-asistencia', [TurnoController::class, 'confirmarAsistencia'])->name('turnos.confirmarAsistencia');
-Route::post('/turnos/{idTurno}/notas', [NotaTurnoController::class, 'crearNota']);
-Route::get('/turnos/{idTurno}/notas', [NotaTurnoController::class, 'obtenerNotasDesdeTurno']);
-Route::get('/turnos/calendario', [TurnoController::class, 'paginaCalendario'])->name('turnos.calendario');
+Route::controller(NotaTurnoController::class)->group(function () {
+    Route::get('/turnos/{id}/notas', 'obtenerNotasDesdeTurno');
+    Route::post('/turnos/{id}/notas', 'almacenar');
+    Route::delete('/notas/{id}', 'eliminar');
+});
+
+Route::controller(TurnoController::class)->group(function () {
+    Route::get('/', 'inicio')->name('inicio');
+    Route::get('/turnos/calendario', 'calendario')->name('turnos.calendario');
+    Route::post('/turnos/{id}/confirmar-asistencia', 'confirmarAsistencia')->name('turnos.confirmar-asistencia');
+});
