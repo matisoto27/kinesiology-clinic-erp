@@ -123,4 +123,34 @@ export function habilitarSelect(elemento, confirma) {
     elemento.classList.toggle('text-[#E0F0F0]', !confirma);
 }
 
+export function obtenerValorEntero(entrada, admiteCero = false) {
+    const valor = (entrada && typeof entrada === 'object') ? entrada.value : entrada;
+    return esNumeroEntero(valor, admiteCero) ? Number(valor) : null;
+}
+
+export function esNumeroEntero(valor, admiteCero = false) {
+    const numero = Number(valor);
+
+    if (valor === "" || !Number.isInteger(numero)) return false;
+
+    return admiteCero ? numero >= 0 : numero > 0;
+}
+
+export function actualizarDiasDelMes(mesSelect, diaSelect) {
+    const mes = obtenerValorEntero(mesSelect);
+    if (mes === null) return;
+
+    const anio = new Date().getFullYear();
+
+    const diasEnMes = new Date(anio, mes, 0).getDate();
+
+    diaSelect.innerHTML = crearOpcionPorDefecto('Seleccione un día');
+
+    for (let i = 1; i <= diasEnMes; i++) {
+        agregarOpcion(diaSelect, i, i);
+    }
+
+    habilitarSelect(diaSelect, true);
+}
+
 export const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];

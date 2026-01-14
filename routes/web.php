@@ -23,7 +23,9 @@ Route::controller(ActividadPacienteController::class)->group(function () {
     Route::get('/actividades-pacientes/general/crear', 'crearGeneral')->name('actividades-pacientes.general.crear');
     Route::get('/actividades-pacientes/kinesiologia/orden/crear', 'crearKinesiologiaConOrden')->name('actividades-pacientes.kinesiologia.con-orden.crear');
     Route::get('/actividades-pacientes/kinesiologia/sin-orden/crear', 'crearKinesiologiaSinOrden')->name('actividades-pacientes.kinesiologia.sin-orden.crear');
+    Route::get('/actividades-pacientes/aplicar-orden', 'aplicarOrden')->name('actividades-pacientes.aplicar-orden');
     Route::post('/actividades-pacientes', 'almacenar')->name('actividades-pacientes.almacenar');
+    Route::post('/actividades-pacientes/actualizar-orden-medica', 'actualizarOrdenMedica')->name('actividades-pacientes.actualizar-orden-medica');
 });
 
 Route::controller(PacienteController::class)->group(function () {

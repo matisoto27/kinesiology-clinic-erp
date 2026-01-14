@@ -5,6 +5,7 @@ import {
 } from '@compartido/buscador-pacientes.js';
 
 import {
+    actualizarDiasDelMes,
     agregarOpcion,
     apiFetch,
     crearOpcionPorDefecto,
@@ -63,21 +64,6 @@ function manejarSeleccion(liSeleccionado) {
     nombreInput.value = liSeleccionado.textContent;
     habilitarNombre(false);
     limpiarSugerencias();
-}
-
-function actualizarDias() {
-    const mes = parseInt(mesSelect.value);
-    const anio = new Date().getFullYear();
-
-    const diasEnMes = new Date(anio, mes, 0).getDate();
-
-    diaSelect.innerHTML = crearOpcionPorDefecto('Seleccione día');
-
-    for (let i = 1; i <= diasEnMes; i++) {
-        agregarOpcion(diaSelect, i, i);
-    }
-
-    habilitarSelect(diaSelect, true);
 }
 
 async function actualizarPagina() {
@@ -358,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async function() {
             agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
         });
 
-        elementosRequeridos.forEach(elemento => {
+        [actividadSelect, cantidadSelect, frecuenciaSelect, turnosCheckbox].forEach(elemento => {
             elemento.addEventListener('change', actualizarPagina);
         });
 
@@ -383,10 +369,14 @@ eliminarButton.addEventListener('click', function() {
     actualizarPrimeraFechaFueSeleccionada(false);
 });
 
-mesSelect.addEventListener('change', actualizarDias);
+mesSelect.addEventListener('change', function() {
+    actualizarDiasDelMes(this, diaSelect);
+    actualizarPagina();
+});
 
 diaSelect.addEventListener('change', function() {
     habilitarSelect(frecuenciaSelect, true);
+    actualizarPagina();
 });
 
 formulario.addEventListener('submit', async (e) => {

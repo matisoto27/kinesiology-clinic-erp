@@ -1,3 +1,5 @@
+import { esNumeroEntero } from "@compartido/general.js";
+
 const actPacSelect = document.getElementById('act-pac-select');
 const alertaExceso = document.getElementById('alerta-exceso');
 const botonRegistrar = document.getElementById('boton-registrar');
@@ -56,10 +58,10 @@ function actualizarPagina() {
 
 function validarDatosFormulario() {
     const inscripcionSeleccionada = actPacSelect.value;
-    const inscripcionValida = inscripcionSeleccionada !== "" && Number.isInteger(Number(inscripcionSeleccionada)) && parseInt(inscripcionSeleccionada) > 0;
+    const inscripcionValida = esNumeroEntero(inscripcionSeleccionada);
 
     const profesionalSeleccionado = profesionalSelect.value;
-    const profesionalValido = profesionalSeleccionado !== "" && Number.isInteger(Number(profesionalSeleccionado)) && parseInt(profesionalSeleccionado) > 0;
+    const profesionalValido = esNumeroEntero(profesionalSeleccionado);
 
     const metodoSeleccionado = metodoSelect.value;
     const metodoValido = ['Efectivo', 'Transferencia'].includes(metodoSeleccionado);

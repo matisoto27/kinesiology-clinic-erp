@@ -9,6 +9,7 @@ use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -28,6 +29,63 @@ class ActividadPacienteController extends Controller
     public function crearKinesiologiaSinOrden()
     {
         return view('actividades-pacientes.kinesiologia.sin-orden.crear');
+    }
+
+    public function aplicarOrden()
+    {
+        $pendientesDePago = ActividadPaciente::select('actividades_pacientes.*')
+            ->with(['paciente:id,nombre,apellido,sesiones_a_favor', 'actividad'])
+            ->conActividad()
+            ->deTipo(2)
+            ->whereNull('actividades_pacientes.sesiones_cubiertas')
+            ->doesntHave('pagos')
+            ->get();
+
+        return view('actividades-pacientes.aplicar-orden', compact('pendientesDePago'));
+    }
+
+    public function actualizarOrdenMedica(Request $request)
+    {
+        $validados = $request->validate([
+            'id_act_pac' => 'required|integer|exists:actividades_pacientes,id',
+            'mes' => 'required|integer|min:1|max:12',
+            'dia' => 'required|integer|min:1|max:31',
+            'sesiones_cubiertas' => 'required|integer|in:5,10'
+        ]);
+
+        $idActPac = $validados['id_act_pac'];
+
+        try {
+            DB::beginTransaction();
+
+            $inscripcion = ActividadPaciente::with('paciente')->findOrFail($idActPac);
+            $paciente = $inscripcion->paciente;
+
+            $sumatoria = ($validados['sesiones_cubiertas'] - $inscripcion->cant_sesiones) + $paciente->sesiones_a_favor;
+            $sesionesAFavor = max(0, $sumatoria);
+
+            $paciente->update([
+                'sesiones_a_favor' => $sesionesAFavor
+            ]);
+            $inscripcion->update([
+                'fecha_emision_ord' => Carbon::create(date('Y'), $validados['mes'], $validados['dia']),
+                'sesiones_cubiertas' => $validados['sesiones_cubiertas'],
+                'pago_completado' => $sumatoria >= 0
+            ]);
+
+            DB::commit();
+            return redirect()->route('inicio')->with('exito', '¡La orden médica ha sido aplicada con éxito!');
+
+        } catch (Throwable $ex) {
+
+            Log::error('[ActividadPacienteController@actualizarOrdenMedica] Error al aplicar la orden médica', [
+                'id_act_pac' => $idActPac,
+                'excepcion' => $ex->getMessage()
+            ]);
+            DB::rollBack();
+
+            return back()->withErrors(['error' => 'Ocurrió un error inesperado al intentar aplicar la orden médica'])->withInput();
+        }
     }
 
     public function almacenar(AlmacenarTurnoRequest $request)

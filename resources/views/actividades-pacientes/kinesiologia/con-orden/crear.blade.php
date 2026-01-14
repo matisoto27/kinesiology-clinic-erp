@@ -50,7 +50,7 @@
                     <div class="flex gap-2">
 
                         <select class="entrada flex-1" id="mes-select" required>
-                            <option value="" disabled selected>Seleccione mes</option>
+                            <option value="" disabled selected>Seleccione un mes</option>
                             <option value="1">Enero</option>
                             <option value="2">Febrero</option>
                             <option value="3">Marzo</option>
@@ -66,7 +66,7 @@
                         </select>
 
                         <select class="entrada-deshabilitada flex-1" id="dia-select" disabled required>
-                            <option value="" disabled selected>Seleccione día</option>
+                            <option value="" disabled selected>Seleccione un día</option>
                         </select>
 
                     </div>

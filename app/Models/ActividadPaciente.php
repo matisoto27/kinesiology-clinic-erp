@@ -57,4 +57,14 @@ class ActividadPaciente extends Model
     {
         return $consulta->where('pago_completado', false);
     }
+
+    public function scopeConActividad(Builder $consulta): Builder
+    {
+        return $consulta->join('actividades', 'actividades_pacientes.id_actividad', '=', 'actividades.id');
+    }
+
+    public function scopeDeTipo(Builder $consulta, int $idTipoActividad): Builder
+    {
+        return $consulta->where('actividades.id_tipo_actividad', $idTipoActividad);
+    }
 }
