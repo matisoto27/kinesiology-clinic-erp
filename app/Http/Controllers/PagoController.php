@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\Pago;
 use App\Models\Profesional;
@@ -20,7 +21,22 @@ class PagoController extends Controller
         $pendientesDePago = ActividadPaciente::with(['actividad', 'paciente'])
             ->withSum('pagos', 'monto')
             ->sinPagar()
-            ->get();
+            ->get()
+            ->map(function ($inscripcion) {
+                if ($inscripcion->actividad->id_tipo_actividad === 2) {
+                    $sesionesRestantes = max(0, $inscripcion->cant_sesiones - ($inscripcion->sesiones_cubiertas ?? 0));
+
+                    if ($sesionesRestantes > 0) {
+                        $nuevoTotal = ActividadCombo::calcularTotalAPagar($inscripcion->id_actividad, $sesionesRestantes);
+                    } else {
+                        $nuevoTotal = 0;
+                    }
+
+                    $inscripcion->total_a_pagar = $nuevoTotal;
+                }
+                return $inscripcion;
+            });
+
         $profesionales = Profesional::activo()->orderBy('apellido')->get(['id', 'nombre', 'apellido']);
         return view('pagos.crear', compact('pendientesDePago', 'profesionales', 'idActPac'));
     }

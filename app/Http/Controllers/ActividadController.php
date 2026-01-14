@@ -32,14 +32,11 @@ class ActividadController extends Controller
 
             $actividad = Actividad::with([
                 'actividadCombos' => function ($consulta) {
-
-                    $consulta->where('activo', true);
+                    $consulta->where('activo', true)->with(['combo', 'precios']);
 
                     if (request()->boolean('con_precio')) {
                         $consulta->whereHas('precios');
                     }
-
-                    $consulta->with('combo');
                 }
             ])->findOrFail($id);
 
