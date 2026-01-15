@@ -34,21 +34,21 @@
 
                 <div class="columna-campo flex-1">
                     <label class="etiqueta-formulario">Actividad</label>
-                    <select class="entrada-deshabilitada" id="actividad-select" disabled required>
+                    <select class="entrada" id="actividad-select" disabled required>
                         <option value="" disabled selected>Seleccione una actividad</option>
                     </select>
                 </div>
 
                 <div class="columna-campo flex-1">
                     <label class="etiqueta-formulario">Frecuencia semanal</label>
-                    <select class="entrada-deshabilitada" id="cantidad-select" disabled required>
+                    <select class="entrada" id="cantidad-select" disabled required>
                         <option value="" disabled selected>Seleccione una frecuencia</option>
                     </select>
                 </div>
 
                 <div class="columna-campo flex-1">
                     <label class="etiqueta-formulario">Precio</label>
-                    <input class="entrada-deshabilitada appearance-none" value="$0,00" id="precio-input" disabled>
+                    <input class="entrada-info" value="$0,00" id="precio-input" disabled>
                 </div>
 
             </div>

@@ -2,7 +2,7 @@ import {
     agregarOpcion,
     crearOpcionPorDefecto,
     DIAS_SEMANA,
-    habilitarSelect,
+    habilitarElemento,
     mostrarAlerta
 } from '@compartido/general.js';
 
@@ -184,22 +184,22 @@ export function renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos) {
     for (let i = 1; i <= frecuenciaSemanal; i++) {
 
         turnoHTML += `
-            <div class="mb-4 flex gap-5 turno">
+            <div class="fila-formulario turno">
                 <div class="flex flex-col">
-                    <label class="font-medium text-lg text-white">Turno ${i}</label>
+                    <label class="etiqueta-formulario">Turno ${i}</label>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <label class="font-medium text-lg text-white">Día de la semana</label>
-                    <select class="bg-[#3A8F8E] p-2 rounded-xl text-xl text-white dia-select" required>
+                <div class="columna-campo">
+                    <label class="etiqueta-formulario">Día de la semana</label>
+                    <select class="entrada dia-select" required>
                         <option value="" disabled selected>Seleccione un día</option>
                         ${diasConTurnos.map(dia => `<option value="${dia}">${dia}</option>`).join('')}
                     </select>
                 </div>
 
-                <div class="flex flex-col gap-1">
-                    <label class="font-medium text-lg text-white">Hora de inicio</label>
-                    <select class="bg-[#6BA9A9] cursor-not-allowed text-[#E0F0F0] p-2 rounded-xl text-xl hora-select" disabled required>
+                <div class="columna-campo">
+                    <label class="etiqueta-formulario">Hora de inicio</label>
+                    <select class="entrada hora-select" disabled required>
                         <option value="" disabled selected>Seleccione un horario</option>
                     </select>
                 </div>
@@ -251,7 +251,7 @@ export function cargarHorarios(select, turnosPorDia, cantidadSemanas = 4) {
         agregarOpcion(horaSelect, hora, horaConvertida);
     });
 
-    habilitarSelect(horaSelect, !!diaSeleccionado);
+    habilitarElemento(horaSelect, !!diaSeleccionado);
 
     horaSelect.addEventListener('change', deshabilitarHoraSeleccionada);
 }

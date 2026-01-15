@@ -10,7 +10,7 @@ import {
     crearOpcionPorDefecto,
     convertirFechaParaMostrar,
     DIAS_SEMANA,
-    habilitarSelect,
+    habilitarElemento,
     mostrarAlerta,
     transformarFecha
 } from '@compartido/general.js';
@@ -206,11 +206,11 @@ async function actualizarPagina(datos, signal) {
                     turnoHTML += `
                         <div class="mb-4 flex gap-5 turno" data-semana="${i}">
 
-                            <label class="font-medium text-lg text-white">Turno ${j}</label>
+                            <label class="etiqueta-formulario">Turno ${j}</label>
 
-                            <div class="flex flex-col gap-1">
-                                <label class="font-medium text-lg text-white">Fecha</label>
-                                <select class="bg-[#6BA9A9] rounded-md text-lg p-3 cursor-not-allowed text-[#E0F0F0] fecha-select" required disabled>
+                            <div class="columna-campo">
+                                <label class="etiqueta-formulario">Fecha</label>
+                                <select class="entrada fecha-select" disabled required>
                                     <option value="" disabled selected>Seleccione una fecha</option>
                                     ${opcionesPrimeraSemana.map(fecha => {
                                         return `<option value="${fecha}">${convertirFechaParaMostrar(fecha)}</option>`;
@@ -218,9 +218,9 @@ async function actualizarPagina(datos, signal) {
                                 </select>
                             </div>
 
-                            <div class="flex flex-col gap-1">
-                                <label class="font-medium text-lg text-white">Hora de inicio</label>
-                                <select class="bg-[#6BA9A9] rounded-md text-lg p-3 cursor-not-allowed text-[#E0F0F0] hora-select" required disabled>
+                            <div class="columna-campo">
+                                <label class="etiqueta-formulario">Hora de inicio</label>
+                                <select class="entrada hora-select" disabled required>
                                     <option value="" disabled selected>Seleccione un horario</option>
                                 </select>
                             </div>
@@ -269,7 +269,7 @@ async function actualizarPagina(datos, signal) {
                         );
                     });
 
-                    habilitarSelect(select, true);
+                    habilitarElemento(select, true);
                 });
 
                 actualizarPrimeraFechaFueSeleccionada(true);
@@ -306,12 +306,12 @@ async function actualizarPagina(datos, signal) {
                         agregarOpcion(horaSelect, hora, horaConvertida);
                     });
 
-                    habilitarSelect(horaSelect, true);
+                    habilitarElemento(horaSelect, true);
                     horaSelect.addEventListener('change', deshabilitarHoraSeleccionada);
                 });
             });
 
-            habilitarSelect(primerFechaSelect, true);
+            habilitarElemento(primerFechaSelect, true);
         }
 
         actualizarUltimaFrecuenciaValida(frecuenciaSemanal);
@@ -325,7 +325,7 @@ async function actualizarPagina(datos, signal) {
 
 function limpiarFrecuenciaPrecioTurnos() {
     frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
-    habilitarSelect(frecuenciaSelect, false);
+    habilitarElemento(frecuenciaSelect, false);
     reiniciarPrecio();
     contenedorTurnos.innerHTML = '';
 }
@@ -393,7 +393,7 @@ actividadSelect.addEventListener('change', async function() {
 
         actualizarUltimaActividadValida(idActividad);
 
-        habilitarSelect(cantidadInput, true);
+        habilitarElemento(cantidadInput, true);
         reiniciarPrecio();
         limpiarTurnos();
 
@@ -423,7 +423,7 @@ cantidadInput.addEventListener('input', async function() {
         for (let i = 2; i <= 5 && i <= cantidadIngresada; i++) {
             agregarOpcion(frecuenciaSelect, i, `${i} veces por semana`);
         }
-        habilitarSelect(frecuenciaSelect, true);
+        habilitarElemento(frecuenciaSelect, true);
 
         if (frecuenciaSeleccionada) {
             frecuenciaSelect.value = frecuenciaSeleccionada <= cantidadIngresada

@@ -42,7 +42,7 @@
                             <option value="11">Noviembre</option>
                             <option value="12">Diciembre</option>
                         </select>
-                        <select class="entrada-deshabilitada flex-1" name="dia" id="dia-select" disabled required>
+                        <select class="entrada flex-1" name="dia" id="dia-select" disabled required>
                             <option value="" disabled selected>Seleccione un día</option>
                         </select>
                     </div>
@@ -62,18 +62,18 @@
             <div class="fila-formulario">
                 <div class="columna-campo">
                     <label for="sesiones-input" class="etiqueta-formulario">Sesiones a favor del paciente luego de aplicar la orden</label>
-                    <input class="entrada-deshabilitada rounded-none text-white appearance-none" value="-" id="sesiones-input" readonly required>
+                    <input class="entrada-info" value="-" id="sesiones-input" disabled>
                 </div>
             </div>
 
-            <div class="fila-formulario p-4 text-yellow-800 border-t-4 border-yellow-300 bg-yellow-50 hidden" role="alert" id="contenedor-alerta">
+            <div class="fila-formulario p-4 text-yellow-800 border-s-4 border-yellow-300 bg-yellow-50 hidden" role="alert" id="contenedor-alerta">
                 <svg class="flex-shrink-0 w-6 h-6 text-yellow-800" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 13V8m0 8h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
                 </svg>
                 <div id="texto-insuficiente" class="text-md leading-relaxed"></div>
             </div>
 
-            <button type="submit" class="boton-registrar cursor-not-allowed opacity-50" id="boton-registrar" disabled>Aplicar orden médica</button>
+            <button type="submit" class="boton-registrar" id="boton-registrar" disabled>Aplicar orden médica</button>
 
             @if ($errors->any())
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4">

@@ -1,4 +1,4 @@
-import { esNumeroEntero } from "@compartido/general.js";
+import { esNumeroEntero, habilitarElemento } from "@compartido/general.js";
 
 const actPacSelect = document.getElementById('act-pac-select');
 const alertaExceso = document.getElementById('alerta-exceso');
@@ -19,12 +19,6 @@ function mostrarContenedorDeuda(confirma) {
     contenedorDeuda.classList.toggle('hidden', !confirma);
 }
 
-function habilitarMontoInput(confirma) {
-    montoInput.disabled = !confirma;
-    montoInput.classList.toggle('entrada', confirma);
-    montoInput.classList.toggle('entrada-deshabilitada', !confirma);
-}
-
 function montoInputEnAlerta(confirma) {
     montoInput.classList.toggle('border-red-500', confirma);
     montoInput.classList.toggle('focus:ring-red-500', confirma);
@@ -40,12 +34,6 @@ function extraerMontoNumerico(montoStr) {
     return isNaN(transformado) ? 0 : transformado;
 }
 
-function habilitarBoton(confirma) {
-    botonRegistrar.disabled = !confirma;
-    botonRegistrar.classList.toggle('cursor-not-allowed', !confirma);
-    botonRegistrar.classList.toggle('opacity-50', !confirma);
-}
-
 function actualizarPagina() {
     const datosValidos = validarDatosFormulario();
 
@@ -53,7 +41,7 @@ function actualizarPagina() {
         ? extraerMontoNumerico(montoInput.value)
         : '';
 
-    habilitarBoton(datosValidos);
+    habilitarElemento(botonRegistrar, datosValidos);
 }
 
 function validarDatosFormulario() {
@@ -79,7 +67,7 @@ actPacSelect.addEventListener('change', function() {
     if (!montoEsValido(montoDeuda)) {
         if (this.value !== '') this.value = '';
         mostrarContenedorDeuda(false);
-        habilitarMontoInput(false);
+        habilitarElemento(montoInput, false);
         return;
     }
 
@@ -94,7 +82,7 @@ actPacSelect.addEventListener('change', function() {
     mostrarContenedorDeuda(true);
 
     montoInput.value = '';
-    habilitarMontoInput(true);
+    habilitarElemento(montoInput, true);
     actualizarPagina();
 });
 
@@ -134,7 +122,7 @@ montoInput.addEventListener('input', function() {
         alertaExceso.innerText = "El monto ingresado no puede superar la deuda total.";
         alertaExceso.classList.remove('hidden');
         montoInputEnAlerta(true);
-        habilitarBoton(false);
+        habilitarElemento(botonRegistrar, false);
     } else {
         alertaExceso.classList.add('hidden');
         montoInputEnAlerta(false);

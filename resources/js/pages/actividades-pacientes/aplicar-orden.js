@@ -2,7 +2,7 @@ import {
     actualizarDiasDelMes,
     agregarOpcion,
     crearOpcionPorDefecto,
-    habilitarSelect,
+    habilitarElemento,
     mostrarAlerta,
     obtenerValorEntero
 } from '@compartido/general.js';
@@ -38,13 +38,7 @@ function actualizarSesionesAFavor() {
 
     const datosValidos = cantidadSeleccionada !== null && datosLocalesCargados && mesSeleccionado !== null && diaSeleccionado !== null;
 
-    if (datosValidos) {
-        botonRegistrar.disabled = false;
-        botonRegistrar.classList.remove('opacity-50', 'cursor-not-allowed');
-    } else {
-        botonRegistrar.disabled = true;
-        botonRegistrar.classList.add('opacity-50', 'cursor-not-allowed');
-    }
+    habilitarElemento(botonRegistrar, datosValidos);
 }
 
 function limpiarAlerta() {

@@ -1,3 +1,4 @@
+import { habilitarElemento } from '@compartido/general.js';
 import { inicializarSugerenciasListeners } from '@compartido/buscador-pacientes.js';
 import { obtenerElementosBuscador } from '@compartido/referencias-dom.js';
 
@@ -72,7 +73,7 @@ tabla.addEventListener('click', async (event) => {
     if (!idTurno) return;
 
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
-    boton.disabled = true;
+    habilitarElemento(boton, false);
 
     try {
         const respuesta = await fetch(`/turnos/${idTurno}/confirmar-asistencia`, {
@@ -94,7 +95,7 @@ tabla.addEventListener('click', async (event) => {
     } catch (error) {
         console.error(error);
         alert(error.message);
-        boton.disabled = false;
+        habilitarElemento(boton, true);
     }
 });
 

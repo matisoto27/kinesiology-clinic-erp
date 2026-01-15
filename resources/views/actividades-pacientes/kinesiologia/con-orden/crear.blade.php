@@ -65,7 +65,7 @@
                             <option value="12">Diciembre</option>
                         </select>
 
-                        <select class="entrada-deshabilitada flex-1" id="dia-select" disabled required>
+                        <select class="entrada flex-1" id="dia-select" disabled required>
                             <option value="" disabled selected>Seleccione un día</option>
                         </select>
 
@@ -88,7 +88,7 @@
 
                 <label for="frecuencia-select" class="etiqueta-formulario">Frecuencia semanal de turnos</label>
 
-                <select class="entrada-deshabilitada" id="frecuencia-select" disabled required>
+                <select class="entrada" id="frecuencia-select" disabled required>
                     <option value="" disabled selected>Seleccione una frecuencia</option>
                     <option value="1">1 vez por semana</option>
                     <option value="2">2 veces por semana</option>

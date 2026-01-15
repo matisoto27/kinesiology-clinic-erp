@@ -45,19 +45,19 @@
 
                 <div class="columna-campo w-[35%]">
                     <label class="etiqueta-formulario">Cantidad de sesiones</label>
-                    <input type="number" class="entrada-deshabilitada" min="1" max="20" placeholder="Ingrese una cantidad" id="cantidad-input" disabled required />
+                    <input type="number" class="entrada" min="1" max="20" placeholder="Ingrese una cantidad" id="cantidad-input" disabled required />
                 </div>
 
                 <div class="columna-campo w-[45%]">
                     <label class="etiqueta-formulario">Frecuencia semanal de turnos</label>
-                    <select class="entrada-deshabilitada" id="frecuencia-select" disabled required>
+                    <select class="entrada" id="frecuencia-select" disabled required>
                         <option value="" disabled selected>Seleccione una frecuencia</option>
                     </select>
                 </div>
 
                 <div class="columna-campo w-[20%]">
                     <label class="etiqueta-formulario">Precio</label>
-                    <input class="entrada-deshabilitada appearance-none" value="$0,00" id="precio-input" disabled>
+                    <input class="entrada-info" value="$0,00" id="precio-input" disabled>
                 </div>
 
             </div>

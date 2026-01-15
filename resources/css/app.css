@@ -56,10 +56,14 @@
 
     .entrada {
         @apply bg-[#3A8F8E] p-2 rounded-xl text-xl text-white;
+
+        &:disabled {
+            @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
+        }
     }
 
-    .entrada-deshabilitada {
-        @apply bg-[#6BA9A9] p-2 rounded-xl text-xl text-[#E0F0F0] cursor-not-allowed;
+    .entrada-info {
+        @apply bg-[#6BA9A9] p-2 text-xl text-white cursor-not-allowed appearance-none;
     }
 
     .icono-lupa {
@@ -72,5 +76,9 @@
 
     .boton-registrar {
         @apply py-2 active:scale-95 bg-[#3A8F8E] cursor-pointer font-semibold text-white hover:bg-[#F5D500] hover:scale-105 hover:text-black transform transition-all ease-in-out duration-300 rounded-md w-full;
+
+        &:disabled {
+            @apply cursor-not-allowed opacity-50;
+        }
     }
 }

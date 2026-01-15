@@ -41,7 +41,7 @@
             <div class="fila-formulario pb-4">
                 <div class="columna-campo flex-1">
                     <label for="monto-input" class="etiqueta-formulario">Monto abonado</label>
-                    <input type="text" placeholder="Ejemplo: 75000,42" class="entrada-deshabilitada" id="monto-input" disabled required>
+                    <input type="text" placeholder="Ejemplo: 75000,00" class="entrada" id="monto-input" disabled required>
                     <p class="hidden text-s text-red-500 mt-1 font-bold italic animate-bounce" id="alerta-exceso"></p>
                 </div>
                 <div class="columna-campo flex-1">

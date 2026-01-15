@@ -107,20 +107,8 @@ export function agregarOpcion(select, valor, contenidoTextual, deshabilitada = f
     select.appendChild(option);
 }
 
-/**
- * Habilita o deshabilita un elemento, ajustando su color de fondo para reflejar su estado.
- * @param {HTMLElement} elemento - El elemento HTML a modificar.
- * @param {boolean} confirma - Utilizar true para habilitar, false para deshabilitar.
- */
-export function habilitarSelect(elemento, confirma) {
+export function habilitarElemento(elemento, confirma) {
     elemento.disabled = !confirma;
-
-    elemento.classList.toggle('bg-[#3A8F8E]', confirma);
-    elemento.classList.toggle('text-white', confirma);
-
-    elemento.classList.toggle('bg-[#6BA9A9]', !confirma);
-    elemento.classList.toggle('cursor-not-allowed', !confirma);
-    elemento.classList.toggle('text-[#E0F0F0]', !confirma);
 }
 
 export function obtenerValorEntero(entrada, admiteCero = false) {
@@ -150,7 +138,7 @@ export function actualizarDiasDelMes(mesSelect, diaSelect) {
         agregarOpcion(diaSelect, i, i);
     }
 
-    habilitarSelect(diaSelect, true);
+    habilitarElemento(diaSelect, true);
 }
 
 export const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
