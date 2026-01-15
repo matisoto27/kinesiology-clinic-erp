@@ -37,6 +37,7 @@ import {
     cargarHorarios,
     consolidarTurnosPorDia,
     deshabilitarHoraSeleccionada,
+    determinarTurnosPorSemana,
     mostrarErrorTurnosInsuficientes,
     reiniciarPrecio,
     limpiarTurnos,
@@ -108,33 +109,13 @@ async function gestionarCambiosDeCantidad() {
         let turnoHTML = '';
 
         if (turnosCheckbox.checked) {
+            const resultado = await determinarTurnosPorSemana(semanaActualCubre, semanaCuatroCubre, turnosSemanaActual, turnosSemanasCriticas, turnosSemanaCuatro);
 
-            if (semanaActualCubre && semanaCuatroCubre) {
+            if (resultado.accion === 'dismissed') return;
 
-                const eleccion = await Swal.fire({
-                    title: '¿Desea generar los turnos a partir de la semana actual o a partir de la semana que viene?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonText: 'Semana actual',
-                    cancelButtonText: 'Semana que viene'
-                });
-
-                if (eleccion.dismiss === Swal.DismissReason.backdrop) return;
-
-                if (eleccion.isConfirmed) {
-                    turnosPorSemana = [turnosSemanaActual, ...turnosSemanasCriticas];
-                    actualizarDesdeActual(true);
-                } else {
-                    turnosPorSemana = [...turnosSemanasCriticas, turnosSemanaCuatro];
-                }
-
-            } else if (semanaActualCubre) {
-
-                turnosPorSemana = [turnosSemanaActual, ...turnosSemanasCriticas];
-
-            } else {
-
-                turnosPorSemana = [...turnosSemanasCriticas, turnosSemanaCuatro];
+            turnosPorSemana = resultado.turnosPorSemana;
+            if (resultado.accion === 'confirmed') {
+                actualizarDesdeActual(true);
             }
 
             const turnosPorDia = consolidarTurnosPorDia(turnosPorSemana);

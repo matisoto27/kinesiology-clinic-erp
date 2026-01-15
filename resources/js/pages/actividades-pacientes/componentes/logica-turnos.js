@@ -102,6 +102,43 @@ export function semanaCubreFrecuencia(semana, frecuenciaSemanal) {
     return Object.keys(semana).length >= frecuenciaSemanal;
 }
 
+export async function determinarTurnosPorSemana(semanaActualCubre, ultimaSemanaCubre, turnosSemanaActual, turnosSemanasCriticas, turnosUltimaSemana) {
+    if (semanaActualCubre && ultimaSemanaCubre) {
+        const eleccion = await Swal.fire({
+            title: '¿Desea generar los turnos a partir de la semana actual o a partir de la semana que viene?',
+            icon: 'question',
+            showDenyButton: true,
+            confirmButtonText: 'Semana actual',
+            denyButtonText: 'Semana que viene'
+        });
+
+        if (eleccion.isDismissed) {
+            return { accion: 'dismissed' };
+        }
+
+        if (eleccion.isConfirmed) {
+            return {
+                turnosPorSemana: [turnosSemanaActual, ...turnosSemanasCriticas],
+                accion: 'confirmed'
+            };
+        } else if (eleccion.isDenied) {
+            return {
+                turnosPorSemana: [...turnosSemanasCriticas, turnosUltimaSemana]
+            };
+        }
+    }
+
+    if (semanaActualCubre) {
+        return {
+            turnosPorSemana: [turnosSemanaActual, ...turnosSemanasCriticas]
+        };
+    }
+
+    return {
+        turnosPorSemana: [...turnosSemanasCriticas, turnosUltimaSemana]
+    };
+}
+
 /**
  * Consolida turnos de varias semanas por Día de la Semana y Hora.
  * @param {Record<string, string[]>[]} turnosPorSemana - Array de objetos de turnos por fecha.
