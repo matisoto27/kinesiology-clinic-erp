@@ -100,7 +100,7 @@
             </div>
 
             <div class="ultima-fila-formulario">
-                <input type="checkbox" id="turnos-checkbox" checked>
+                <input type="checkbox" class="checkbox-formulario" id="turnos-checkbox" checked>
                 <label for="turnos-checkbox" class="etiqueta-formulario">Generar turnos automáticamente</label>
             </div>
 

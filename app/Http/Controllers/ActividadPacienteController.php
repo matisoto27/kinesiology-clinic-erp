@@ -125,9 +125,9 @@ class ActividadPacienteController extends Controller
 
             $mensajeError = $ex->getMessage();
 
-            Log::error('[ActividadPacienteController@crear] Error al registrar los turnos del paciente', ['exception' => $mensajeError]);
-
             DB::rollBack();
+            Log::error('[ActividadPacienteController@crear] Error al registrar los turnos del paciente', ['excepción' => $mensajeError]);
+
             return response()->json([
                 'error' => $mensajeError
             ], 500);

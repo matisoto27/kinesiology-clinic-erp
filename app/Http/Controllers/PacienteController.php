@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class PacienteController extends Controller
@@ -21,54 +20,54 @@ class PacienteController extends Controller
 
     public function almacenar(Request $request)
     {
+        $validados = $request->validate([
+            'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
+            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
+            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
+            'fecha_nac' => 'required|date',
+            'telefono' => 'required|numeric|digits_between:8,20',
+            'sintomas' => 'array',
+            'sintomas.*' => 'numeric|exists:sintomas,id'
+        ], [
+            'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
+            'apellido.regex' => 'El apellido solo puede contener letras.'
+        ], [
+            'dni' => 'DNI',
+            'fecha_nac' => 'fecha de nacimiento'
+        ]);
+        $ahora = Carbon::now();
+
         DB::beginTransaction();
-        
+
         try {
-            $datosValidados = $request->validate([
-                'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
-                'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
-                'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
-                'fecha_nac' => 'required|date',
-                'telefono' => 'required|numeric|digits_between:8,20',
-                'sintomas' => 'array',
-                'sintomas.*' => 'numeric|exists:sintomas,id'
-            ], [
-                'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
-                'apellido.regex' => 'El apellido solo puede contener letras.'
-            ], [
-                'fecha_nac' => 'fecha de nacimiento'
-            ]);
-            $datosValidados['fecha_ingreso'] = Carbon::now();
-            $datosValidados['sesiones_a_favor'] = 0;
-            $datosValidados['activo'] = 1;
+            $validados['fecha_ingreso'] = $ahora;
+            $validados['sesiones_a_favor'] = 0;
+            $validados['activo'] = 1;
 
-            $sintomas = $datosValidados['sintomas'] ?? [];
+            $sintomas = $validados['sintomas'] ?? [];
 
-            $paciente = Paciente::create($datosValidados);
+            $paciente = Paciente::create($validados);
 
             foreach ($sintomas as $idSintoma) {
                 SintomaPaciente::create([
                     'id_sintoma' => $idSintoma,
                     'id_paciente' => $paciente->id,
-                    'fecha_desde' => Carbon::now()
+                    'fecha_desde' => $ahora
                 ]);
             }
 
             DB::commit();
 
-            return redirect()->route('pacientes.paginaCrear')->with([
-                'titulo' => 'Paciente registrado',
-                'mensaje' => '¡El paciente ha sido registrado con éxito!'
-            ]);
+            return redirect()->route('inicio')->with('exito', '¡El paciente ha sido registrado con éxito!');
 
-        } catch (ValidationException $ex) {
-            throw $ex;
         } catch (Throwable $ex) {
+
+            $mensajeError = $ex->getMessage();
+
             DB::rollBack();
-            Log::error('Error al registrar el paciente', ['excepcion' => $ex->getMessage()]);
-            return back()
-                ->with('error', 'Se ha producido un error inesperado al registrar el paciente.')
-                ->withInput();
+            Log::error('[PacienteController@almacenar] Error al registrar el paciente', ['excepción' => $mensajeError]);
+
+            return back()->with('error', $mensajeError)->withInput();
         }
     }
 

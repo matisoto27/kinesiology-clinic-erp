@@ -1,112 +1,77 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="w-full max-w-lg mx-auto my-5">
-
-        <form method="POST" action="/pacientes" class="formulario" id="formulario">
-
+    <div class="contenedor max-w-lg">
+        <form action="{{ route('pacientes.almacenar') }}" method="POST" class="formulario" id="formulario">
             @csrf
 
-            <h1 class="mb-4 block font-semibold text-3xl text-center text-white">Registrar paciente</h1>
+            <h2 class="titulo-formulario">Registrar paciente</h2>
 
-            <div class="mb-4">
-                <label class="mb-2 block font-medium text-lg text-white" for="dni">DNI</label>
-                <input type="text" class="bg-[#3A8F8E] px-3 py-2 rounded text-white w-full" placeholder="Ingrese el DNI" value="{{ old('dni') }}" name="dni" id="dni">
-                @error('dni')
-                    <div class="text-red-500 text-md">{{ $message }}</div>
-                @enderror
-            </div>
+            @if (session('error'))
+                <div class="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 font-bold shadow-md animate-fade-in">
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <span class="block break-words font-bold">{{ session('error') }}</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
-            <div class="mb-4">
-                <label class="mb-2 block font-medium text-lg text-white" for="nombre">Nombre</label>
-                <input type="text" class="bg-[#3A8F8E] px-3 py-2 rounded text-white w-full" placeholder="Ingrese el nombre" value="{{ old('nombre') }}" name="nombre" id="nombre">
-                @error('nombre')
-                    <div class="text-red-500 text-md">{{ $message }}</div>
-                @enderror
-            </div>
+            <div class="mb-4 grid grid-cols-1 gap-y-5">
+                <x-input-formulario name="dni" label="DNI" placeholder="Ingrese el DNI" />
 
-            <div class="mb-4">
-                <label class="mb-2 block font-medium text-lg text-white" for="apellido">Apellido</label>
-                <input type="text" class="bg-[#3A8F8E] px-3 py-2 rounded text-white w-full" placeholder="Ingrese el apellido" value="{{ old('apellido') }}" name="apellido" id="apellido">
-                @error('apellido')
-                    <div class="text-red-500 text-md">{{ $message }}</div>
-                @enderror
-            </div>
+                <x-input-formulario name="nombre" label="Nombre" placeholder="Ingrese el nombre" />
 
-            <div class="mb-4">
-                <label class="mb-2 block font-medium text-lg text-white" for="fecha-nacimiento">Fecha de nacimiento</label>
-                <input type="date" class="bg-[#3A8F8E] px-3 py-2 rounded text-white w-full" value="{{ old('fecha_nac') }}" name="fecha_nac" id="fecha-nacimiento">
-                @error('fecha_nac')
-                    <div class="text-red-500 text-md">{{ $message }}</div>
-                @enderror
-            </div>
+                <x-input-formulario name="apellido" label="Apellido" placeholder="Ingrese el apellido" />
 
-            <div class="mb-4">
-                <label class="mb-2 block font-medium text-lg text-white" for="telefono">Teléfono</label>
-                <input type="text" class="bg-[#3A8F8E] px-3 py-2 rounded text-white w-full" placeholder="Ingrese el teléfono" value="{{ old('telefono') }}" name="telefono" id="telefono">
-                @error('telefono')
-                    <div class="text-red-500 text-md">{{ $message }}</div>
-                @enderror
-            </div>
+                <x-input-formulario name="fecha_nac" label="Fecha de nacimiento" type="date" />
 
-            <div class="mb-8">
-                <label class="mb-2 block font-medium text-lg text-white">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
-                <div class="flex flex-wrap gap-[8px]">
-                    @foreach ($tipos_sintomas as $tipo)
-                        @if (!$tipo->sintomas->isEmpty())
-                            <div class="w-full bg-[#3A8F8E] sm:w-[calc((100%_-_8px)/2)] p-4 rounded-md">
+                <x-input-formulario name="telefono" label="Teléfono" placeholder="Ingrese el teléfono" />
 
-                                <h3 class="text-white font-semibold text-xl mb-2">{{ $tipo->nombre }}</h3>
+                <div class="flex flex-col gap-1">
+                    <label class="etiqueta-formulario">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
 
-                                <div class="space-y-4">
-                                    @foreach ($tipo->sintomas as $sintoma)
-                                        <div class="flex items-center gap-2">
-                                            <input type="checkbox" class="accent-[#F5D500] h-4 w-4" value="{{ $sintoma->id }}" name="sintomas[]" id="{{ $sintoma->id }}">
-                                            <label for="{{ $sintoma->id }}" class="text-white">{{ $sintoma->nombre }}</label>
-                                        </div>
-                                    @endforeach
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        @foreach ($tipos_sintomas as $tipo)
+                            @if (!$tipo->sintomas->isEmpty())
+                                <div class="bg-[#3A8F8E] p-4 rounded-md shadow-lg">
+
+                                    <h3 class="mb-2 font-semibold text-xl text-white">{{ $tipo->nombre }}</h3>
+
+                                    <div class="space-y-4">
+                                        @foreach ($tipo->sintomas as $sintoma)
+                                            <div class="flex items-center gap-2">
+                                                <input
+                                                    type="checkbox"
+                                                    value="{{ $sintoma->id }}"
+                                                    class="checkbox-formulario"
+                                                    @checked(is_array(old('sintomas')) && in_array($sintoma->id, old('sintomas')))
+                                                    name="sintomas[]"
+                                                    id="sintoma-{{ $sintoma->id }}"
+                                                >
+                                                <label for="sintoma-{{ $sintoma->id }}" class="text-white">{{ $sintoma->nombre }}</label>
+                                            </div>
+                                        @endforeach
+                                    </div>
+
                                 </div>
-
-                            </div>
-                        @endif
-                    @endforeach
+                            @endif
+                        @endforeach
+                    </div>
                 </div>
+                @error('sintomas')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
             </div>
-            @error('sintomas')
-                <div class="text-red-500 text-md">{{ $message }}</div>
-            @enderror
 
-            <button type="submit" class="py-2 active:scale-95 bg-[#3A8F8E] cursor-pointer font-semibold text-white hover:bg-[#F5D500] hover:scale-105 hover:text-black transform transition-all ease-in-out duration-300 rounded-md w-full">Registrar</button>
-
+            <button type="submit" class="boton-registrar">Registrar</button>
         </form>
-
     </div>
-
-    @if(session('titulo') && session('mensaje'))
-        <div class="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-100" id="modal-exito">
-            <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6 relative transform transition-all duration-300 ease-out scale-95 hover:scale-100">
-                <h2 class="text-2xl font-semibold text-gray-800 mb-4">{{ session('titulo') }}</h2>
-                <p class="text-lg text-gray-700">{{ session('mensaje') }}</p>
-                <div class="mt-6 flex justify-end">
-                    <button class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white transition" id="volver-button">Cerrar</button>
-                </div>
-            </div>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                Swal.fire({
-                    icon: 'error',
-                    title: '¡Error!',
-                    text: "{{ session('error') }}",
-                    confirmButtonText: 'Aceptar'
-                });
-            });
-        </script>
-    @endif
-
 @endsection
 
 @push('scripts')

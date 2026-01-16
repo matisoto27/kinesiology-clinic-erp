@@ -10,10 +10,6 @@
 }
 
 @layer components {
-    #turnos-checkbox {
-        @apply accent-[#F5D500] h-4 w-4;
-    }
-
     #nombre-div {
         @apply bg-[#3A8F8E] rounded-t-xl rounded-b-xl relative;
     }
@@ -36,6 +32,10 @@
 
     .titulo-formulario {
         @apply mb-4 block font-semibold text-2xl text-center text-white;
+    }
+
+    .checkbox-formulario {
+        @apply accent-[#F5D500] h-4 w-4 cursor-pointer;
     }
 
     .fila-formulario {
@@ -64,6 +64,18 @@
 
     .entrada-info {
         @apply bg-[#6BA9A9] p-2 text-xl text-white cursor-not-allowed appearance-none;
+    }
+
+    .entrada-simple {
+        @apply bg-[#3A8F8E] px-3 py-2 rounded-md text-white outline-none transition-all;
+
+        &:focus {
+            @apply bg-[#014745] ring-2 ring-[#F5D500];
+        }
+
+        &:disabled {
+            @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
+        }
     }
 
     .icono-lupa {

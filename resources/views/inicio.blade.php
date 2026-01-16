@@ -3,9 +3,9 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="bg-[#006E6B] max-w-screen-lg mx-auto my-5 px-8 pt-7 pb-5 rounded-3xl w-full">
+    <div class="contenedor bg-[#006E6B] max-w-screen-lg my-5 px-8 rounded-3xl">
 
-        <div class="flex justify-between text-white">
+        <div class="mb-4 flex justify-between text-white">
             <div class="font-bold text-3xl">
                 <h2>Asistencia de hoy</h2>
                 <p id="fecha">{{ Carbon::now()->format('d/m/Y') }}</p>
@@ -14,11 +14,35 @@
         </div>
         
         <form method="GET" id="filtros-form">
-            <div class="flex justify-between mt-3 pt-3 text-white">
 
-                <div>
-                    <label class="mr-1 text-xl">Actividad:</label>
-                    <select class="rounded-md bg-[#3A8F8E] text-xl p-2 focus:outline-none" name="actividad" id="actividad-select">
+            <input type="hidden" value="{{ $paciente->id ?? 0 }}" name="paciente" id="id-paciente-input">
+
+            <div class="mb-4 flex justify-between">
+
+                <div class="columna-campo">
+                    <div class="flex items-center gap-1">
+                        <label for="nombre-input" class="etiqueta-formulario">Paciente</label>
+                        @if($paciente)
+                            <button type="button" class="cursor-pointer" id="eliminar-button">
+                                <i class="fa-solid fa-xmark icono-eliminar"></i>
+                            </button>
+                        @endif
+                    </div>
+
+                    <div class="{{ $paciente ? 'bg-[#6BA9A9]' : 'bg-[#3A8F8E]' }}" id="nombre-div">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-magnifying-glass icono-lupa"></i>
+                            <input type="text" placeholder="Ingrese el nombre" value="{{ $paciente ? $paciente->apellido . ' ' . $paciente->nombre : '' }}" id="nombre-input" {{ $paciente ? 'disabled' : '' }} required>
+                        </div>
+                        <ul class="hidden" id="sugerencias">
+                            <!-- Pacientes sugeridos -->
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="columna-campo">
+                    <label for="actividad-select" class="etiqueta-formulario">Actividad</label>
+                    <select class="entrada" name="actividad" id="actividad-select">
                         <option value="0">Todas</option>
                         @foreach($actividades as $act)
                             <option value="{{ $act->id }}" @if ($act->id == request('actividad', 0)) selected @endif>
@@ -28,23 +52,8 @@
                     </select>
                 </div>
 
-                <div>
-                    @if($paciente)
-                        <button type="button" class="cursor-pointer" id="eliminar-button">
-                            <i class="fa-solid fa-xmark hover:text-red-900 p-1 text-red-600 text-xl"></i>
-                        </button>
-                    @endif
-                    <div class="{{ $paciente ? 'bg-[#6BA9A9]' : 'bg-[#3A8F8E]' }} rounded-xl relative inline-block" id="nombre-div">
-                        <input type="hidden" name="paciente" id="id-paciente-input" value="{{ $paciente->id ?? 0 }}">
-                        <i class="fa-solid fa-magnifying-glass ml-3 text-xl"></i>
-                        <input placeholder="Ingrese el nombre" class="text-xl p-2 focus:outline-none" value="{{ $paciente ? $paciente->apellido . ' ' . $paciente->nombre : '' }}" id="nombre-input" {{ $paciente ? 'disabled' : '' }}>
-                        <ul id="sugerencias" class="absolute left-0 right-0 max-h-60 overflow-auto z-10 hidden">
-                            <!-- Pacientes sugeridos -->
-                        </ul>
-                    </div>
-                </div>
-
             </div>
+
         </form>
 
         <table class="my-5 overflow-hidden rounded-xl w-full">
@@ -87,11 +96,15 @@
 
         @if (session('exito'))
             <div class="mb-4 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 font-bold shadow-md animate-fade-in">
-                <div class="flex items-center">
-                    <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                    </svg>
-                    {{ session('exito') }}
+                <div class="flex items-start">
+                    <div class="flex-shrink-0">
+                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <span class="block break-words font-bold">{{ session('exito') }}</span>
+                    </div>
                 </div>
             </div>
         @endif
