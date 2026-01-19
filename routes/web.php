@@ -6,6 +6,7 @@ use App\Http\Controllers\ActividadPacienteController;
 use App\Http\Controllers\NotaTurnoController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\PagoController;
+use App\Http\Controllers\PrecioController;
 use App\Http\Controllers\TurnoController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,11 @@ Route::controller(PacienteController::class)->group(function () {
 Route::controller(PagoController::class)->group(function () {
     Route::get('/pagos/crear', 'crear')->name('pagos.crear');
     Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
+});
+
+Route::controller(PrecioController::class)->group(function () {
+    Route::get('/precios/crear', 'crear')->name('precios.crear');
+    Route::post('/precios', 'almacenar')->name('precios.almacenar');
 });
 
 Route::controller(NotaTurnoController::class)->group(function () {
