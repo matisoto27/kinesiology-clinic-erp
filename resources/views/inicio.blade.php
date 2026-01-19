@@ -78,7 +78,7 @@
                                 @if($turno->asiste)
                                     <button class="bg-green-300 text-black py-2 px-4 rounded-full transition-colors" disabled>Confirmada</button>
                                 @else
-                                    <button class="turno-button py-2 px-4 rounded-full transition-colors bg-[#F5D500]" data-id-turno="{{ $turno->id }}">Confirmar</button>
+                                    <button class="turno-button py-2 px-4 rounded-full transition-colors bg-[#F5D500]" data-url="{{ route('turnos.confirmar-asistencia', $turno->id) }}">Confirmar</button>
                                 @endif
                             </td>
                         </tr>

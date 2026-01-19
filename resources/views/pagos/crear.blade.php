@@ -14,7 +14,7 @@
                     <select class="entrada" name="id_act_pac" id="act-pac-select" required>
                         <option value="" disabled @selected(old('id_act_pac') === null)>Seleccione una opción</option>
                         @foreach($pendientesDePago as $inscripcion)
-                            <option data-deuda="{{ $inscripcion->total_a_pagar - ($inscripcion->pagos_sum_monto ?? 0) }}" value="{{ $inscripcion->id }}" @selected($inscripcion->id == old('id_act_pac', $idActPac))>
+                            <option data-deuda="{{ $inscripcion->total_a_pagar - ($inscripcion->pagos_sum_monto ?? 0) }}" value="{{ $inscripcion->id }}" @selected($inscripcion->id == old('id_act_pac', $id))>
                                 {{ $inscripcion->actividad->nombre }} ({{ $inscripcion->fecha_comienzo->format('d/m/Y') }}) -
                                 {{ $inscripcion->paciente->apellido }}, {{ $inscripcion->paciente->nombre }}
                             </option>

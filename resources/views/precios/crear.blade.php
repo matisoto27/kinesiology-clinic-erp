@@ -14,7 +14,7 @@
                     <select class="entrada" name="id_actividad_combo" id="actcom-select" required>
                         <option value="" disabled @selected(old('id_actividad_combo') === null)>Seleccione un combo</option>
                         @foreach($actividadesCombos as $actCom)
-                            <option data-precio="{{ $actCom->precio_vigente }}" value="{{ $actCom->id }}" @selected($actCom->id == old('id_actividad_combo', $idActCom))>
+                            <option data-precio="{{ $actCom->precio_vigente }}" value="{{ $actCom->id }}" @selected($actCom->id == old('id_actividad_combo', $id))>
                                 {{ $actCom->actividad->nombre }} - {{ $actCom->combo->nombre }}
                             </option>
                         @endforeach
@@ -53,5 +53,5 @@
 @endsection
 
 @push('scripts')
-    @vite('resources/js/pages/actividades-combos/actualizar-precio.js')
+    @vite('resources/js/pages/precios/crear.js')
 @endpush

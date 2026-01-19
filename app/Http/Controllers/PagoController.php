@@ -14,11 +14,9 @@ use Throwable;
 
 class PagoController extends Controller
 {
-    public function crear(Request $request)
+    public function crear($id = null)
     {
         try {
-            $idActPac = $request->query('id_act_pac');
-
             $pendientesDePago = ActividadPaciente::with(['actividad', 'paciente'])
                 ->withSum('pagos', 'monto')
                 ->sinPagar()
@@ -39,7 +37,7 @@ class PagoController extends Controller
                 });
             $profesionales = Profesional::activo()->orderBy('apellido')->get(['id', 'nombre', 'apellido']);
 
-            return view('pagos.crear', compact('pendientesDePago', 'profesionales', 'idActPac'));
+            return view('pagos.crear', compact('pendientesDePago', 'profesionales', 'id'));
 
         } catch (Throwable $ex) {
             return redirect()->route('inicio')->with('error', $ex->getMessage());

@@ -69,14 +69,14 @@ tabla.addEventListener('click', async (event) => {
 
     if (!confirm("¿Está seguro de que desea confirmar la asistencia del turno?")) return;
 
-    const idTurno = boton.dataset?.idTurno;
-    if (!idTurno) return;
+    const url = boton.dataset.url;
+    if (!url) return;
 
     const csrf = document.querySelector('meta[name="csrf-token"]').content;
     habilitarElemento(boton, false);
 
     try {
-        const respuesta = await fetch(`/turnos/${idTurno}/confirmar-asistencia`, {
+        const respuesta = await fetch(url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

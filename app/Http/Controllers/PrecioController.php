@@ -12,7 +12,7 @@ use Throwable;
 
 class PrecioController extends Controller
 {
-    public function crear()
+    public function crear($id = null)
     {
         $actividadesCombos = ActividadCombo::activo()
             ->with('actividad', 'combo', 'precioVigente')
@@ -22,7 +22,7 @@ class PrecioController extends Controller
                 return $actCom;
             });
 
-        return view('precios.crear', compact('actividadesCombos'));
+        return view('precios.crear', compact('actividadesCombos', 'id'));
     }
 
     public function almacenar(Request $request)

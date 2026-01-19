@@ -11,7 +11,7 @@ use App\Http\Controllers\TurnoController;
 use Illuminate\Support\Facades\Route;
 
 Route::controller(ActividadController::class)->group(function () {
-    Route::get('/actividades', 'inicio')->name('actividades.inicio');
+    Route::get('/actividades', 'inicio');
     Route::get('/actividades/{id}/combos', 'obtenerCombos');
     Route::get('/actividades/{id}/turnos-disponibles', 'obtenerTurnosDisponibles');
 });
@@ -44,6 +44,7 @@ Route::controller(PagoController::class)->group(function () {
 
 Route::controller(PrecioController::class)->group(function () {
     Route::get('/precios/crear', 'crear')->name('precios.crear');
+    Route::get('/actividades-combos/{id}/precios/crear', 'crear')->name('actividades-combos.precios.crear');
     Route::post('/precios', 'almacenar')->name('precios.almacenar');
 });
 
