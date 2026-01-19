@@ -9,17 +9,17 @@ use Throwable;
 
 class ActividadComboController extends Controller
 {
-    public function obtenerPrecioActual($id)
+    public function obtenerPrecioVigente($id)
     {
         try {
+            $actividadCombo = ActividadCombo::with('precioVigente')->findOrFail($id);
+            $valor = (float) ($actividadCombo->precioVigente->valor ?? 0);
 
-            $actividadCombo = ActividadCombo::findOrFail($id);
-
-            return response()->json($actividadCombo->precioActual());
+            return response()->json($valor);
 
         } catch (ModelNotFoundException $ex) {
 
-            Log::info('[ActividadComboController@obtenerPrecioActual] Recurso no encontrado', [
+            Log::info('[ActividadComboController@obtenerPrecioVigente] Recurso no encontrado', [
                 'id' => $id,
                 'excepcion' => $ex->getMessage()
             ]);
@@ -30,13 +30,13 @@ class ActividadComboController extends Controller
 
         } catch (Throwable $ex) {
 
-            Log::error('[ActividadComboController@obtenerPrecioActual] Error al obtener el precio actual del combo de la actividad', [
+            Log::error('[ActividadComboController@obtenerPrecioVigente] Error al obtener el precio vigente del combo de la actividad', [
                 'id' => $id,
                 'excepcion' => $ex->getMessage()
             ]);
 
             return response()->json([
-                'error' => 'Se ha producido un error inesperado al obtener el precio actual del combo de la actividad.'
+                'error' => 'Ocurrió un error al intentar obtener el precio vigente del combo.'
             ], 500);
         }
     }

@@ -1,4 +1,4 @@
-import { apiFetch, mostrarAlerta } from '@compartido/general.js';
+import { apiFetch, mostrarAlerta, mostrarElemento } from '@compartido/general.js';
 import { obtenerElementosBuscador } from '@compartido/referencias-dom.js';
 
 let abortController = null;
@@ -46,7 +46,7 @@ export function inicializarSugerenciasListeners(crearLiPaciente) {
                 }
 
                 redondearBordeInferior(nombreDiv, false);
-                sugerencias.classList.remove('hidden');
+                mostrarElemento(sugerencias, true);
 
             } catch (error) {
 
@@ -106,7 +106,7 @@ export function limpiarSugerencias() {
 
     indiceSeleccionado = -1;
     sugerencias.innerHTML = '';
-    sugerencias.classList.add('hidden');
+    mostrarElemento(sugerencias, false);
 }
 
 function actualizarSeleccion(pacientesSugeridos) {
@@ -130,7 +130,7 @@ export function habilitarNombre(confirma) {
     nombreDiv.classList.toggle('bg-[#3A8F8E]', confirma);
     nombreDiv.classList.toggle('bg-[#6BA9A9]', !confirma);
 
-    eliminarButton.classList.toggle('hidden', confirma);
+    mostrarElemento(eliminarButton, !confirma);
 }
 
 async function obtenerPacientes(nombreIngresado, signal) {

@@ -1,3 +1,5 @@
+import { mostrarElemento } from '@compartido/general.js';
+
 function actualizarContadorNotas(idTurno, operacion) {
     const turnoButton = document.querySelector(`.turno-button[data-id-turno="${idTurno}"]`);
     if (!turnoButton) return;
@@ -71,12 +73,12 @@ async function abrirModal(idTurno) {
         }
 
         registrarButton.dataset.idTurno = idTurno;
-        modalNotas.classList.remove('hidden');
+        mostrarElemento(modalNotas, true);
 
     } catch (error) {
         console.error(error);
         alert(error.message);
-        modalNotas.classList.add('hidden');
+        mostrarElemento(modalNotas, false);
     }
 };
 
@@ -103,7 +105,7 @@ async function registrarNotaTurno(idTurno, contenidoNota) {
 
         actualizarContadorNotas(idTurno, INCREMENTAR);
 
-        modalAgregarNota.classList.add('hidden');
+        mostrarElemento(modalAgregarNota, false);
         contenidoNotaTextArea.value = '';
 
     } catch (error) {
@@ -170,9 +172,9 @@ siguienteButton.addEventListener('click', function() {
     formulario.submit();
 });
 
-agregarNotaButton.onclick = () => modalAgregarNota.classList.remove('hidden');
+agregarNotaButton.onclick = () => mostrarElemento(modalAgregarNota, true);
 
-cerrarNotasButton.forEach(btn => btn.onclick = () => modalNotas.classList.add('hidden'));
+cerrarNotasButton.forEach(btn => btn.onclick = () => mostrarElemento(modalNotas, false));
 
 document.querySelectorAll('.turno-button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -182,7 +184,9 @@ document.querySelectorAll('.turno-button').forEach(btn => {
 });
 
 modalNotas.addEventListener('click', (e) => {
-    if (e.target === modalNotas) modalNotas.classList.add('hidden');
+    if (e.target === modalNotas) {
+        mostrarElemento(modalNotas, false);
+    }
 });
 
 listaNotas.addEventListener('click', async function (e) {
@@ -210,7 +214,7 @@ listaNotas.addEventListener('click', async function (e) {
 
 modalAgregarNota.addEventListener('click', (e) => {
     if (e.target === modalAgregarNota) {
-        modalAgregarNota.classList.add('hidden');
+        mostrarElemento(modalAgregarNota, false);
         contenidoNotaTextArea.value = '';
     }
 });
@@ -228,6 +232,6 @@ registrarButton.addEventListener('click', async function() {
 });
 
 volverButton.addEventListener('click', function() {
-    modalAgregarNota.classList.add('hidden');
+    mostrarElemento(modalAgregarNota, false);
     contenidoNotaTextArea.value = '';
 });

@@ -71,7 +71,7 @@ async function gestionarCambiosDeCantidad() {
 
         if (!idPaciente || !idActividad || !frecuenciaSemanal || !idActividadCombo) return;
 
-        const precio = await apiFetch(`/actividades-combos/${idActividadCombo}/precio-actual`);
+        const precio = await apiFetch(`/actividades-combos/${idActividadCombo}/precio-vigente`);
         actualizarTotalAPagar(precio);
         precioInput.value = '$' + precio;
         limpiarTurnos();

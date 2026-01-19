@@ -4,11 +4,12 @@ import {
     crearOpcionPorDefecto,
     habilitarElemento,
     mostrarAlerta,
-    obtenerValorEntero
+    mostrarElemento,
+    obtenerValor
 } from '@compartido/general.js';
 
 function actualizarSesionesAFavor() {
-    const cantidadSeleccionada = obtenerValorEntero(cantidadSelect);
+    const cantidadSeleccionada = obtenerValor(cantidadSelect);
     const datosLocalesCargados = typeof cantSesionesLocal === 'number' && typeof sesionesAFavorLocal === 'number';
 
     if (cantidadSeleccionada === null || !datosLocalesCargados) {
@@ -29,12 +30,12 @@ function actualizarSesionesAFavor() {
                     (El paciente deberá pagar ${restantes} ${restantes === 1 ? 'sesión restante' : 'sesiones restantes'})
                 </span>
             `;
-            contenedorAlerta.classList.remove('hidden');
+            mostrarElemento(contenedorAlerta, true);
         }
     }
 
-    const mesSeleccionado = obtenerValorEntero(mesSelect);
-    const diaSeleccionado = obtenerValorEntero(diaSelect);
+    const mesSeleccionado = obtenerValor(mesSelect);
+    const diaSeleccionado = obtenerValor(diaSelect);
 
     const datosValidos = cantidadSeleccionada !== null && datosLocalesCargados && mesSeleccionado !== null && diaSeleccionado !== null;
 
@@ -43,7 +44,7 @@ function actualizarSesionesAFavor() {
 
 function limpiarAlerta() {
     textoInsuficiente.textContent = '';
-    contenedorAlerta.classList.add('hidden');
+    mostrarElemento(contenedorAlerta, false);
 }
 
 const actPacSelect = document.getElementById('act-pac-select');
@@ -60,12 +61,12 @@ let sesionesAFavorLocal = null;
 let ultimaInscripcionValida = '';
 
 actPacSelect.addEventListener('change', async function() {
-    const inscripcionSeleccionada = obtenerValorEntero(this);
+    const inscripcionSeleccionada = obtenerValor(this);
     if (inscripcionSeleccionada === null) return;
 
     const opcionSeleccionada = actPacSelect.options[actPacSelect.selectedIndex];
-    const cantSesiones = obtenerValorEntero(opcionSeleccionada.dataset.cantSesiones);
-    const sesionesAFavor = obtenerValorEntero(opcionSeleccionada.dataset.sesionesAFavor, true);
+    const cantSesiones = obtenerValor(opcionSeleccionada.dataset.cantSesiones);
+    const sesionesAFavor = obtenerValor(opcionSeleccionada.dataset.sesionesAFavor, true);
 
     if (cantSesiones === null || sesionesAFavor === null) {
         await mostrarAlerta('error', 'Valores inválidos', 'Los valores asociados a la inscripción seleccionada no son válidos.');

@@ -16,7 +16,7 @@ Route::controller(ActividadController::class)->group(function () {
 });
 
 Route::controller(ActividadComboController::class)->group(function () {
-    Route::get('/actividades-combos/{id}/precio-actual', 'obtenerPrecioActual');
+    Route::get('/actividades-combos/{id}/precio-vigente', 'obtenerPrecioVigente');
 });
 
 Route::controller(ActividadPacienteController::class)->group(function () {

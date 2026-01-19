@@ -12,9 +12,9 @@
                 <div class="columna-campo flex-1">
                     <label for="actpac-select" class="etiqueta-formulario">Actividad contratada</label>
                     <select class="entrada" name="id_act_pac" id="act-pac-select" required>
-                        <option value="" disabled selected>Seleccione una opción</option>
+                        <option value="" disabled @selected(old('id_act_pac') === null)>Seleccione una opción</option>
                         @foreach($pendientesDePago as $inscripcion)
-                            <option data-deuda="{{ $inscripcion->total_a_pagar - ($inscripcion->pagos_sum_monto ?? 0) }}" value="{{ $inscripcion->id }}" @selected($inscripcion->id == $idActPac)>
+                            <option data-deuda="{{ $inscripcion->total_a_pagar - ($inscripcion->pagos_sum_monto ?? 0) }}" value="{{ $inscripcion->id }}" @selected($inscripcion->id == old('id_act_pac', $idActPac))>
                                 {{ $inscripcion->actividad->nombre }} ({{ $inscripcion->fecha_comienzo->format('d/m/Y') }}) -
                                 {{ $inscripcion->paciente->apellido }}, {{ $inscripcion->paciente->nombre }}
                             </option>
@@ -28,9 +28,9 @@
                 <div class="columna-campo flex-1">
                     <label for="profesional-select" class="etiqueta-formulario">Profesional que lo registra</label>
                     <select class="entrada" name="id_profesional" id="profesional-select" required>
-                        <option value="" disabled selected>Seleccione un profesional</option>
+                        <option value="" disabled @selected(old('id_profesional') === null)>Seleccione un profesional</option>
                         @foreach($profesionales as $profesional)
-                            <option value="{{ $profesional->id }}">
+                            <option value="{{ $profesional->id }}" @selected($profesional->id == old('id_profesional'))>
                                 {{ $profesional->apellido }}, {{ $profesional->nombre }}
                             </option>
                         @endforeach
@@ -42,19 +42,19 @@
                 <div class="columna-campo flex-1">
                     <label for="monto-input" class="etiqueta-formulario">Monto abonado</label>
                     <input type="text" placeholder="Ejemplo: 75000,00" class="entrada" id="monto-input" disabled required>
-                    <p class="hidden text-s text-red-500 mt-1 font-bold italic animate-bounce" id="alerta-exceso"></p>
+                    <p class="alerta hidden" id="texto-alerta"></p>
                 </div>
                 <div class="columna-campo flex-1">
                     <label for="metodo-select" class="etiqueta-formulario">Método de pago</label>
                     <select class="entrada" name="metodo" id="metodo-select" required>
-                        <option value="" disabled selected>Seleccione un método</option>
-                        <option value="Efectivo">Efectivo</option>
-                        <option value="Transferencia">Transferencia</option>
+                        <option value="" disabled @selected(old('metodo') === null)>Seleccione un método</option>
+                        <option value="Efectivo" @selected(old('metodo') == "Efectivo")>Efectivo</option>
+                        <option value="Transferencia" @selected(old('metodo') == "Transferencia")>Transferencia</option>
                     </select>
                 </div>
             </div>
 
-            <button type="submit" class="boton-registrar cursor-not-allowed opacity-50" id="boton-registrar" disabled>Registrar pago</button>
+            <button type="submit" class="boton-registrar" id="boton-registrar" disabled>Registrar pago</button>
 
             @if ($errors->any())
                 <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mt-4">

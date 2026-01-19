@@ -53,12 +53,10 @@ class ActividadPacienteController extends Controller
             'sesiones_cubiertas' => 'required|integer|in:5,10'
         ]);
 
-        $idActPac = $validados['id_act_pac'];
+        DB::beginTransaction();
 
         try {
-            DB::beginTransaction();
-
-            $inscripcion = ActividadPaciente::with('paciente')->findOrFail($idActPac);
+            $inscripcion = ActividadPaciente::with('paciente')->find($validados['id_act_pac']);
             $paciente = $inscripcion->paciente;
 
             $sumatoria = ($validados['sesiones_cubiertas'] - $inscripcion->cant_sesiones) + $paciente->sesiones_a_favor;
@@ -79,7 +77,7 @@ class ActividadPacienteController extends Controller
         } catch (Throwable $ex) {
 
             Log::error('[ActividadPacienteController@actualizarOrdenMedica] Error al aplicar la orden médica', [
-                'id_act_pac' => $idActPac,
+                'id_act_pac' => $request->id_act_pac,
                 'excepcion' => $ex->getMessage()
             ]);
             DB::rollBack();

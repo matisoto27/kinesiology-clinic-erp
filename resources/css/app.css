@@ -78,6 +78,10 @@
         }
     }
 
+    .alerta {
+        @apply text-red-500 mt-2 font-bold italic animate-bounce;
+    }
+
     .icono-lupa {
         @apply ml-3 text-xl text-white;
     }

@@ -398,7 +398,7 @@ actividadSelect.addEventListener('change', async function() {
         limpiarTurnos();
 
         combosActividad = Object.fromEntries(
-            combos.map(combo => [combo.cantidad_sesiones, combo.precio_actual])
+            combos.map(combo => [combo.cantidad_sesiones, combo.precio_vigente])
         );
 
     } catch (error) {

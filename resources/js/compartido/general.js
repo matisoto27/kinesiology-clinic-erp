@@ -111,21 +111,8 @@ export function habilitarElemento(elemento, confirma) {
     elemento.disabled = !confirma;
 }
 
-export function obtenerValorEntero(entrada, admiteCero = false) {
-    const valor = (entrada && typeof entrada === 'object') ? entrada.value : entrada;
-    return esNumeroEntero(valor, admiteCero) ? Number(valor) : null;
-}
-
-export function esNumeroEntero(valor, admiteCero = false) {
-    const numero = Number(valor);
-
-    if (valor === "" || !Number.isInteger(numero)) return false;
-
-    return admiteCero ? numero >= 0 : numero > 0;
-}
-
 export function actualizarDiasDelMes(mesSelect, diaSelect) {
-    const mes = obtenerValorEntero(mesSelect);
+    const mes = obtenerValor(mesSelect);
     if (mes === null) return;
 
     const anio = new Date().getFullYear();
@@ -139,6 +126,70 @@ export function actualizarDiasDelMes(mesSelect, diaSelect) {
     }
 
     habilitarElemento(diaSelect, true);
+}
+
+export function obtenerValor(entrada, admiteCero = false, esEntero = true) {
+    const valor = (entrada && typeof entrada === 'object' && 'value' in entrada) ? entrada.value : entrada;
+    if (valor === null || valor === undefined || valor === '') return null;
+
+    const numero = Number(valor);
+    if (!Number.isFinite(numero)) return null;
+    if (esEntero && !Number.isInteger(numero)) return null;
+
+    const dentroDelRango = admiteCero ? numero >= 0 : numero > 0;
+
+    return dentroDelRango ? numero : null;
+}
+
+export function transformarIngresoMonto(input) {
+    let valorIngresado = input.value;
+
+    // No permite ingresar puntos
+    // Solo permite ingresar números o coma
+    valorIngresado = valorIngresado.replace(/\./g, '').replace(/[^0-9,]/g, '');
+
+    // Si se ingresa una coma como primer caracter, se agrega un 0 delante
+    if (valorIngresado.startsWith(',')) valorIngresado = '0' + valorIngresado;
+
+    // Solo puede haber una única coma
+    let partes = valorIngresado.split(',');
+    let parteEntera = partes[0];
+    let parteDecimal = partes.length > 1 ? partes.slice(1).join('') : null;
+
+    if (parteEntera.length > 0) {
+        // Eliminar ceros a la izquierda y limitar a 6 dígitos (máximo 9.999.999)
+        parteEntera = parseInt(parteEntera, 10).toString().substring(0, 7);
+
+        // Formatear miles con puntos
+        parteEntera = parteEntera.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    }
+
+    // Máximo 2 decimales
+    input.value = partes.length > 1
+        ? parteEntera + ',' + parteDecimal.substring(0, 2)
+        : parteEntera + (valorIngresado.includes(',') ? ',' : '');
+}
+
+export function textoADecimal(montoStr) {
+    if (typeof montoStr !== 'string' || montoStr.trim() === '') {
+        return 0;
+    }
+
+    const limpio = montoStr.replace(/\./g, '').replace(',', '.');
+    const transformado = parseFloat(limpio);
+
+    return isNaN(transformado) ? 0 : transformado;
+}
+
+export function inputEnAlerta(input, confirma) {
+    input.classList.toggle('border-red-500', confirma);
+    input.classList.toggle('focus:ring-red-500', confirma);
+    input.classList.toggle('text-red-600', confirma);
+    input.classList.toggle('focus:ring-green-500', !confirma);
+}
+
+export function mostrarElemento(elemento, confirma) {
+    elemento.classList.toggle('hidden', !confirma);
 }
 
 export const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];

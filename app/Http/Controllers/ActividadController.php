@@ -29,10 +29,9 @@ class ActividadController extends Controller
     public function obtenerCombos($id)
     {
         try {
-
             $actividad = Actividad::with([
                 'actividadCombos' => function ($consulta) {
-                    $consulta->where('activo', true)->with(['combo', 'precios']);
+                    $consulta->activo()->with(['combo', 'precioVigente']);
 
                     if (request()->boolean('con_precio')) {
                         $consulta->whereHas('precios');
@@ -45,7 +44,7 @@ class ActividadController extends Controller
                     'id_actividad_combo' => $actividadCombo->id,
                     'nombre' => $actividadCombo->combo->nombre,
                     'cantidad_sesiones' => $actividadCombo->combo->cantidad_sesiones,
-                    'precio_actual' => $actividadCombo->precioActual()
+                    'precio_vigente' => (float) ($actividadCombo->precioVigente->valor ?? 0)
                 ];
             });
 
