@@ -6,11 +6,6 @@ import {
     mostrarAlerta
 } from '@compartido/general.js';
 
-import {
-    contenedorTurnos,
-    precioInput
-} from '@compartido/referencias-dom.js';
-
 import { actualizarDesdeActual } from '../componentes/gestor-estado.js';
 
 /**
@@ -19,7 +14,6 @@ import { actualizarDesdeActual } from '../componentes/gestor-estado.js';
  * @returns {Array<Object>} Arreglo con los turnos de las semanas [1] a [N-1].
  */
 export function obtenerTurnosSemanasCriticas(turnos, cantidadSemanasNecesarias) {
-
     if (cantidadSemanasNecesarias <= 1) return [];
 
     const indiceInicio = 1;
@@ -46,7 +40,6 @@ export function obtenerTurnosSemanasCriticas(turnos, cantidadSemanasNecesarias) 
  * @returns {Record<string, string[]>} Objeto de turnos por fecha { 'YYYY-MM-DD': ['HH:MM', ...] }.
  */
 export function obtenerTurnosSemana(turnosDisponibles, desplazamiento) {
-
     const hoy = new Date();
     const [inicio, fin] = obtenerLunesViernesSemana(hoy, desplazamiento);
     const inicioISO = obtenerFechaISO(inicio);
@@ -73,7 +66,6 @@ export function obtenerTurnosSemana(turnosDisponibles, desplazamiento) {
  * @returns {[Date, Date]} [Lunes, Viernes] de la semana deseada.
  */
 function obtenerLunesViernesSemana(fechaBase, desplazamiento) {
-
     const copiaFecha = new Date(fechaBase);
     const diaHoy = copiaFecha.getDay();
 
@@ -145,7 +137,6 @@ export async function determinarTurnosPorSemana(semanaActualCubre, ultimaSemanaC
  * @returns {Record<string, Record<string, number>>} { 'Lunes': { '08:00': 4 } }.
  */
 export function consolidarTurnosPorDia(turnosPorSemana) {
-
     const turnosPorDia = {};
 
     for (const objetoTurnosSemana of turnosPorSemana) {
@@ -176,9 +167,8 @@ export function consolidarTurnosPorDia(turnosPorSemana) {
  * @param {string[]} diasConTurnos - Días de la semana disponibles.
  * @param {HTMLElement} contenedor - El contenedor donde inyectar el HTML.
  */
-export function renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos) {
+export function renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos) {
     if (!contenedorTurnos) return;
-
     let turnoHTML = '';
     
     for (let i = 1; i <= frecuenciaSemanal; i++) {
@@ -235,7 +225,6 @@ export function actualizarDiasDeshabilitados(diaSelects) {
  * @param {number} [cantidadSemanas=4] - Número de semanas necesarias para agendar todos los turnos según la frecuencia semanal.
  */
 export function cargarHorarios(select, turnosPorDia, cantidadSemanas = 4) {
-
     const diaSeleccionado = select.value;
     const horariosDisponibles = turnosPorDia[diaSeleccionado] ?? {};
     const horas = Object.keys(horariosDisponibles).sort();
@@ -271,12 +260,14 @@ export function deshabilitarHoraSeleccionada(event) {
     });
 }
 
-export function reiniciarPrecio() {
-    if (precioInput) precioInput.value = "$0,00";
+export function restablecerMoneda(input) {
+    if (!input) return;
+    input.value = "$0,00";
 }
 
-export function limpiarTurnos() {
-    if (contenedorTurnos) contenedorTurnos.innerHTML = '';
+export function limpiarTurnos(contenedorTurnos) {
+    if (!contenedorTurnos) return;
+    contenedorTurnos.innerHTML = '';
     actualizarDesdeActual(false);
 }
 

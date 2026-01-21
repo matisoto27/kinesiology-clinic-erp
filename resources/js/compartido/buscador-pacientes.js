@@ -1,67 +1,62 @@
 import { apiFetch, mostrarAlerta, mostrarElemento } from '@compartido/general.js';
-import { obtenerElementosBuscador } from '@compartido/referencias-dom.js';
 
 let abortController = null;
 let debounceTimeout = null;
 let indiceSeleccionado = -1;
 
-export function inicializarSugerenciasListeners(crearLiPaciente) {
-    const { nombreDiv, nombreInput, sugerencias } = obtenerElementosBuscador();
-
-    nombreInput.addEventListener('input', function() {
-
+export function inicializarSugerenciasListeners(buscador, input, sugerencias, url, constructorLi) {
+    input.addEventListener('input', function() {
         if (abortController) abortController.abort();
-
         clearTimeout(debounceTimeout);
 
         debounceTimeout = setTimeout(async () => {
+            const valorIngresado = this.value.trim();
 
-            let nombreIngresado = this.value.trim();
-
-            if (nombreIngresado.length < 3) {
-                redondearBordeInferior(nombreDiv, true);
-                limpiarSugerencias();
+            if (valorIngresado.length < 3) {
+                redondearBordeInferior(buscador, true);
+                limpiarSugerencias(sugerencias);
                 return;
             }
 
-            limpiarSugerencias();
+            limpiarSugerencias(sugerencias);
             abortController = new AbortController();
 
             try {
-                const pacientes = await obtenerPacientes(nombreIngresado, abortController.signal);
-                if (pacientes === null) return;
+                const ruta = `${url}?consulta=${encodeURIComponent(valorIngresado)}`;
+                const respuesta = await apiFetch(ruta, { signal: abortController.signal });
 
-                if (pacientes.length === 0) {
+                const entidades = Array.isArray(respuesta) ? respuesta : Object.values(respuesta)[0];
+
+                if (!entidades || entidades.length === 0) {
                     const li = document.createElement('li');
+
                     li.classList.add('bg-white', 'cursor-pointer', 'p-2', 'rounded-b-md', 'text-gray-500', 'text-left');
-                    li.textContent = 'No se encontraron pacientes';
+                    li.innerHTML = `
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Sin coincidencias
+                    `;
 
                     sugerencias.appendChild(li);
-
                 } else {
-
-                    pacientes.forEach((paciente, i) => {
-                        sugerencias.appendChild(crearLiPaciente(paciente, i === pacientes.length - 1));
+                    entidades.forEach((entidad, indice) => {
+                        const esUltima = indice === entidades.length - 1;
+                        const li = constructorLi(entidad, esUltima);
+                        sugerencias.appendChild(li);
                     })
                 }
 
-                redondearBordeInferior(nombreDiv, false);
+                redondearBordeInferior(buscador, false);
                 mostrarElemento(sugerencias, true);
 
             } catch (error) {
-
-                console.error('Error en el gestor de cambios de nombre:', error);
-                await mostrarAlerta('error', 'Error inesperado', error);
-
+                manejarErrorBusqueda(error);
             } finally {
                 abortController = null;
             }
-
         }, 80);
     });
 
-    nombreInput.addEventListener('keydown', function(event) {
-
+    input.addEventListener('keydown', function(event) {
         const pacientesSugeridos = sugerencias.querySelectorAll('li');
         const cantidad = pacientesSugeridos.length;
 
@@ -89,9 +84,9 @@ export function inicializarSugerenciasListeners(crearLiPaciente) {
     });
 
     document.addEventListener('click', function(event) {
-        if (!nombreInput.contains(event.target) && !sugerencias.contains(event.target)) {
-            redondearBordeInferior(nombreDiv, true);
-            limpiarSugerencias();
+        if (!input.contains(event.target) && !sugerencias.contains(event.target)) {
+            redondearBordeInferior(buscador, true);
+            limpiarSugerencias(sugerencias);
         }
     });
 }
@@ -101,52 +96,47 @@ function redondearBordeInferior(elemento, confirma) {
     elemento.classList.toggle('rounded-b-none', !confirma);
 }
 
-export function limpiarSugerencias() {
-    const { sugerencias } = obtenerElementosBuscador();
-
+export function limpiarSugerencias(sugerencias) {
     indiceSeleccionado = -1;
     sugerencias.innerHTML = '';
     mostrarElemento(sugerencias, false);
 }
 
-function actualizarSeleccion(pacientesSugeridos) {
-    pacientesSugeridos.forEach((sug, indice) => {
-        if (indice === indiceSeleccionado) {
-            sug.classList.add('bg-yellow-400');
-        } else {
-            sug.classList.remove('bg-yellow-400');
-        }
+function manejarErrorBusqueda(error) {
+    if (error.name === 'AbortError') return;
+
+    console.error('Error al realizar la búsqueda:', error);
+    mostrarAlerta('error', 'Ocurrió un error al intentar realizar la búsqueda', error.message);
+}
+
+function actualizarSeleccion(sugerenciasRecibidas) {
+    sugerenciasRecibidas.forEach((sugerencia, indice) => {
+        const esSeleccionado = indice === indiceSeleccionado;
+        sugerencia.classList.toggle('bg-[#F5D500]', esSeleccionado);
+        sugerencia.classList.toggle('bg-white', !esSeleccionado);
     })
 }
 
-export function habilitarNombre(confirma) {
-    const { nombreDiv, nombreInput, eliminarButton } = obtenerElementosBuscador();
-
-    nombreInput.disabled = !confirma;
-    if (confirma) {
-        nombreInput.value = '';
+export function inicializarElementosBuscador(nombre) {
+    const elementos = {
+        quitarButton: document.getElementById(`quitar-${nombre}-button`),
+        buscador: document.getElementById(`buscador-${nombre}`),
+        input: document.getElementById(`${nombre}-input`),
+        sugerencias: document.getElementById(`sugerencias-${nombre}`)
     }
 
-    nombreDiv.classList.toggle('bg-[#3A8F8E]', confirma);
-    nombreDiv.classList.toggle('bg-[#6BA9A9]', !confirma);
-
-    mostrarElemento(eliminarButton, !confirma);
+    return elementos;
 }
 
-async function obtenerPacientes(nombreIngresado, signal) {
-    try {
-        const { pacientes } = await apiFetch(
-            `/buscar-pacientes?query=${encodeURIComponent(nombreIngresado)}`,
-            { signal }
-        );
-
-        return pacientes;
-    } catch (error) {
-        if (error.name !== 'AbortError') {
-            console.error(error);
-            await mostrarAlerta('error', 'Error al buscar los pacientes', error.message);
-        }
-
-        return null;
+export function habilitarBuscador(buscador, input, quitarButton, confirma) {
+    input.disabled = !confirma;
+    if (confirma) {
+        input.value = '';
+        input.focus();
     }
+
+    buscador.classList.toggle('bg-[#3A8F8E]', confirma);
+    buscador.classList.toggle('bg-[#6BA9A9]', !confirma);
+
+    mostrarElemento(quitarButton, !confirma);
 }

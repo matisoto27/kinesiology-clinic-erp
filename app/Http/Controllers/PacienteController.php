@@ -114,8 +114,7 @@ class PacienteController extends Controller
     public function buscarPorNombre(Request $request)
     {
         try {
-
-            $nombre = $request->input('query');
+            $nombre = $request->input('consulta');
 
             if (strlen($nombre) < 2) {
                 return response()->json([

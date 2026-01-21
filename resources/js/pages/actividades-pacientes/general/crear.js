@@ -1,5 +1,6 @@
 import {
-    habilitarNombre,
+    habilitarBuscador,
+    inicializarElementosBuscador,
     inicializarSugerenciasListeners,
     limpiarSugerencias
 } from '@compartido/buscador-pacientes.js';
@@ -14,12 +15,6 @@ import {
     mostrarAlerta,
     transformarFecha
 } from '@compartido/general.js';
-
-import {
-    obtenerElementosBuscador,
-    contenedorTurnos,
-    precioInput
-} from '@compartido/referencias-dom.js';
 
 import {
     obtenerDesdeActual,
@@ -39,11 +34,11 @@ import {
     deshabilitarHoraSeleccionada,
     determinarTurnosPorSemana,
     mostrarErrorTurnosInsuficientes,
-    reiniciarPrecio,
     limpiarTurnos,
     obtenerTurnosSemanasCriticas,
     obtenerTurnosSemana,
     renderizarTurnosFijos,
+    restablecerMoneda,
     semanaCubreFrecuencia
 } from '../componentes/logica-turnos.js';
 
@@ -74,7 +69,7 @@ async function gestionarCambiosDeCantidad() {
         const precio = await apiFetch(`/actividades-combos/${idActividadCombo}/precio-vigente`);
         actualizarTotalAPagar(precio);
         precioInput.value = '$' + precio;
-        limpiarTurnos();
+        limpiarTurnos(contenedorTurnos);
 
         const turnos = await apiFetch(`/actividades/${idActividad}/turnos-disponibles?id_paciente=${idPaciente}&cantidad_semanas=4`);
         const turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, 4);
@@ -118,7 +113,7 @@ async function gestionarCambiosDeCantidad() {
                 return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
             });
 
-            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos);
+            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
 
             const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
             
@@ -262,68 +257,13 @@ async function gestionarCambiosDeCantidad() {
     }
 }
 
-const { eliminarButton, nombreInput, sugerencias } = obtenerElementosBuscador();
 const actividadSelect = document.getElementById('actividad-select');
 const cantidadSelect = document.getElementById('cantidad-select');
+const contenedorTurnos = document.getElementById('contenedor-turnos');
 const formulario = document.getElementById('formulario');
 const idPacienteInput = document.getElementById('id-paciente-input');
-const token = document.querySelector('meta[name="csrf-token"]').content;
+const precioInput = document.getElementById('precio-input');
 const turnosCheckbox = document.getElementById('turnos-checkbox');
-
-sugerencias.addEventListener('click', async function(e) {
-    try {
-
-        const elementoClickeado = e.target;
-        const nombreElemento = elementoClickeado.tagName.toLowerCase();
-
-        if (nombreElemento !== 'li') return;
-
-        const idPaciente = parseInt(elementoClickeado.dataset.idPaciente);
-        if (!idPaciente) return;
-
-        idPacienteInput.value = idPaciente;
-        nombreInput.value = elementoClickeado.textContent;
-        habilitarNombre(false);
-
-        actualizarUltimaActividadValida('');
-        limpiarSugerencias();
-
-        const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
-
-        if (actividades.length === 0) {
-            actividadSelect.innerHTML = crearOpcionPorDefecto('Paciente suscripto a todas');
-            return;
-        }
-
-        actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
-
-        actividades.forEach(actividad => {
-            agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
-        });
-
-        habilitarElemento(actividadSelect, true);
-
-    } catch (error) {
-        console.error(error);
-        mostrarAlerta('error', 'Error al seleccionar paciente', error.message);
-    }
-});
-
-eliminarButton.addEventListener('click', function() {
-    idPacienteInput.value = '';
-    habilitarNombre(true);
-
-    actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
-    habilitarElemento(actividadSelect, false);
-
-    cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
-    habilitarElemento(cantidadSelect, false);
-
-    reiniciarPrecio();
-    limpiarTurnos();
-
-    actualizarPrimeraFechaFueSeleccionada(false);
-});
 
 actividadSelect.addEventListener('change', async function() {
     try {
@@ -338,10 +278,10 @@ actividadSelect.addEventListener('change', async function() {
             return;
         }
 
-        reiniciarPrecio();
+        restablecerMoneda(precioInput);
         cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
         habilitarElemento(cantidadSelect, false);
-        limpiarTurnos();
+        limpiarTurnos(contenedorTurnos);
         actualizarUltimaActividadValida(idActividad);
 
         combos.forEach(combo => {
@@ -448,7 +388,7 @@ formulario.addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': token
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({
                 id_actividad: idActividad,
@@ -496,5 +436,64 @@ turnosCheckbox.addEventListener('change', async function() {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    inicializarSugerenciasListeners(crearLiPaciente);
+    const {
+        quitarButton: quitarPacienteButton,
+        buscador: buscadorPaciente,
+        input: pacienteInput,
+        sugerencias: sugerenciasPaciente
+    } = inicializarElementosBuscador('paciente');
+
+    inicializarSugerenciasListeners(buscadorPaciente, pacienteInput, sugerenciasPaciente, '/buscar-pacientes', crearLiPaciente);
+
+    sugerenciasPaciente.addEventListener('click', async function(e) {
+        try {
+            const elementoClickeado = e.target.closest('li');
+            if (!elementoClickeado) return;
+
+            const idPaciente = parseInt(elementoClickeado.dataset.idPaciente);
+            if (!idPaciente) return;
+
+            idPacienteInput.value = idPaciente;
+            pacienteInput.value = elementoClickeado.textContent;
+            habilitarBuscador(buscadorPaciente, pacienteInput, quitarPacienteButton, false);
+
+            actualizarUltimaActividadValida('');
+            limpiarSugerencias(this);
+
+            const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
+
+            if (actividades.length === 0) {
+                actividadSelect.innerHTML = crearOpcionPorDefecto('Paciente suscripto a todas');
+                return;
+            }
+
+            actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
+
+            actividades.forEach(actividad => {
+                agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
+            });
+
+            habilitarElemento(actividadSelect, true);
+
+        } catch (error) {
+            console.error(error);
+            mostrarAlerta('error', 'Error al seleccionar paciente', error.message);
+        }
+    });
+
+    quitarPacienteButton.addEventListener('click', function() {
+        idPacienteInput.value = '';
+        habilitarBuscador(buscadorPaciente, pacienteInput, this, true);
+
+        actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
+        habilitarElemento(actividadSelect, false);
+
+        cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
+        habilitarElemento(cantidadSelect, false);
+
+        restablecerMoneda(precioInput);
+        limpiarTurnos(contenedorTurnos);
+
+        actualizarPrimeraFechaFueSeleccionada(false);
+    });
 });

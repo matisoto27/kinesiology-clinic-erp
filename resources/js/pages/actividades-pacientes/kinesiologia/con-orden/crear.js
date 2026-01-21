@@ -1,5 +1,6 @@
 import {
-    habilitarNombre,
+    habilitarBuscador,
+    inicializarElementosBuscador,
     inicializarSugerenciasListeners,
     limpiarSugerencias
 } from '@compartido/buscador-pacientes.js';
@@ -15,11 +16,6 @@ import {
     mostrarAlerta,
     transformarFecha
 } from '@compartido/general.js';
-
-import {
-    obtenerElementosBuscador,
-    contenedorTurnos
-} from '@compartido/referencias-dom.js';
 
 import {
     obtenerDesdeActual,
@@ -55,16 +51,6 @@ function crearLiPaciente(paciente, esUltimo) {
     li.dataset.idPaciente = idPaciente;
 
     return li;
-}
-
-function manejarSeleccion(liSeleccionado) {
-    const idPaciente = parseInt(liSeleccionado.dataset.idPaciente);
-    if (!idPaciente) return;
-
-    idPacienteInput.value = idPaciente;
-    nombreInput.value = liSeleccionado.textContent;
-    habilitarNombre(false);
-    limpiarSugerencias();
 }
 
 async function actualizarPagina() {
@@ -131,7 +117,7 @@ async function actualizarPagina() {
                 return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
             });
 
-            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos);
+            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
 
             const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
 
@@ -300,52 +286,17 @@ function validarPrimeraParte() {
     return todosValidos;
 }
 
-const { eliminarButton, nombreInput, sugerencias } = obtenerElementosBuscador();
 const actividadSelect = document.getElementById('actividad-select');
 const cantidadSelect = document.getElementById('cantidad-select');
+const contenedorTurnos = document.getElementById('contenedor-turnos');
 const diaSelect = document.getElementById('dia-select');
 const formulario = document.getElementById('formulario');
 const frecuenciaSelect = document.getElementById('frecuencia-select');
 const idPacienteInput = document.getElementById('id-paciente-input');
 const mesSelect = document.getElementById('mes-select');
-const token = document.querySelector('meta[name="csrf-token"]').content;
 const turnosCheckbox = document.getElementById('turnos-checkbox');
 
-const elementosRequeridos = [actividadSelect, mesSelect, diaSelect, cantidadSelect, frecuenciaSelect, turnosCheckbox];
-
-document.addEventListener('DOMContentLoaded', async function() {
-    try {
-        inicializarSugerenciasListeners(crearLiPaciente);
-
-        const actividades = await apiFetch('/actividades?id_tipo_actividad=2');
-        actividades.forEach(actividad => {
-            agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
-        });
-
-        [actividadSelect, cantidadSelect, frecuenciaSelect, turnosCheckbox].forEach(elemento => {
-            elemento.addEventListener('change', actualizarPagina);
-        });
-
-    } catch (error) {
-        console.error(error);
-        mostrarAlerta('error', 'Error al cargar la página', error.message);
-    }
-});
-
-sugerencias.addEventListener('click', function(e) {
-    const liSeleccionado = e.target.closest('li');
-    if (!liSeleccionado) return;
-
-    manejarSeleccion(liSeleccionado);
-    actualizarPagina();
-});
-
-eliminarButton.addEventListener('click', function() {
-    idPacienteInput.value = '';
-    habilitarNombre(true);
-    limpiarTurnos();
-    actualizarPrimeraFechaFueSeleccionada(false);
-});
+const elementosRequeridos = [actividadSelect, cantidadSelect, diaSelect, frecuenciaSelect, mesSelect, turnosCheckbox];
 
 mesSelect.addEventListener('change', function() {
     actualizarDiasDelMes(this, diaSelect);
@@ -443,7 +394,7 @@ formulario.addEventListener('submit', async (e) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': token
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
             body: JSON.stringify({
                 id_actividad: idActividad,
@@ -472,4 +423,51 @@ formulario.addEventListener('submit', async (e) => {
         console.error(error);
         mostrarAlerta('error', 'Error al registrar los turnos', error.message);
     }
+});
+
+document.addEventListener('DOMContentLoaded', async function() {
+    const {
+        quitarButton: quitarPacienteButton,
+        buscador: buscadorPaciente,
+        input: pacienteInput,
+        sugerencias: sugerenciasPaciente
+    } = inicializarElementosBuscador('paciente');
+
+    try {
+        const actividades = await apiFetch('/actividades?id_tipo_actividad=2');
+        actividades.forEach(actividad => {
+            agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
+        });
+    } catch (error) {
+        console.error(error);
+        mostrarAlerta('error', 'Error al cargar los tratamientos', error.message);
+    }
+
+    [actividadSelect, cantidadSelect, frecuenciaSelect, turnosCheckbox].forEach(elemento => {
+        elemento.addEventListener('change', actualizarPagina);
+    });
+
+    inicializarSugerenciasListeners(buscadorPaciente, pacienteInput, sugerenciasPaciente, '/buscar-pacientes', crearLiPaciente);
+
+    sugerenciasPaciente.addEventListener('click', function(e) {
+        const liSeleccionado = e.target.closest('li');
+        if (!liSeleccionado) return;
+
+        const idPaciente = parseInt(liSeleccionado.dataset.idPaciente);
+        if (!idPaciente) return;
+
+        idPacienteInput.value = idPaciente;
+        pacienteInput.value = liSeleccionado.textContent;
+        habilitarBuscador(buscadorPaciente, pacienteInput, quitarPacienteButton, false);
+        limpiarSugerencias(sugerenciasPaciente);
+
+        actualizarPagina();
+    });
+
+    quitarPacienteButton.addEventListener('click', function() {
+        idPacienteInput.value = '';
+        habilitarBuscador(buscadorPaciente, pacienteInput, this, true);
+        limpiarTurnos(contenedorTurnos);
+        actualizarPrimeraFechaFueSeleccionada(false);
+    });
 });

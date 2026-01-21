@@ -10,24 +10,7 @@
             <h2 class="titulo-formulario">Registrar comienzo de actividad</h2>
 
             <div class="mb-4 flex flex-col w-[calc((100%-2.5rem)/3)]">
-
-                <div class="flex items-center gap-1">
-                    <label for="nombre-input" class="etiqueta-formulario">Paciente</label>
-                    <button type="button" class="cursor-pointer hidden" id="eliminar-button">
-                        <i class="fa-solid fa-xmark icono-eliminar"></i>
-                    </button>
-                </div>
-
-                <div id="nombre-div">
-                    <div class="flex items-center">
-                        <i class="fa-solid fa-magnifying-glass icono-lupa"></i>
-                        <input type="text" placeholder="Ingrese el nombre" id="nombre-input" required>
-                    </div>
-                    <ul class="hidden" id="sugerencias">
-                        <!-- Pacientes sugeridos -->
-                    </ul>
-                </div>
-
+                <x-buscador nombre="paciente" />
             </div>
 
             <div class="fila-formulario">
@@ -68,7 +51,6 @@
 @endsection
 
 @push('scripts')
-    @vite('resources/js/shared.js')
     @vite('resources/js/pages/actividades-pacientes/general/crear.js')
     <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Icono Lupa -->
 @endpush

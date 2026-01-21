@@ -20,24 +20,7 @@
             <div class="mb-4 flex justify-between">
 
                 <div class="columna-campo">
-                    <div class="flex items-center gap-1">
-                        <label for="nombre-input" class="etiqueta-formulario">Paciente</label>
-                        @if($paciente)
-                            <button type="button" class="cursor-pointer" id="eliminar-button">
-                                <i class="fa-solid fa-xmark icono-eliminar"></i>
-                            </button>
-                        @endif
-                    </div>
-
-                    <div class="{{ $paciente ? 'bg-[#6BA9A9]' : 'bg-[#3A8F8E]' }}" id="nombre-div">
-                        <div class="flex items-center">
-                            <i class="fa-solid fa-magnifying-glass icono-lupa"></i>
-                            <input type="text" placeholder="Ingrese el nombre" value="{{ $paciente ? $paciente->apellido . ' ' . $paciente->nombre : '' }}" id="nombre-input" {{ $paciente ? 'disabled' : '' }} required>
-                        </div>
-                        <ul class="hidden" id="sugerencias">
-                            <!-- Pacientes sugeridos -->
-                        </ul>
-                    </div>
+                    <x-buscador nombre="paciente" :seleccionado="$paciente ? $paciente->apellido . ' ' . $paciente->nombre : null" />
                 </div>
 
                 <div class="columna-campo">

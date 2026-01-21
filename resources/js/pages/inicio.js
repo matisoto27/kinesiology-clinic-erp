@@ -1,6 +1,5 @@
 import { habilitarElemento } from '@compartido/general.js';
-import { inicializarSugerenciasListeners } from '@compartido/buscador-pacientes.js';
-import { obtenerElementosBuscador } from '@compartido/referencias-dom.js';
+import { inicializarElementosBuscador, inicializarSugerenciasListeners } from '@compartido/buscador-pacientes.js';
 
 function actualizarFechaHora() {
     const ahora = new Date();
@@ -30,7 +29,6 @@ function enviarFormulario() {
 }
 
 function crearLiPaciente(pac, esUltimo) {
-
     const li = document.createElement('li');
 
     li.classList.add('p-2', 'cursor-pointer', 'text-left', 'bg-white', 'hover:bg-[#F5D500]', 'text-black');
@@ -49,19 +47,11 @@ function crearLiPaciente(pac, esUltimo) {
 const actividadSelect = document.getElementById('actividad-select');
 const fecha = document.getElementById('fecha');
 const formulario = document.getElementById('filtros-form');
-const { eliminarButton } = obtenerElementosBuscador();
 const horaActual = document.getElementById('hora-actual');
 const idPacienteInput = document.getElementById('id-paciente-input');
 const tabla = document.getElementById('turnos-tbody');
 
 actividadSelect.addEventListener('change', enviarFormulario);
-
-if (eliminarButton) {
-    eliminarButton.addEventListener('click', function() {
-        idPacienteInput.value = 0;
-        enviarFormulario();
-    });
-};
 
 tabla.addEventListener('click', async (event) => {
     const boton = event.target.closest('.turno-button');
@@ -100,6 +90,21 @@ tabla.addEventListener('click', async (event) => {
 });
 
 document.addEventListener('DOMContentLoaded', function() {
-    inicializarSugerenciasListeners(crearLiPaciente);
+    const {
+        quitarButton: quitarPacienteButton,
+        buscador: buscadorPaciente,
+        input: pacienteInput,
+        sugerencias: sugerenciasPaciente
+    } = inicializarElementosBuscador('paciente');
+
     sincronizarHora();
+
+    inicializarSugerenciasListeners(buscadorPaciente, pacienteInput, sugerenciasPaciente, '/buscar-pacientes', crearLiPaciente);
+
+    if (quitarPacienteButton) {
+        quitarPacienteButton.addEventListener('click', function() {
+            idPacienteInput.value = 0;
+            enviarFormulario();
+        });
+    };
 });
