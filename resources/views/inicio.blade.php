@@ -112,6 +112,4 @@
 
 @push('scripts')
     @vite('resources/js/pages/inicio.js')
-    @vite('resources/js/compartido/general.js')
-    <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Icono Lupa -->
 @endpush

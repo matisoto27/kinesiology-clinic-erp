@@ -1,12 +1,15 @@
 @props(['nombre', 'seleccionado' => null])
 
 @php
+    $idSeleccionado = 'id-' . $nombre . '-seleccionado';
     $textoLabel = ucfirst($nombre);
     $idQuitarButton = 'quitar-' . $nombre . '-button';
     $idInput = $nombre . '-input';
     $idDiv = 'buscador-' . $nombre;
     $idSugerencias = 'sugerencias-' . $nombre;
 @endphp
+
+<input type="hidden" id="{{ $idSeleccionado }}">
 
 <div class="flex items-center gap-1">
     <label for="{{ $idInput }}" class="etiqueta-formulario">{{ $textoLabel }}</label>
@@ -32,3 +35,9 @@
         <!-- Sugerencias -->
     </ul>
 </div>
+
+@once
+    @push('scripts')
+        <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous" defer></script>
+    @endpush
+@endonce

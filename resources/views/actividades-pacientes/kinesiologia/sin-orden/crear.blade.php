@@ -2,10 +2,8 @@
 
 @section('content')
     <div class="contenedor max-w-3xl">
-        <form data-url="{{ route('actividades-pacientes.almacenar') }}" method="POST" class="formulario" id="formulario">
+        <form data-url="{{ route('actividades-pacientes.almacenar') }}" data-url-pago="{{ route('actividades-pacientes.pagos.crear', ['id' => '__ID__']) }}" method="POST" class="formulario" id="formulario">
             @csrf
-
-            <input type="hidden" name="paciente" id="id-paciente-input" required>
 
             <h2 class="titulo-formulario">Turnos kinesiología sin orden médica</h2>
 
@@ -60,5 +58,4 @@
 
 @push('scripts')
     @vite('resources/js/pages/actividades-pacientes/kinesiologia/sin-orden/crear.js')
-    <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Icono Lupa -->
 @endpush

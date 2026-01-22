@@ -8,16 +8,16 @@ export async function mostrarAlerta(icono, titulo, mensaje) {
 
 /**
  * @param {string} url La URL a la que se realiza la petición.
- * @param {object} [options={}] Las opciones estándar de la función fetch.
+ * @param {object} [opciones={}] Las opciones estándar de la función fetch.
  * @returns {Promise<any>}
  */
-export async function apiFetch(url, options = {}) {
+export async function apiFetch(url, opciones = {}) {
     let respuesta;
     let datos = null;
 
     try {
 
-        respuesta = await fetch(url, options);
+        respuesta = await fetch(url, opciones);
 
     } catch (error) {
 

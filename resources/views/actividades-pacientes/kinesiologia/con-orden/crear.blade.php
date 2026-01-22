@@ -5,8 +5,6 @@
         <form data-url="{{ route('actividades-pacientes.almacenar') }}" method="POST" class="formulario" id="formulario">
             @csrf
 
-            <input type="hidden" name="paciente" id="id-paciente-input">
-
             <h2 class="titulo-formulario">Turnos kinesiología con orden médica</h2>
 
             <div class="fila-formulario">
@@ -97,5 +95,4 @@
 
 @push('scripts')
     @vite('resources/js/pages/actividades-pacientes/kinesiologia/con-orden/crear.js')
-    <script src="https://kit.fontawesome.com/a186e728b7.js" crossorigin="anonymous"></script> <!-- Icono Lupa -->
 @endpush

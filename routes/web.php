@@ -39,6 +39,7 @@ Route::controller(PacienteController::class)->group(function () {
 
 Route::controller(PagoController::class)->group(function () {
     Route::get('/pagos/crear', 'crear')->name('pagos.crear');
+    Route::get('/actividades-pacientes/{id}/pagos/crear', 'crear')->name('actividades-pacientes.pagos.crear');
     Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
 });
 
