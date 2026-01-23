@@ -1,7 +1,8 @@
-@props(['nombre', 'seleccionado' => null])
+@props(['nombre', 'seleccionado' => null, 'deshabilitado' => false])
 
 @php
     $idSeleccionado = 'id-' . $nombre . '-seleccionado';
+    $idName = 'id_' . str_replace('-', '_', $nombre);
     $textoLabel = ucfirst($nombre);
     $idQuitarButton = 'quitar-' . $nombre . '-button';
     $idInput = $nombre . '-input';
@@ -9,7 +10,7 @@
     $idSugerencias = 'sugerencias-' . $nombre;
 @endphp
 
-<input type="hidden" id="{{ $idSeleccionado }}">
+<input type="hidden" name="{{ $idName }}" id="{{ $idSeleccionado }}">
 
 <div class="flex items-center gap-1">
     <label for="{{ $idInput }}" class="etiqueta-formulario">{{ $textoLabel }}</label>
@@ -18,14 +19,14 @@
     </button>
 </div>
 
-<div @class(['buscador', 'bg-[#6BA9A9]' => $seleccionado]) id="{{ $idDiv }}">
+<div @class(['buscador', 'bg-[#6BA9A9]' => $seleccionado || $deshabilitado]) id="{{ $idDiv }}">
     <div class="flex items-center">
         <i class="fa-solid fa-magnifying-glass icono-lupa"></i>
         <input
             type="text"
             {{ $attributes->merge(['placeholder' => 'Ingrese el nombre']) }}
             value="{{ $seleccionado }}"
-            {{ $seleccionado ? 'disabled' : '' }}
+            {{ $seleccionado || $deshabilitado ? 'disabled' : '' }}
             id="{{ $idInput }}"
             autocomplete="off"
             required

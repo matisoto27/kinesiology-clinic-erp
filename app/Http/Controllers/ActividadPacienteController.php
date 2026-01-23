@@ -34,10 +34,13 @@ class ActividadPacienteController extends Controller
     public function aplicarOrden()
     {
         $pendientesDePago = ActividadPaciente::select('actividades_pacientes.*')
-            ->with(['paciente:id,nombre,apellido,sesiones_a_favor', 'actividad'])
+            ->with(['actividad:id,nombre', 'paciente:id,nombre,apellido,sesiones_a_favor'])
             ->conActividad()
             ->deTipo(2)
             ->whereNull('actividades_pacientes.sesiones_cubiertas')
+            ->whereHas('paciente', function($consulta) {
+                $consulta->tieneObraSocial();
+            })
             ->doesntHave('pagos')
             ->get();
 

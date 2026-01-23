@@ -113,35 +113,38 @@ class PacienteController extends Controller
 
     public function buscarPorNombre(Request $request)
     {
-        try {
-            $nombre = $request->input('consulta');
+        $nombre = $request->input('consulta', '');
 
+        try {
             if (strlen($nombre) < 2) {
-                return response()->json([
-                    'pacientes' => []
-                ], 200);
+                return response()->json(['pacientes' => []], 200);
             }
 
-            $pacientes = Paciente::select('id', 'nombre', 'apellido')->where('nombre', 'like', "$nombre%")
+            $consultaPacientes = Paciente::select('id', 'nombre', 'apellido')
+                ->where('nombre', 'like', "$nombre%")
                 ->limit(10)
                 ->orderBy('apellido')
-                ->orderBy('nombre')
-                ->get();
+                ->orderBy('nombre');
 
-            return response()->json([
-                'pacientes' => $pacientes
-            ], 200);
+            if ($request->boolean('incluir_obra')) {
+                $consultaPacientes->with([
+                    'afiliacionVigente' => function($consulta) {
+                        $consulta->select('id_obra_social', 'id_paciente');
+                    }
+                ]);
+            }
+
+            $pacientes = $consultaPacientes->get();
+
+            return response()->json(['pacientes' => $pacientes], 200);
 
         } catch (Throwable $ex) {
-
             Log::error('[PacienteController@buscarPorNombre]', [
-                'nombre' => $nombre,
-                'excepcion' => $ex->getMessage()
+                'consulta' => $request->input('consulta', ''),
+                'excepción' => $ex->getMessage()
             ]);
 
-            return response()->json([
-                'error' => 'Falla interna del servidor. Por favor, inténtelo de nuevo más tarde.'
-            ], 500);
+            return response()->json(['error' => 'Falla interna del servidor. Por favor, inténtelo de nuevo más tarde.'], 500);
         }
     }
 }

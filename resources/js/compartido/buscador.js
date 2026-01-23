@@ -33,7 +33,8 @@ export function configurarBuscador(nombre, url, constructorLi) {
             abortController = new AbortController();
 
             try {
-                const ruta = `${url}?consulta=${encodeURIComponent(valorIngresado)}`;
+                const separador = url.includes('?') ? '&' : '?';
+                const ruta = `${url}${separador}consulta=${encodeURIComponent(valorIngresado)}`;
                 const respuesta = await apiFetch(ruta, { signal: abortController.signal });
 
                 const entidades = Array.isArray(respuesta) ? respuesta : Object.values(respuesta)[0];
@@ -60,7 +61,10 @@ export function configurarBuscador(nombre, url, constructorLi) {
                 mostrarElemento(sugerencias, true);
 
             } catch (error) {
-                manejarErrorBusqueda(error);
+                if (error.name === 'AbortError') return;
+
+                console.error('Error al realizar la búsqueda:', error);
+                mostrarAlerta('error', 'Error al realizar la búsqueda', error.message);
             } finally {
                 abortController = null;
             }
@@ -124,13 +128,6 @@ function redondearBordeInferior(elemento, confirma) {
 export function limpiarSugerencias(sugerencias) {
     sugerencias.innerHTML = '';
     mostrarElemento(sugerencias, false);
-}
-
-function manejarErrorBusqueda(error) {
-    if (error.name === 'AbortError') return;
-
-    console.error('Error al realizar la búsqueda:', error);
-    mostrarAlerta('error', 'Ocurrió un error al intentar realizar la búsqueda', error.message);
 }
 
 function actualizarSeleccion(sugerenciasRecibidas) {

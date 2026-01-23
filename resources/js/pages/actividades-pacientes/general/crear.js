@@ -61,16 +61,8 @@ async function manejarCambio() {
 }
 
 function alternarEstadoCarga(estaCargando) {
-    for (const el of ELEMENTOS_CARGA) {
-        if (!el) continue;
-
-        el.disabled = estaCargando;
-
-        Object.assign(el.style, {
-            opacity: estaCargando ? '0.5' : '1',
-            transition: 'opacity 0.2s ease'
-        });
-    }
+    cantidadSelect.disabled = estaCargando;
+    turnosCheckbox.disabled = estaCargando;
 }
 
 async function gestionarCambiosDeCantidad() {
@@ -295,8 +287,6 @@ const {
     },
     habilitarBuscador
 } = configurarBuscador('paciente', '/buscar-pacientes', crearLiPaciente);
-
-const ELEMENTOS_CARGA = [cantidadSelect, turnosCheckbox];
 
 actividadSelect.addEventListener('change', async function() {
     const idActividad = obtenerValor(this);

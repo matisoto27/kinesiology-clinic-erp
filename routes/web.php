@@ -4,6 +4,8 @@ use App\Http\Controllers\ActividadComboController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ActividadPacienteController;
 use App\Http\Controllers\NotaTurnoController;
+use App\Http\Controllers\ObraSocialController;
+use App\Http\Controllers\ObraSocialPacienteController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PrecioController;
@@ -27,6 +29,15 @@ Route::controller(ActividadPacienteController::class)->group(function () {
     Route::get('/actividades-pacientes/aplicar-orden', 'aplicarOrden')->name('actividades-pacientes.aplicar-orden');
     Route::post('/actividades-pacientes', 'almacenar')->name('actividades-pacientes.almacenar');
     Route::post('/actividades-pacientes/actualizar-orden-medica', 'actualizarOrdenMedica')->name('actividades-pacientes.actualizar-orden-medica');
+});
+
+Route::controller(ObraSocialController::class)->group(function () {
+    Route::get('/buscar-obras-sociales', 'buscarPorNombre');
+});
+
+Route::controller(ObraSocialPacienteController::class)->group(function () {
+    Route::get('/obras-sociales-pacientes/crear', 'crear');
+    Route::post('/obras-sociales-pacientes', 'almacenar')->name('obras-sociales-pacientes.almacenar');
 });
 
 Route::controller(PacienteController::class)->group(function () {

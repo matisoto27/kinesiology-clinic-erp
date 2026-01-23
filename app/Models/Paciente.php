@@ -3,7 +3,10 @@
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -29,6 +32,21 @@ class Paciente extends Model
         'fecha_ingreso' => 'date',
         'activo' => 'boolean'
     ];
+
+    public function historialAfiliaciones(): HasMany
+    {
+        return $this->hasMany(ObraSocialPaciente::class, 'id_paciente');
+    }
+
+    public function afiliacionVigente(): HasOne
+    {
+        return $this->hasOne(ObraSocialPaciente::class, 'id_paciente')->activo();
+    }
+
+    public function scopeTieneObraSocial(Builder $consulta): Builder
+    {
+        return $consulta->whereHas('afiliacionVigente');
+    }
 
     public function obtenerActividadesGeneralesSinSuscripcion(): Collection
     {

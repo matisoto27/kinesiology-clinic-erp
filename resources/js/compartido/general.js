@@ -16,11 +16,8 @@ export async function apiFetch(url, opciones = {}) {
     let datos = null;
 
     try {
-
         respuesta = await fetch(url, opciones);
-
     } catch (error) {
-
         if (error.name === 'AbortError') throw error;
         throw new Error('Error al conectar con el servidor.');
     }
@@ -34,7 +31,6 @@ export async function apiFetch(url, opciones = {}) {
     }
 
     if (!respuesta.ok) {
-
         const errores = datos?.errors;
         let mensaje;
 

@@ -36,6 +36,10 @@
 
     .checkbox-formulario {
         @apply accent-[#F5D500] h-4 w-4 cursor-pointer;
+
+        &:disabled {
+            @apply cursor-not-allowed opacity-50;
+        }
     }
 
     .fila-formulario {
