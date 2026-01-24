@@ -12,23 +12,20 @@
             </div>
             <p class="text-6xl" id="hora-actual">{{ Carbon::now()->format('H:i') }}</p>
         </div>
-        
+
         <form method="GET" id="filtros-form">
-
-            <input type="hidden" value="{{ $paciente->id ?? 0 }}" name="paciente" id="id-paciente-input">
-
             <div class="mb-4 flex justify-between">
 
                 <div class="columna-campo">
-                    <x-buscador nombre="paciente" :seleccionado="$paciente ? $paciente->apellido . ' ' . $paciente->nombre : null" />
+                    <x-buscador entidad="paciente" :valor="$paciente->id ?? 0" :texto="$paciente ? $paciente->apellido . ' ' . $paciente->nombre : null" />
                 </div>
 
                 <div class="columna-campo">
                     <label for="actividad-select" class="etiqueta-formulario">Actividad</label>
-                    <select class="entrada" name="actividad" id="actividad-select">
+                    <select class="entrada" name="id_actividad" id="actividad-select">
                         <option value="0">Todas</option>
                         @foreach($actividades as $act)
-                            <option value="{{ $act->id }}" @if ($act->id == request('actividad', 0)) selected @endif>
+                            <option value="{{ $act->id }}" @if ($act->id == request('id_actividad', 0)) selected @endif>
                                 {{ $act->nombre }}
                             </option>
                         @endforeach
@@ -36,7 +33,6 @@
                 </div>
 
             </div>
-
         </form>
 
         <table class="my-5 overflow-hidden rounded-xl w-full">

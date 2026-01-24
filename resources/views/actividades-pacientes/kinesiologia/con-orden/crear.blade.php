@@ -10,7 +10,7 @@
             <div class="fila-formulario">
 
                 <div class="columna-campo flex-1">
-                    <x-buscador nombre="paciente" />
+                    <x-buscador entidad="paciente" />
                 </div>
 
                 <div class="columna-campo flex-1">

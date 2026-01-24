@@ -9,13 +9,13 @@
 
             <div class="fila-formulario">
                 <div class="columna-campo flex-1">
-                    <x-buscador nombre="paciente" />
+                    <x-buscador entidad="paciente" />
                 </div>
             </div>
 
             <div class="fila-formulario mb-10">
                 <div class="columna-campo flex-1">
-                    <x-buscador nombre="obra-social" :deshabilitado="true" />
+                    <x-buscador entidad="obra-social" :deshabilitado="true" />
                 </div>
             </div>
 

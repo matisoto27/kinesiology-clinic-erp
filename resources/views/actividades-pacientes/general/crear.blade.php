@@ -8,7 +8,7 @@
             <h2 class="titulo-formulario">Registrar comienzo de actividad</h2>
 
             <div class="mb-4 flex flex-col w-[calc((100%-2.5rem)/3)]">
-                <x-buscador nombre="paciente" />
+                <x-buscador entidad="paciente" />
             </div>
 
             <div class="fila-formulario">

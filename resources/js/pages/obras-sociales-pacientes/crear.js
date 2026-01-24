@@ -72,8 +72,6 @@ sugerenciasObra.addEventListener('click', async function(e) {
 });
 
 sugerenciasPaciente.addEventListener('click', function(e) {
-    idObraPaciente = null;
-
     const elementoClickeado = e.target.closest('li');
     if (!elementoClickeado) return;
 
@@ -98,6 +96,8 @@ quitarObraButton.addEventListener('click', function() {
 });
 
 quitarPacienteButton.addEventListener('click', function() {
+    idObraPaciente = null;
+
     idPacienteSeleccionado.value = '';
     habilitarBuscadorPaciente(true);
 

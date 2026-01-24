@@ -18,15 +18,14 @@ class TurnoController extends Controller
 
         $consulta = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])->whereBetween('fecha_hora', [$limInferior, $limSuperior]);
 
-        if ($idActividad = request('actividad')) {
-            if ($idActividad != 0 && $idActividad < 4) {
-                $consulta->whereHas('actividadPaciente', fn($q) => $q->where('id_actividad', $idActividad));
-            }
+        if ($idActividad = request('id_actividad')) {
+            $consulta->whereHas('actividadPaciente', fn($q) => $q->where('id_actividad', $idActividad));
         }
 
         $paciente = null;
-        if ($idPaciente = request('paciente')) {
-            if ($idPaciente != 0) {
+
+        if ($idPaciente = request('id_paciente')) {
+            if ($idPaciente > 0) {
                 $consulta->whereHas('actividadPaciente', fn($q) => $q->where('id_paciente', $idPaciente));
                 $paciente = Paciente::find($idPaciente);
             }

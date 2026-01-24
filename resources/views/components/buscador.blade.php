@@ -1,32 +1,32 @@
-@props(['nombre', 'seleccionado' => null, 'deshabilitado' => false])
+@props(['entidad', 'valor' => null, 'texto' => null, 'deshabilitado' => false])
 
 @php
-    $idSeleccionado = 'id-' . $nombre . '-seleccionado';
-    $idName = 'id_' . str_replace('-', '_', $nombre);
-    $textoLabel = ucfirst($nombre);
-    $idQuitarButton = 'quitar-' . $nombre . '-button';
-    $idInput = $nombre . '-input';
-    $idDiv = 'buscador-' . $nombre;
-    $idSugerencias = 'sugerencias-' . $nombre;
+    $idSeleccionado = 'id-' . $entidad . '-seleccionado';
+    $nombreInputHidden = 'id_' . str_replace('-', '_', $entidad);
+    $textoLabel = ucwords(str_replace('-', ' ', $entidad));
+    $idQuitarButton = 'quitar-' . $entidad . '-button';
+    $idInput = $entidad . '-input';
+    $idDiv = 'buscador-' . $entidad;
+    $idSugerencias = 'sugerencias-' . $entidad;
 @endphp
 
-<input type="hidden" name="{{ $idName }}" id="{{ $idSeleccionado }}">
+<input type="hidden" value="{{ $valor }}" name="{{ $nombreInputHidden }}" id="{{ $idSeleccionado }}">
 
 <div class="flex items-center gap-1">
     <label for="{{ $idInput }}" class="etiqueta-formulario">{{ $textoLabel }}</label>
-    <button type="button" @class(['cursor-pointer', 'hidden' => !$seleccionado]) id="{{ $idQuitarButton }}">
+    <button type="button" @class(['cursor-pointer', 'hidden' => !$texto]) id="{{ $idQuitarButton }}">
         <i class="fa-solid fa-xmark icono-quitar"></i>
     </button>
 </div>
 
-<div @class(['buscador', 'bg-[#6BA9A9]' => $seleccionado || $deshabilitado]) id="{{ $idDiv }}">
+<div @class(['buscador', 'bg-[#6BA9A9]' => $texto || $deshabilitado]) id="{{ $idDiv }}">
     <div class="flex items-center">
         <i class="fa-solid fa-magnifying-glass icono-lupa"></i>
         <input
             type="text"
             {{ $attributes->merge(['placeholder' => 'Ingrese el nombre']) }}
-            value="{{ $seleccionado }}"
-            {{ $seleccionado || $deshabilitado ? 'disabled' : '' }}
+            value="{{ $texto }}"
+            {{ $texto || $deshabilitado ? 'disabled' : '' }}
             id="{{ $idInput }}"
             autocomplete="off"
             required
