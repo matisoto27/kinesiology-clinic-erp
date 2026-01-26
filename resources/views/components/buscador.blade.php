@@ -1,4 +1,9 @@
-@props(['entidad', 'valor' => null, 'texto' => null, 'deshabilitado' => false])
+@props([
+    'entidad',
+    'valor' => null,
+    'texto' => null,
+    'deshabilitado' => false
+])
 
 @php
     $idSeleccionado = 'id-' . $entidad . '-seleccionado';

@@ -5,33 +5,46 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class Paciente extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'pacientes';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'dni',
         'nombre',
         'apellido',
         'fecha_nac',
+        'domicilio',
         'telefono',
-        'fecha_ingreso',
-        'sesiones_a_favor',
-        'activo'
+        'profesion',
+        'actividad_fisica',
+        'es_adulto_mayor',
+        'vive_con',
+        'sesiones_a_favor'
     ];
 
-    protected $casts = [
-        'fecha_nac' => 'date',
-        'fecha_ingreso' => 'date',
-        'activo' => 'boolean'
-    ];
+    protected $casts = ['fecha_nac' => 'date'];
+
+    public function contactosEmergencia(): HasMany
+    {
+        return $this->hasMany(ContactoEmergencia::class, 'id_paciente');
+    }
+
+    public function sintomas(): BelongsToMany
+    {
+        return $this->belongsToMany(Sintoma::class, 'sintomas_pacientes', 'id_paciente', 'id_sintoma')->withPivot('fecha_desde');
+    }
 
     public function historialAfiliaciones(): HasMany
     {

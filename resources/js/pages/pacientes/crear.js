@@ -1,18 +1,26 @@
-import { mostrarElemento } from '@compartido/general.js';
+document.addEventListener('alpine:init', () => {
+    Alpine.data('formularioPaciente', (esAdultoInicial, viveSoloInicial, contactosInicial) => ({
+        esAdulto: esAdultoInicial,
+        viveSolo: viveSoloInicial,
+        contactos: contactosInicial,
 
-const modalExito = document.getElementById('modal-exito');
-const volverButton = document.getElementById('volver-button');
+        init() {
+            this.$watch('esAdulto', (val) => {
+                if (!val) {
+                    this.contactos = [];
+                    this.viveSolo = true;
+                }
+            });
+        },
 
-if (modalExito) {
-    modalExito.addEventListener('click', function(event) {
-        if (event.target === this) {
-            mostrarElemento(this, false);
+        agregarContacto() {
+            if (this.contactos.length < 3) {
+                this.contactos.push({
+                    nombre: '',
+                    telefono: '',
+                    vinculo: ''
+                });
+            }
         }
-    });
-}
-
-if (volverButton) {
-    volverButton.addEventListener('click', function() {
-        mostrarElemento(modalExito, false);
-    });
-}
+    }))
+})

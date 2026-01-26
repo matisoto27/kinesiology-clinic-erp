@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\AlmacenarPacienteRequest;
 use App\Models\Paciente;
 use App\Models\SintomaPaciente;
 use Carbon\Carbon;
@@ -18,42 +19,24 @@ class PacienteController extends Controller
         return view('pacientes.crear');
     }
 
-    public function almacenar(Request $request)
+    public function almacenar(AlmacenarPacienteRequest $request)
     {
-        $validados = $request->validate([
-            'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
-            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
-            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
-            'fecha_nac' => 'required|date',
-            'telefono' => 'required|numeric|digits_between:8,20',
-            'sintomas' => 'array',
-            'sintomas.*' => 'numeric|exists:sintomas,id'
-        ], [
-            'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
-            'apellido.regex' => 'El apellido solo puede contener letras.'
-        ], [
-            'dni' => 'DNI',
-            'fecha_nac' => 'fecha de nacimiento'
-        ]);
-        $ahora = Carbon::now();
+        $validados = $request->validated();
 
         DB::beginTransaction();
 
         try {
-            $validados['fecha_ingreso'] = $ahora;
-            $validados['sesiones_a_favor'] = 0;
-            $validados['activo'] = 1;
-
+            $contactos = $validados['contactos'] ?? [];
             $sintomas = $validados['sintomas'] ?? [];
 
             $paciente = Paciente::create($validados);
 
-            foreach ($sintomas as $idSintoma) {
-                SintomaPaciente::create([
-                    'id_sintoma' => $idSintoma,
-                    'id_paciente' => $paciente->id,
-                    'fecha_desde' => $ahora
-                ]);
+            if (!empty($contactos)) {
+                $paciente->contactosEmergencia()->createMany($contactos);
+            }
+
+            if (!empty($sintomas)) {
+                $paciente->sintomas()->attach($sintomas, ['fecha_desde' => Carbon::now()]);
             }
 
             DB::commit();
@@ -61,13 +44,10 @@ class PacienteController extends Controller
             return redirect()->route('inicio')->with('exito', '¡El paciente ha sido registrado con éxito!');
 
         } catch (Throwable $ex) {
-
-            $mensajeError = $ex->getMessage();
-
             DB::rollBack();
-            Log::error('[PacienteController@almacenar] Error al registrar el paciente', ['excepción' => $mensajeError]);
+            Log::error('[PacienteController@almacenar] Error al crear el paciente', ['excepción' => $ex->getMessage()]);
 
-            return back()->with('error', $mensajeError)->withInput();
+            return back()->withErrors(['error' => 'Ocurrió un error inesperado al intentar registrar el paciente.']);
         }
     }
 
