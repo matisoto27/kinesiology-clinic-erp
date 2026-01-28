@@ -22,9 +22,7 @@
             placeholder="{{ $placeholder }}"
         @endif
         class="entrada-simple{{ $errors->has($name) ? ' border-red-500 border-2' : '' }}"
-        @if($valorActual)
-            value="{{ $valorActual }}"
-        @endif
+        value="{{ $valorActual }}"
         name="{{ $name }}"
         id="{{ $id }}"
         {{ $disabled ? 'disabled' : '' }}
@@ -32,6 +30,6 @@
     >
 
     @error($name)
-        <div class="mt-1 text-red-500 text-sm">{{ $message }}</div>
+        <span class="mt-1 text-red-500 text-sm">{{ $message }}</span>
     @enderror
 </div>

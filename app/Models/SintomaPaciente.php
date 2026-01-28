@@ -2,23 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class SintomaPaciente extends Model
+class SintomaPaciente extends Pivot
 {
     protected $table = 'sintomas_pacientes';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'id_sintoma',
         'id_paciente',
-        'fecha_desde',
         'fecha_hasta'
     ];
 
     protected $casts = [
-        'fecha_desde' => 'datetime',
         'fecha_hasta' => 'datetime'
     ];
 

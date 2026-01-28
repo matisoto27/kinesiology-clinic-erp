@@ -46,6 +46,9 @@ Route::controller(PacienteController::class)->group(function () {
     Route::post('/pacientes', 'almacenar')->name('pacientes.almacenar');
     Route::get('/buscar-pacientes', 'buscarPorNombre');
     Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
+    Route::get('/pacientes/{paciente}/editar', 'editar')->name('pacientes.editar');
+    Route::put('/pacientes/{paciente}', 'actualizar')->name('pacientes.actualizar');
+    Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
 });
 
 Route::controller(PagoController::class)->group(function () {

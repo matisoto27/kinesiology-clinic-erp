@@ -47,7 +47,7 @@ class PacienteController extends Controller
             DB::rollBack();
             Log::error('[PacienteController@almacenar] Error al crear el paciente', ['excepción' => $ex->getMessage()]);
 
-            return back()->withErrors(['error' => 'Ocurrió un error inesperado al intentar registrar el paciente.']);
+            return back()->withInput()->with('error', 'Ocurrió un error inesperado al intentar registrar el paciente.');
         }
     }
 
@@ -87,7 +87,7 @@ class PacienteController extends Controller
 
     public function inicio()
     {
-        $pacientes = Paciente::all();
+        $pacientes = Paciente::all()->toArray();
         return view('pacientes.inicio', compact('pacientes'));
     }
 
@@ -126,5 +126,99 @@ class PacienteController extends Controller
 
             return response()->json(['error' => 'Falla interna del servidor. Por favor, inténtelo de nuevo más tarde.'], 500);
         }
+    }
+
+    public function editar(Paciente $paciente)
+    {
+        if (session()->hasOldInput()) {
+            $esAdultoMayor = old('es_adulto_mayor') === 'on';
+            $viveSolo = old('vive_solo') === 'on';
+            $contactos = old('contactos', []);
+            $sintomas = old('sintomas', []);
+        } else {
+            $esAdultoMayor = $paciente->es_adulto_mayor;
+            $viveSolo = $paciente->vive_con === null || $paciente->vive_con === 'SOLO';
+            $contactos = $paciente->contactosEmergencia()
+                ->get(['id', 'nombre', 'telefono', 'vinculo'])
+                ->toArray();
+            $sintomas = $paciente->sintomasActivos();
+        }
+
+        return view('pacientes.editar', compact(
+            'paciente',
+            'esAdultoMayor',
+            'viveSolo',
+            'contactos',
+            'sintomas'
+        ));
+    }
+
+    public function actualizar(AlmacenarPacienteRequest $request, Paciente $paciente)
+    {
+        $validados = $request->validated();
+
+        DB::beginTransaction();
+
+        try {
+            if ($validados['es_adulto_mayor']) {
+                $contactos = collect($validados['contactos'] ?? []);
+                $idsContactos = $contactos->pluck('id')->filter()->toArray();
+
+                $paciente->contactosEmergencia()->whereNotIn('id', $idsContactos)->delete();
+
+                foreach ($contactos as $contacto) {
+                    $paciente->contactosEmergencia()->updateOrCreate(
+                        ['id' => $contacto['id'] ?? null],
+                        [
+                            'nombre'   => $contacto['nombre'],
+                            'telefono' => $contacto['telefono'],
+                            'vinculo'  => $contacto['vinculo']
+                        ]
+                    );
+                }
+            } else {
+                $validados['vive_con'] = null;
+                $paciente->contactosEmergencia()->delete();
+            }
+
+            $paciente->update($validados);
+
+            $sintomasEnviados = $validados['sintomas'] ?? [];
+            $sintomasActivosPaciente = $paciente->sintomasActivos();
+
+            $sintomasAFinalizar = array_diff($sintomasActivosPaciente, $sintomasEnviados);
+
+            if (!empty($sintomasAFinalizar)) {
+                foreach ($sintomasAFinalizar as $idSintoma) {
+                    $paciente->sintomas()
+                        ->wherePivotNull('fecha_hasta')
+                        ->updateExistingPivot($idSintoma, [
+                            'fecha_hasta' => now()
+                        ]);
+                }
+            }
+
+            $sintomasParaCrear = array_diff($sintomasEnviados, $sintomasActivosPaciente);
+            if (!empty($sintomasParaCrear)) {
+                $paciente->sintomas()->attach($sintomasParaCrear);
+            }
+
+            DB::commit();
+
+            return redirect()->route('pacientes.inicio')->with('exito', '¡La información del paciente ha sido actualizada con éxito!');
+
+        } catch (Throwable $ex) {
+            DB::rollBack();
+            Log::error('[PacienteController@actualizar] Error al actualizar el paciente', ['excepción' => $ex->getMessage()]);
+
+            return back()->withInput()->with('error', 'Ocurrió un error inesperado al intentar actualizar la información del paciente.');
+        }
+    }
+
+    public function eliminar(Paciente $paciente)
+    {
+        $paciente->delete();
+
+        return redirect()->back()->with('exito', 'El paciente ha sido eliminado correctamente.');
     }
 }

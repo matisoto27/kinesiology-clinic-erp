@@ -16,13 +16,28 @@ class AlmacenarPacienteRequest extends FormRequest
 
     protected function prepareForValidation()
     {
-        $this->merge([
-            'es_adulto_mayor' => $this->has('es_adulto_mayor') ? $this->boolean('es_adulto_mayor') : false,
-            'vive_solo' => $this->has('vive_solo') ? $this->boolean('vive_solo') : true
-        ]);
+        $esAdulto = $this->boolean('es_adulto_mayor');
 
-        if ($this->vive_solo) {
-            $this->merge(['vive_con' => 'SOLO']);
+        if (!$esAdulto) {
+            $this->merge([
+                'es_adulto_mayor' => false,
+                'vive_solo' => true,
+                'vive_con' => null,
+                'contactos' => []
+            ]);
+        } else {
+            if (!$this->has('vive_con') || $this->boolean('vive_solo')) {
+                $this->merge([
+                    'es_adulto_mayor' => true,
+                    'vive_solo' => true,
+                    'vive_con' => 'SOLO'
+                ]);
+            } else {
+                $this->merge([
+                    'es_adulto_mayor' => true,
+                    'vive_solo' => false
+                ]);
+            }
         }
     }
 
@@ -33,8 +48,12 @@ class AlmacenarPacienteRequest extends FormRequest
      */
     public function rules(): array
     {
+        $idPaciente = $this->route('paciente') ? $this->route('paciente')->id : null;
+
         return [
-            'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
+            'dni' => $idPaciente
+                ? 'nullable'
+                : 'required|unique:pacientes,dni|numeric|digits_between:7,8',
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
             'fecha_nac' => 'required|date',
@@ -44,8 +63,9 @@ class AlmacenarPacienteRequest extends FormRequest
             'actividad_fisica' => 'required|string|in:Sedentario,Ocasional,Moderada,Intensa,Alto rendimiento/Competencia',
             'es_adulto_mayor' => 'required|boolean',
             'vive_solo' => 'exclude_if:es_adulto_mayor,false|boolean',
-            'vive_con' => 'string|regex:/^[A-Za-z0-9\s.,()áéíóúÁÉÍÓÚñÑ]+$/|max:150',
+            'vive_con' => 'exclude_if:es_adulto_mayor,false|required_if:vive_solo,false|string|regex:/^[A-Za-z0-9\s.,()áéíóúÁÉÍÓÚñÑ]+$/|min:1|max:150',
             'contactos' => 'exclude_if:es_adulto_mayor,false|nullable|array|max:3',
+            'contactos.*.id' => 'nullable|integer|exists:contactos_emergencia,id',
             'contactos.*.nombre' => 'required_with:contactos|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:100',
             'contactos.*.telefono' => 'required_with:contactos|numeric|digits_between:8,20',
             'contactos.*.vinculo' => 'required_with:contactos|string|in:Hijo/a,Cónyuge,Hermano/a,Otro',

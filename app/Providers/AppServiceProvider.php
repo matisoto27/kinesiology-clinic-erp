@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
             }));
         });
 
-        View::composer(['pacientes.crear'], function ($view) {
+        View::composer(['pacientes.crear', 'pacientes.editar'], function ($view) {
             $view->with('tipos_sintomas', Cache::remember('todos_tipos_sintomas', now()->addHours(12), function () {
                 return TipoSintoma::all();
             }));

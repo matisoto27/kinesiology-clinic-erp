@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -34,7 +35,21 @@ class Paciente extends Model
         'sesiones_a_favor'
     ];
 
-    protected $casts = ['fecha_nac' => 'date'];
+    protected $casts = [
+        'fecha_nac' => 'date:d-m-Y',
+        'es_adulto_mayor' => 'boolean',
+        'created_at' => 'date:d-m-Y',
+        'updated_at' => 'date:d-m-Y'
+    ];
+
+    protected $appends = ['edad'];
+
+    protected function edad(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->fecha_nac ? $this->fecha_nac->age : null
+        );
+    }
 
     public function contactosEmergencia(): HasMany
     {
@@ -43,7 +58,18 @@ class Paciente extends Model
 
     public function sintomas(): BelongsToMany
     {
-        return $this->belongsToMany(Sintoma::class, 'sintomas_pacientes', 'id_paciente', 'id_sintoma')->withPivot('fecha_desde');
+        return $this->belongsToMany(Sintoma::class, 'sintomas_pacientes', 'id_paciente', 'id_sintoma')
+            ->withPivot('fecha_hasta')
+            ->withTimestamps()
+            ->using(SintomaPaciente::class);
+    }
+
+    public function sintomasActivos(): array
+    {
+        return $this->sintomas()
+            ->wherePivotNull('fecha_hasta')
+            ->pluck('sintomas.id')
+            ->toArray();
     }
 
     public function historialAfiliaciones(): HasMany

@@ -45,44 +45,7 @@
 
                 <x-select-formulario label="Actividad física" opcionPorDefecto="Seleccione una frecuencia" name="actividad_fisica" :opciones="['Sedentario', 'Ocasional', 'Moderada', 'Intensa', 'Alto rendimiento/Competencia']" />
 
-                <div x-data="formularioPaciente(@js(old('es_adulto_mayor') === 'on' ? true : false), @js(old('vive_solo', 'on') === 'on' ? true : false), @js(old('contactos', [])))" class="space-y-5">
-                    <div class="flex items-center gap-1">
-                        <input type="checkbox" class="checkbox-formulario" name="es_adulto_mayor" id="checkbox-adulto-mayor" x-model="esAdulto">
-                        <label for="checkbox-adulto-mayor" class="etiqueta-formulario">¿Es adulto mayor?</label>
-                    </div>
-
-                    <div x-show="esAdulto" class="space-y-5" x-transition x-cloak>
-                        <div class="flex items-center gap-1">
-                            <input type="checkbox" class="checkbox-formulario" name="vive_solo" id="checkbox-vive-solo" x-model="viveSolo">
-                            <label for="checkbox-vive-solo" class="etiqueta-formulario">¿Vive solo?</label>
-                        </div>
-
-                        <div x-show="!viveSolo" x-transition x-cloak>
-                            <x-input-formulario label="¿Con quién vive?" placeholder="Ejemplo: Juan (esposo), Mariana (hija)" name="vive_con" :required="false" />
-                        </div>
-
-                        <template x-for="(contacto, indice) in contactos" :key="indice">
-                            <div class="mb-5 pb-5 border-[#F5D500] border-b" x-transition>
-                                <div class="mb-4 flex items-center justify-between">
-                                    <h3 class="font-medium text-[#F5D500] text-xl" x-text="'Contacto de emergencia ' + (indice + 1)"></h3>
-                                    <button type="button" class="text-red-500 text-md hover:text-red-400" @click="contactos.splice(indice, 1)">Eliminar</button>
-                                </div>
-
-                                <x-input-dinamico label="Nombre" placeholder="Ingrese nombre del contacto" x-bind:name="`contactos[${indice}][nombre]`" x-model="contacto.nombre" />
-                                <x-input-dinamico label="Teléfono" placeholder="Ingrese teléfono del contacto" x-bind:name="`contactos[${indice}][telefono]`" x-model="contacto.telefono" />
-                                <x-select-dinamico label="Vínculo" opcionPorDefecto="¿Qué vínculo tiene con el paciente?" x-bind:name="`contactos[${indice}][vinculo]`" :opciones="['Hijo/a', 'Cónyuge', 'Hermano/a', 'Otro']" x-model="contacto.vinculo" />
-                            </div>
-                        </template>
-
-                        <div x-show="contactos.length < 3" class="flex justify-center" x-transition>
-                            <button type="button" @click="agregarContacto()" class="px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded">Añadir Contacto de Emergencia</button>
-                        </div>
-
-                        <div x-show="contactos.length >= 3" class="flex justify-center" x-transition x-cloak>
-                            <p class="mt-2 text-red-500 text-sm">Has alcanzado el máximo de contactos de emergencia.</p>
-                        </div>
-                    </div>
-                </div>
+                <livewire:pacientes.formulario-contactos />
 
                 <div class="flex flex-col gap-1">
                     <label class="etiqueta-formulario">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
@@ -101,9 +64,9 @@
                                                     type="checkbox"
                                                     value="{{ $sintoma->id }}"
                                                     class="checkbox-formulario"
-                                                    @checked(in_array($sintoma->id, old('sintomas', [])))
                                                     name="sintomas[]"
                                                     id="sintoma-{{ $sintoma->id }}"
+                                                    @checked(in_array($sintoma->id, old('sintomas', [])))
                                                 >
                                                 <label for="sintoma-{{ $sintoma->id }}" class="text-white">{{ $sintoma->nombre }}</label>
                                             </div>
