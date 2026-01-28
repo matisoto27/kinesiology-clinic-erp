@@ -99,8 +99,3 @@
         </form>
     </div>
 @endsection
-
-@push('scripts')
-    @vite('resources/js/pages/pacientes/crear.js')
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" crossorigin="anonymous" defer></script>
-@endpush
