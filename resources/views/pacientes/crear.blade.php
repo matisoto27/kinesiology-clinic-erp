@@ -1,11 +1,5 @@
 @extends('layouts.app')
 
-@push('styles')
-    <style>
-        [x-cloak] { display: none !important; }
-    </style>
-@endpush
-
 @section('content')
     <div class="contenedor max-w-lg">
         <form action="{{ route('pacientes.almacenar') }}" method="POST" class="formulario" id="formulario">

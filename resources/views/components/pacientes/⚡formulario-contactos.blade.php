@@ -94,11 +94,7 @@ new class extends Component
 
             @foreach($contactos as $indice => $contacto)
                 <div class="mb-5 pb-5 border-[#F5D500] border-b" wire:key="contacto-{{ $contacto['clave'] }}">
-                    <input
-                        type="hidden"
-                        name="contactos[{{ $indice }}][id]"
-                        value="{{ $contacto['id'] }}"
-                    >
+                    <input type="hidden" value="{{ $contacto['id'] }}" name="contactos[{{ $indice }}][id]">
 
                     <div class="mb-4 flex items-center justify-between">
                         <h3 class="font-medium text-[#F5D500] text-xl">
@@ -108,7 +104,7 @@ new class extends Component
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <label class="etiqueta-formulario">Nombre</label>
+                        <label for="contacto_{{ $indice }}_nombre" class="etiqueta-formulario">Nombre</label>
                         <input
                             type="text"
                             placeholder="Ingrese nombre del contacto"
@@ -117,6 +113,7 @@ new class extends Component
                                 'border-red-500 border-2' => $errors->has("contactos.{$indice}.nombre")
                             ])
                             name="contactos[{{ $indice }}][nombre]"
+                            id="contacto_{{ $indice }}_nombre"
                             wire:model="contactos.{{ $indice }}.nombre"
                             required
                         >
@@ -126,7 +123,7 @@ new class extends Component
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <label class="etiqueta-formulario">Teléfono</label>
+                        <label for="contacto_{{ $indice }}_telefono" class="etiqueta-formulario">Teléfono</label>
                         <input
                             type="text"
                             placeholder="Ingrese teléfono del contacto"
@@ -135,6 +132,7 @@ new class extends Component
                                 'border-red-500 border-2' => $errors->has("contactos.{$indice}.telefono")
                             ])
                             name="contactos[{{ $indice }}][telefono]"
+                            id="contacto_{{ $indice }}_telefono"
                             wire:model="contactos.{{ $indice }}.telefono"
                             required
                         >
@@ -144,14 +142,16 @@ new class extends Component
                     </div>
 
                     <div class="flex flex-col gap-1">
-                        <label class="etiqueta-formulario">Vínculo</label>
+                        <label for="contacto_{{ $indice }}_vinculo" class="etiqueta-formulario">Vínculo</label>
                         <select
                             @class([
                                 'entrada-simple',
                                 'border-red-500 border-2' => $errors->has("contactos.{$indice}.vinculo")
                             ])
                             name="contactos[{{ $indice }}][vinculo]"
+                            id="contacto_{{ $indice }}_vinculo"
                             wire:model="contactos.{{ $indice }}.vinculo"
+                            required
                         >
                             <option value="" disabled>¿Qué vínculo tiene con el paciente?</option>
                             @foreach(['Hijo/a', 'Cónyuge', 'Hermano/a', 'Otro'] as $opcion)

@@ -7,7 +7,7 @@
     'rutaEliminar'
 ])
 
-<div class="w-full max-w-screen-2xl mx-auto my-5 bg-[#006E6B] rounded-3xl py-6 px-8">
+<div class="mx-auto my-5 px-8 py-6 bg-[#006E6B] rounded-3xl max-w-screen-2xl w-full">
 
     <h2 class="titulo-formulario">{{ 'Listado de ' . $titulo }}</h2>
 

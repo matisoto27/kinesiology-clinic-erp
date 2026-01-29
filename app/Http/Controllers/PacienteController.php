@@ -41,7 +41,7 @@ class PacienteController extends Controller
 
             DB::commit();
 
-            return redirect()->route('inicio')->with('exito', '¡El paciente ha sido registrado con éxito!');
+            return redirect()->route('pacientes.inicio')->with('exito', '¡El paciente ha sido registrado con éxito!');
 
         } catch (Throwable $ex) {
             DB::rollBack();
@@ -87,8 +87,50 @@ class PacienteController extends Controller
 
     public function inicio()
     {
-        $pacientes = Paciente::all()->toArray();
-        return view('pacientes.inicio', compact('pacientes'));
+        $columnas = [
+            'dni' => 'DNI',
+            'nombre' => 'Nombre',
+            'apellido' => 'Apellido',
+            'fecha_nac' => 'Fecha de nacimiento',
+            'edad' => 'Edad',
+            'domicilio' => 'Domicilio',
+            'telefono' => 'Teléfono',
+            'profesion' => 'Profesión',
+            'created_at' => 'Fecha de ingreso'
+        ];
+
+        $pacientes = Paciente::with(['sintomas' => function($consulta) {
+                $consulta->select('sintomas.id', 'sintomas.nombre')
+                    ->wherePivotNull('fecha_hasta');
+            }])
+            ->get()
+            ->map(function ($paciente) {
+                return [
+                    'id'         => $paciente->id,
+                    'dni'        => $paciente->dni,
+                    'nombre'     => $paciente->nombre,
+                    'apellido'   => $paciente->apellido,
+                    'fecha_nac'   => $paciente->fecha_nac->format('d-m-Y'),
+                    'edad'       => $paciente->edad,
+                    'domicilio'   => $paciente->domicilio,
+                    'telefono'   => $paciente->telefono,
+                    'profesion'   => $paciente->profesion,
+                    'actividad_fisica'   => $paciente->actividad_fisica,
+                    'es_adulto_mayor'   => $paciente->es_adulto_mayor,
+                    'vive_con'   => $paciente->vive_con,
+                    'sesiones_a_favor'   => $paciente->sesiones_a_favor,
+                    'created_at' => $paciente->created_at->format('d-m-Y'),
+                    'sintomas' => $paciente->sintomas->map(function ($sintoma) {
+                        return [
+                            'id' => $sintoma->id,
+                            'nombre' => $sintoma->nombre,
+                            'created_at' => $sintoma->pivot->created_at->format('d-m-Y')
+                        ];
+                    })
+                ];
+            });
+
+        return view('pacientes.inicio', compact('columnas', 'pacientes'));
     }
 
     public function buscarPorNombre(Request $request)
