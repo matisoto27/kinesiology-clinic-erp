@@ -11,10 +11,9 @@ class Sintoma extends Model
     public $timestamps = false;
 
     protected $fillable = [
-        'id_tipo',
-        'nro_sintoma',
         'nombre',
-        'activo'
+        'activo',
+        'id_tipo'
     ];
 
     protected $casts = [

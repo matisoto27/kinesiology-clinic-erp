@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ObraSocialPaciente;
 use App\Models\Paciente;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
@@ -39,11 +40,13 @@ class ObraSocialPacienteController extends Controller
             ]);
         }
 
+        $validados['fecha_desde'] = Carbon::now();
+
         DB::beginTransaction();
 
         try {
             if ($afiliacionVigente) {
-                $paciente->afiliacionVigente->update(['activo' => false]);
+                $paciente->afiliacionVigente->update(['fecha_hasta' => Carbon::now()]);
             }
 
             ObraSocialPaciente::create($validados);

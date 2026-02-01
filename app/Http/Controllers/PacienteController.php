@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\AlmacenarPacienteRequest;
 use App\Models\Paciente;
-use App\Models\SintomaPaciente;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -99,10 +98,7 @@ class PacienteController extends Controller
             'created_at' => 'Fecha de ingreso'
         ];
 
-        $pacientes = Paciente::with(['sintomas' => function($consulta) {
-                $consulta->select('sintomas.id', 'sintomas.nombre')
-                    ->wherePivotNull('fecha_hasta');
-            }])
+        $pacientes = Paciente::with('sintomasActivos:id,nombre')
             ->get()
             ->map(function ($paciente) {
                 return [
@@ -120,11 +116,11 @@ class PacienteController extends Controller
                     'vive_con'   => $paciente->vive_con,
                     'sesiones_a_favor'   => $paciente->sesiones_a_favor,
                     'created_at' => $paciente->created_at->format('d-m-Y'),
-                    'sintomas' => $paciente->sintomas->map(function ($sintoma) {
+                    'sintomas' => $paciente->sintomasActivos->map(function ($sintoma) {
                         return [
                             'id' => $sintoma->id,
                             'nombre' => $sintoma->nombre,
-                            'created_at' => $sintoma->pivot->created_at->format('d-m-Y')
+                            'fecha_desde' => $sintoma->pivot->fecha_desde->format('d-m-Y')
                         ];
                     })
                 ];
@@ -149,11 +145,9 @@ class PacienteController extends Controller
                 ->orderBy('nombre');
 
             if ($request->boolean('incluir_obra')) {
-                $consultaPacientes->with([
-                    'afiliacionVigente' => function($consulta) {
-                        $consulta->select('id_obra_social', 'id_paciente');
-                    }
-                ]);
+                $consultaPacientes->with(['afiliacionVigente' => function ($consulta) {
+                    $consulta->select('obras_sociales.id', 'obras_sociales.nombre');
+                }]);
             }
 
             $pacientes = $consultaPacientes->get();
@@ -183,7 +177,7 @@ class PacienteController extends Controller
             $contactos = $paciente->contactosEmergencia()
                 ->get(['id', 'nombre', 'telefono', 'vinculo'])
                 ->toArray();
-            $sintomas = $paciente->sintomasActivos();
+            $sintomas = $paciente->sintomasActivos()->pluck('sintomas.id')->toArray();
         }
 
         return view('pacientes.editar', compact(
@@ -226,7 +220,7 @@ class PacienteController extends Controller
             $paciente->update($validados);
 
             $sintomasEnviados = $validados['sintomas'] ?? [];
-            $sintomasActivosPaciente = $paciente->sintomasActivos();
+            $sintomasActivosPaciente = $paciente->sintomasActivos()->pluck('sintomas.id')->toArray();
 
             $sintomasAFinalizar = array_diff($sintomasActivosPaciente, $sintomasEnviados);
 

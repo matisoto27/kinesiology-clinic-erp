@@ -12,16 +12,6 @@ class Horario extends Model
 
     protected $fillable = [
         'hora_inicio',
-        'franja',
-        'activo'
+        'franja'
     ];
-
-    protected $casts = [
-        'activo' => 'boolean'
-    ];
-
-    public function actividades()
-    {
-        return $this->belongsToMany(Actividad::class, 'horarios_actividades', 'id_horario', 'id_actividad');
-    }
 }

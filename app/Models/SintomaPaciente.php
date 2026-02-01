@@ -8,16 +8,18 @@ class SintomaPaciente extends Pivot
 {
     protected $table = 'sintomas_pacientes';
 
-    public $timestamps = true;
+    public $timestamps = false;
 
     protected $fillable = [
         'id_sintoma',
         'id_paciente',
+        'fecha_desde',
         'fecha_hasta'
     ];
 
     protected $casts = [
-        'fecha_hasta' => 'datetime'
+        'fecha_desde' => 'date',
+        'fecha_hasta' => 'date'
     ];
 
     public function sintoma()

@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,10 +36,8 @@ class Paciente extends Model
     ];
 
     protected $casts = [
-        'fecha_nac' => 'date:d-m-Y',
-        'es_adulto_mayor' => 'boolean',
-        'created_at' => 'date:d-m-Y',
-        'updated_at' => 'date:d-m-Y'
+        'fecha_nac' => 'date',
+        'es_adulto_mayor' => 'boolean'
     ];
 
     protected $appends = ['edad'];
@@ -59,27 +57,26 @@ class Paciente extends Model
     public function sintomas(): BelongsToMany
     {
         return $this->belongsToMany(Sintoma::class, 'sintomas_pacientes', 'id_paciente', 'id_sintoma')
-            ->withPivot('fecha_hasta')
-            ->withTimestamps()
+            ->withPivot('fecha_desde', 'fecha_hasta')
             ->using(SintomaPaciente::class);
     }
 
-    public function sintomasActivos(): array
+    public function sintomasActivos(): BelongsToMany
     {
-        return $this->sintomas()
-            ->wherePivotNull('fecha_hasta')
-            ->pluck('sintomas.id')
-            ->toArray();
+        return $this->sintomas()->wherePivotNull('fecha_hasta');
     }
 
-    public function historialAfiliaciones(): HasMany
+    public function historialAfiliaciones(): BelongsToMany
     {
-        return $this->hasMany(ObraSocialPaciente::class, 'id_paciente');
+        return $this->belongsToMany(ObraSocial::class, 'obras_sociales_pacientes', 'id_paciente', 'id_obra_social')
+            ->withPivot('fecha_desde', 'fecha_hasta')
+            ->using(ObraSocialPaciente::class);
     }
 
-    public function afiliacionVigente(): HasOne
+    public function afiliacionVigente(): HasOneThrough
     {
-        return $this->hasOne(ObraSocialPaciente::class, 'id_paciente')->activo();
+        return $this->hasOneThrough(ObraSocial::class, ObraSocialPaciente::class, 'id_paciente', 'id', 'id', 'id_obra_social')
+            ->whereNull('obras_sociales_pacientes.fecha_hasta');
     }
 
     public function scopeTieneObraSocial(Builder $consulta): Builder

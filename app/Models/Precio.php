@@ -18,8 +18,8 @@ class Precio extends Model
     ];
 
     protected $casts = [
-        'fecha_desde' => 'datetime',
-        'valor' => 'float'
+        'fecha_desde' => 'date',
+        'valor' => 'decimal:2'
     ];
 
     public function actividadCombo(): BelongsTo

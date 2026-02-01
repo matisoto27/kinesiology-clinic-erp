@@ -7,8 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Pago extends Model
 {
-    const UPDATED_AT = null;
-
     protected $table = 'pagos';
 
     public $timestamps = true;
@@ -22,9 +20,8 @@ class Pago extends Model
     ];
 
     protected $casts = [
-        'nro_pago'   => 'integer',
-        'monto'      => 'decimal:2',
-        'created_at' => 'datetime'
+        'nro_pago' => 'integer',
+        'monto' => 'decimal:2'
     ];
 
     protected static function booted()

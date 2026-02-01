@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TipoSintoma extends Model
 {
-    protected $table = 'tipos_sintomas';
+    protected $table = 'tipos_sintoma';
 
     public $timestamps = false;
 
@@ -19,7 +20,7 @@ class TipoSintoma extends Model
         'activo' => 'boolean'
     ];
 
-    public function sintomas()
+    public function sintomas(): HasMany
     {
         return $this->hasMany(Sintoma::class, 'id_tipo');
     }

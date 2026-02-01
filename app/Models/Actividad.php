@@ -8,11 +8,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 
 class Actividad extends Model
 {
+    const TIPO_GENERAL = 1;
+    const TIPO_KINESIOLOGIA = 2;
+
     protected $table = 'actividades';
 
     public $timestamps = false;
@@ -22,22 +24,16 @@ class Actividad extends Model
         'id_tipo_actividad'
     ];
 
-    const TIPO_GENERAL = 1;
-    const TIPO_KINESIOLOGIA = 2;
-
     public function tipo(): BelongsTo
     {
         return $this->belongsTo(TipoActividad::class, 'id_tipo_actividad');
     }
 
-    public function actividadCombos(): HasMany
-    {
-        return $this->hasMany(ActividadCombo::class, 'id_actividad');
-    }
-
     public function combos(): BelongsToMany
     {
-        return $this->belongsToMany(Combo::class, 'actividades_combos', 'id_actividad', 'id_combo');
+        return $this->belongsToMany(Combo::class, 'actividades_combos', 'id_actividad', 'id_combo')
+            ->withPivot('activo')
+            ->using(ActividadCombo::class);
     }
 
     public function horarios(): BelongsToMany

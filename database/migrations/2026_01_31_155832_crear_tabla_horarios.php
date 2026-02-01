@@ -11,8 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('actividades', function (Blueprint $table) {
-            $table->softDeletes();
+        Schema::create('horarios', function (Blueprint $table) {
+            $table->id();
+
+            $table->time('hora_inicio');
+            $table->enum('franja', ['M', 'T']);
         });
     }
 
@@ -21,8 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('actividades', function (Blueprint $table) {
-            $table->dropSoftDeletes();
-        });
+        Schema::dropIfExists('horarios');
     }
 };

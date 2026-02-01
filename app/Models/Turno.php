@@ -4,13 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection as SupportCollection;
 
 class Turno extends Model
 {
     protected $table = 'turnos';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'id_act_pac',
@@ -24,12 +26,12 @@ class Turno extends Model
         'asiste' => 'boolean'
     ];
 
-    public function actividadPaciente()
+    public function actividadPaciente(): BelongsTo
     {
         return $this->belongsTo(ActividadPaciente::class, 'id_act_pac');
     }
 
-    public function notas()
+    public function notas(): HasMany
     {
         return $this->hasMany(NotaTurno::class, 'id_turno');
     }

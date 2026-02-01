@@ -11,7 +11,14 @@ class ObraSocial extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['nombre'];
+    protected $fillable = [
+        'nombre',
+        'activo'
+    ];
+
+    protected $casts = [
+        'activo' => 'boolean'
+    ];
 
     public function historialAfiliados(): HasMany
     {
@@ -20,6 +27,6 @@ class ObraSocial extends Model
 
     public function afiliadosActivos(): HasMany
     {
-        return $this->hasMany(ObraSocialPaciente::class, 'id_obra_social')->activo();
+        return $this->hasMany(ObraSocialPaciente::class, 'id_obra_social')->whereNull('fecha_hasta');
     }
 }

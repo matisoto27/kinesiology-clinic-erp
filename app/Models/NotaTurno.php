@@ -2,27 +2,16 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class NotaTurno extends Model
 {
     protected $table = 'notas';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
-        'id_turno',
-        'fecha_realizada',
-        'contenido'
+        'contenido',
+        'id_turno'
     ];
-
-    protected $casts = [
-        'fecha_realizada' => 'datetime'
-    ];
-
-    public function getFechaRealizadaAttribute($value)
-    {
-        return Carbon::parse($value)->format('d/m/Y H:i');
-    }
 }

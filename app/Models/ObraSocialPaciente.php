@@ -2,11 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class ObraSocialPaciente extends Model
+class ObraSocialPaciente extends Pivot
 {
     protected $table = 'obras_sociales_pacientes';
 
@@ -16,12 +15,12 @@ class ObraSocialPaciente extends Model
         'id_obra_social',
         'id_paciente',
         'fecha_desde',
-        'activo'
+        'fecha_hasta'
     ];
 
     protected $casts = [
         'fecha_desde' => 'date',
-        'activo' => 'boolean'
+        'fecha_hasta' => 'date'
     ];
 
     public function obraSocial(): BelongsTo
@@ -32,10 +31,5 @@ class ObraSocialPaciente extends Model
     public function paciente(): BelongsTo
     {
         return $this->belongsTo(Paciente::class, 'id_paciente');
-    }
-
-    public function scopeActivo(Builder $consulta): Builder
-    {
-        return $consulta->where('activo', true);
     }
 }

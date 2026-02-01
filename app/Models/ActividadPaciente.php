@@ -11,7 +11,7 @@ class ActividadPaciente extends Model
 {
     protected $table = 'actividades_pacientes';
 
-    public $timestamps = false;
+    public $timestamps = true;
 
     protected $fillable = [
         'id_actividad',
@@ -26,7 +26,7 @@ class ActividadPaciente extends Model
     ];
 
     protected $casts = [
-        'fecha_comienzo' => 'datetime',
+        'fecha_comienzo' => 'date',
         'es_fijo' => 'boolean',
         'total_a_pagar' => 'decimal:2',
         'fecha_emision_ord' => 'date',

@@ -117,7 +117,7 @@
                             <div class="space-y-3">
                                 <template x-for="sintoma in datos.sintomas" :key="sintoma.id">
                                     <div class="border-l-2 border-[#006E6B] pl-2">
-                                        <p class="text-gray-400 text-xs font-semibold uppercase" x-text="sintoma.created_at"></p>
+                                        <p class="text-gray-400 text-xs font-semibold uppercase" x-text="sintoma.fecha_desde"></p>
                                         <p class="text-gray-700" x-text="sintoma.nombre"></p>
                                     </div>
                                 </template>

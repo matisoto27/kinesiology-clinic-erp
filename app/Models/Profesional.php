@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Profesional extends Model
 {
-    const UPDATED_AT = null;
+    use SoftDeletes; // No trabaja más en Punto-Kinésico
 
     protected $table = 'profesionales';
 
@@ -18,12 +19,11 @@ class Profesional extends Model
         'dni',
         'nombre',
         'apellido',
-        'activo'
+        'activo' // Temporalmente deja de estar disponible
     ];
 
     protected $casts = [
-        'activo' => 'boolean',
-        'created_at' => 'datetime'
+        'activo' => 'boolean'
     ];
 
     public function pagos(): HasMany
