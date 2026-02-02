@@ -15,9 +15,14 @@
             <table class="table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full">
                 <thead>
                     <tr class="bg-white text-[#014745]">
-                        @foreach($columnas as $clave => $valor)
-                            <th class="py-3">{{ $valor }}</th>
-                        @endforeach
+                        <th class="py-3">DNI</th>
+                        <th class="py-3">Nombre completo</th>
+                        <th class="py-3">Nacimiento</th>
+                        <th class="py-3">Edad</th>
+                        <th class="py-3">Domicilio</th>
+                        <th class="py-3">Teléfono</th>
+                        <th class="py-3">Profesión</th>
+                        <th class="py-3">Fecha de ingreso</th>
                         <th class="py-3">Ver más</th>
                         <th colspan="2" class="py-3">Acciones</th>
                     </tr>
@@ -26,9 +31,14 @@
                 <tbody>
                     @forelse($pacientes as $pac)
                         <tr class="hover:bg-[#F5D500] hover:font-bold hover:text-emerald-900 transition-colors duration-100">
-                            @foreach($columnas as $clave => $valor)
-                                <td class="py-3">{{ $pac[$clave] }}</td>
-                            @endforeach
+                            <td class="py-3">{{ $pac['dni'] }}</td>
+                            <td class="py-3">{{ $pac['nombre_completo'] }}</td>
+                            <td class="py-3">{{ $pac['fecha_nacimiento'] }}</td>
+                            <td class="py-3">{{ $pac['edad'] }}</td>
+                            <td class="py-3">{{ $pac['domicilio'] }}</td>
+                            <td class="py-3">{{ $pac['telefono'] }}</td>
+                            <td class="py-3">{{ $pac['profesion'] }}</td>
+                            <td class="py-3">{{ $pac['fecha_ingreso'] }}</td>
                             <td class="py-3">
                                 <div class="flex justify-center items-center">
                                     <button
@@ -64,11 +74,15 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ count($columnas) + 2 }}" class="py-10 text-center text-gray-300 italic">No hay registros disponibles.</td>
+                            <td colspan="10" class="py-10 text-center text-gray-300 italic">No hay registros disponibles.</td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+
+            <div class="mt-4">
+                {{ $pacientes->links() }}
+            </div>
 
             <div
                 class="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50"
@@ -109,6 +123,23 @@
                                     <p class="text-gray-600" x-text="datos.vive_con"></p>
                                 </div>
                             </template>
+                        </div>
+
+                        <div class="p-3 bg-gray-50 border-gray-100 border rounded-lg">
+                            <p class="mb-2 text-gray-400 text-xs font-bold uppercase tracking-wider">¿Tiene algún antecedente patológico?</p>
+
+                            <div class="space-y-3">
+                                <template x-for="patologia in datos.patologias" :key="patologia.id">
+                                    <div class="border-l-2 border-[#006E6B] pl-2">
+                                        <p class="text-gray-400 text-xs font-semibold uppercase" x-text="patologia.fecha_desde"></p>
+                                        <p class="text-gray-700" x-text="patologia.nombre"></p>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="py-1 text-gray-400 text-sm italic" x-show="!datos.patologias || datos.patologias.length === 0">
+                                Sin antecedentes patológicos.
+                            </div>
                         </div>
 
                         <div class="p-3 bg-gray-50 border-gray-100 border rounded-lg">

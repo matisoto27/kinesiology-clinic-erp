@@ -42,6 +42,32 @@
                 <livewire:pacientes.formulario-contactos />
 
                 <div class="flex flex-col gap-1">
+                    <h3 class="mb-2 text-white text-xl font-semibold">Patologías (Opcional)</h3>
+
+                    <div class="space-y-4">
+                        @foreach ($todasPatologias as $pat)
+                            <div class="flex items-center gap-2">
+                                <input
+                                    id="patologia-{{ $pat->id }}"
+                                    name="patologias[]"
+                                    type="checkbox"
+                                    class="checkbox-formulario"
+                                    value="{{ $pat->id }}"
+                                    @checked(in_array($pat->id, old('patologias', [])))
+                                >
+                                <label for="patologia-{{ $pat->id }}" class="text-white">{{ $pat->nombre }}</label>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @error('patologias')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
+                @error('patologias.*')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
+
+                <div class="flex flex-col gap-1">
                     <label class="etiqueta-formulario">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -73,6 +99,9 @@
                     </div>
                 </div>
                 @error('sintomas')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
+                @error('sintomas.*')
                     <div class="text-red-500 text-md">{{ $message }}</div>
                 @enderror
             </div>

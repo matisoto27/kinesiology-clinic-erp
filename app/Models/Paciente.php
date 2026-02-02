@@ -40,18 +40,51 @@ class Paciente extends Model
         'es_adulto_mayor' => 'boolean'
     ];
 
-    protected $appends = ['edad'];
+    protected $appends = [
+        'nombre_completo',
+        'fecha_nacimiento',
+        'edad',
+        'fecha_ingreso'
+    ];
+
+    protected function nombreCompleto(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => "{$this->apellido}, {$this->nombre}"
+        );
+    }
+
+    protected function fechaNacimiento(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->fecha_nac?->format('d-m-Y')
+        );
+    }
 
     protected function edad(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->fecha_nac ? $this->fecha_nac->age : null
+            get: fn () => $this->fecha_nac?->age
+        );
+    }
+
+    protected function fechaIngreso(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->created_at?->format('d-m-Y')
         );
     }
 
     public function contactosEmergencia(): HasMany
     {
         return $this->hasMany(ContactoEmergencia::class, 'id_paciente');
+    }
+
+    public function patologias(): BelongsToMany
+    {
+        return $this->belongsToMany(Patologia::class, 'antecedentes_patologicos', 'id_paciente', 'id_patologia')
+            ->withPivot('fecha_desde')
+            ->using(AntecedentePatologico::class);
     }
 
     public function sintomas(): BelongsToMany

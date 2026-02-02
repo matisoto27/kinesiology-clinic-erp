@@ -13,9 +13,7 @@ return new class extends Migration
     {
         Schema::create('antecedentes_patologicos', function (Blueprint $table) {
             $table->id();
-
             $table->date('fecha_desde');
-            $table->text('observaciones')->nullable();
 
             $table->foreignId('id_paciente')->constrained(table: 'pacientes');
             $table->foreignId('id_patologia')->constrained(table: 'patologias');

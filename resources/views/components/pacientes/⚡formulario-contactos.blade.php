@@ -32,7 +32,6 @@ new class extends Component
                 ];
             })->toArray();
         }
-        Log::info('Valores', ['esAdulto' => $this->esAdulto, 'viveSolo' => $this->viveSolo, 'contactos' => $this->contactos]);
     }
 
     public function updatedEsAdulto($value)

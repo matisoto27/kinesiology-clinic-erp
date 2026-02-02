@@ -47,6 +47,54 @@
                 />
 
                 <div class="flex flex-col gap-1">
+                    <h3 class="mb-2 text-white text-xl font-semibold">Patologías (Opcional)</h3>
+
+                    <div class="space-y-4">
+                        @foreach ($todasPatologias as $pat)
+                            <div class="flex items-center gap-2">
+                                @php
+                                    $idPatologia = $pat->id;
+                                    $esPreexistente = in_array($idPatologia, $patologiasPaciente);
+                                    $estaSeleccionada = in_array($idPatologia, $patologias);
+                                @endphp
+                                @if ($esPreexistente)
+                                    <input
+                                        type="checkbox"
+                                        class="checkbox-formulario"
+                                        checked
+                                        disabled
+                                    />
+                                @else
+                                    <input
+                                        id="patologia-{{ $idPatologia }}"
+                                        name="patologias[]"
+                                        type="checkbox"
+                                        class="checkbox-formulario"
+                                        value="{{ $idPatologia }}"
+                                        @checked($estaSeleccionada)
+                                    />
+                                @endif
+
+                                <label
+                                    @if (!$esPreexistente)
+                                        for="patologia-{{ $idPatologia }}"
+                                    @endif
+                                    class="text-white"
+                                >
+                                    {{ $pat->nombre }}
+                                </label>
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+                @error('patologias')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
+                @error('patologias.*')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
+
+                <div class="flex flex-col gap-1">
                     <label class="etiqueta-formulario">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -78,6 +126,9 @@
                     </div>
                 </div>
                 @error('sintomas')
+                    <div class="text-red-500 text-md">{{ $message }}</div>
+                @enderror
+                @error('sintomas.*')
                     <div class="text-red-500 text-md">{{ $message }}</div>
                 @enderror
             </div>

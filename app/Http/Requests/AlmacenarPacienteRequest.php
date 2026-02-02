@@ -69,6 +69,8 @@ class AlmacenarPacienteRequest extends FormRequest
             'contactos.*.nombre' => 'required_with:contactos|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:100',
             'contactos.*.telefono' => 'required_with:contactos|numeric|digits_between:8,20',
             'contactos.*.vinculo' => 'required_with:contactos|string|in:Hijo/a,Cónyuge,Hermano/a,Otro',
+            'patologias' => 'nullable|array',
+            'patologias.*' => 'numeric|exists:patologias,id',
             'sintomas' => 'nullable|array',
             'sintomas.*' => 'numeric|exists:sintomas,id'
         ];

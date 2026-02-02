@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\AlmacenarPacienteRequest;
+use App\Http\Resources\PacienteResource;
 use App\Models\Paciente;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -21,11 +22,13 @@ class PacienteController extends Controller
     public function almacenar(AlmacenarPacienteRequest $request)
     {
         $validados = $request->validated();
+        $ahora = Carbon::now();
 
         DB::beginTransaction();
 
         try {
             $contactos = $validados['contactos'] ?? [];
+            $patologias = $validados['patologias'] ?? [];
             $sintomas = $validados['sintomas'] ?? [];
 
             $paciente = Paciente::create($validados);
@@ -34,8 +37,12 @@ class PacienteController extends Controller
                 $paciente->contactosEmergencia()->createMany($contactos);
             }
 
+            if (!empty($patologias)) {
+                $paciente->patologias()->attach($patologias, ['fecha_desde' => $ahora]);
+            }
+
             if (!empty($sintomas)) {
-                $paciente->sintomas()->attach($sintomas, ['fecha_desde' => Carbon::now()]);
+                $paciente->sintomas()->attach($sintomas, ['fecha_desde' => $ahora]);
             }
 
             DB::commit();
@@ -86,47 +93,15 @@ class PacienteController extends Controller
 
     public function inicio()
     {
-        $columnas = [
-            'dni' => 'DNI',
-            'nombre' => 'Nombre',
-            'apellido' => 'Apellido',
-            'fecha_nac' => 'Fecha de nacimiento',
-            'edad' => 'Edad',
-            'domicilio' => 'Domicilio',
-            'telefono' => 'Teléfono',
-            'profesion' => 'Profesión',
-            'created_at' => 'Fecha de ingreso'
-        ];
+        $consultaPacientes = Paciente::query()
+            ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'actividad_fisica', 'es_adulto_mayor', 'vive_con', 'sesiones_a_favor', 'created_at'])
+            ->with(['sintomasActivos:id,nombre', 'patologias:id,nombre'])
+            ->latest()
+            ->paginate(10);
 
-        $pacientes = Paciente::with('sintomasActivos:id,nombre')
-            ->get()
-            ->map(function ($paciente) {
-                return [
-                    'id'         => $paciente->id,
-                    'dni'        => $paciente->dni,
-                    'nombre'     => $paciente->nombre,
-                    'apellido'   => $paciente->apellido,
-                    'fecha_nac'   => $paciente->fecha_nac->format('d-m-Y'),
-                    'edad'       => $paciente->edad,
-                    'domicilio'   => $paciente->domicilio,
-                    'telefono'   => $paciente->telefono,
-                    'profesion'   => $paciente->profesion,
-                    'actividad_fisica'   => $paciente->actividad_fisica,
-                    'es_adulto_mayor'   => $paciente->es_adulto_mayor,
-                    'vive_con'   => $paciente->vive_con,
-                    'sesiones_a_favor'   => $paciente->sesiones_a_favor,
-                    'created_at' => $paciente->created_at->format('d-m-Y'),
-                    'sintomas' => $paciente->sintomasActivos->map(function ($sintoma) {
-                        return [
-                            'id' => $sintoma->id,
-                            'nombre' => $sintoma->nombre,
-                            'fecha_desde' => $sintoma->pivot->fecha_desde->format('d-m-Y')
-                        ];
-                    })
-                ];
-            });
+        $pacientes = PacienteResource::collection($consultaPacientes);
 
-        return view('pacientes.inicio', compact('columnas', 'pacientes'));
+        return view('pacientes.inicio', compact('pacientes'));
     }
 
     public function buscarPorNombre(Request $request)
@@ -166,10 +141,13 @@ class PacienteController extends Controller
 
     public function editar(Paciente $paciente)
     {
+        $patologiasPaciente = $paciente->patologias()->pluck('patologias.id')->toArray();
+
         if (session()->hasOldInput()) {
             $esAdultoMayor = old('es_adulto_mayor') === 'on';
             $viveSolo = old('vive_solo') === 'on';
             $contactos = old('contactos', []);
+            $patologias = old('patologias', []);
             $sintomas = old('sintomas', []);
         } else {
             $esAdultoMayor = $paciente->es_adulto_mayor;
@@ -177,14 +155,17 @@ class PacienteController extends Controller
             $contactos = $paciente->contactosEmergencia()
                 ->get(['id', 'nombre', 'telefono', 'vinculo'])
                 ->toArray();
+            $patologias = $patologiasPaciente;
             $sintomas = $paciente->sintomasActivos()->pluck('sintomas.id')->toArray();
         }
 
         return view('pacientes.editar', compact(
             'paciente',
+            'patologiasPaciente',
             'esAdultoMayor',
             'viveSolo',
             'contactos',
+            'patologias',
             'sintomas'
         ));
     }
@@ -218,6 +199,15 @@ class PacienteController extends Controller
             }
 
             $paciente->update($validados);
+
+            $patologiasParaCrear = $validados['patologias'] ?? [];
+            if (!empty($patologiasParaCrear)) {
+                $paciente->patologias()->syncWithoutDetaching(
+                    collect($patologiasParaCrear)->mapWithKeys(function ($id) {
+                        return [$id => ['fecha_desde' => Carbon::now()]];
+                    })
+                );
+            }
 
             $sintomasEnviados = $validados['sintomas'] ?? [];
             $sintomasActivosPaciente = $paciente->sintomasActivos()->pluck('sintomas.id')->toArray();
