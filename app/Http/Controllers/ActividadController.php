@@ -29,15 +29,12 @@ class ActividadController extends Controller
     public function obtenerCombos($id)
     {
         try {
-            $actividad = Actividad::with([
-                'actividadCombos' => function ($consulta) {
-                    $consulta->activo()->with(['combo', 'precioVigente']);
-
-                    if (request()->boolean('con_precio')) {
-                        $consulta->whereHas('precios');
-                    }
+            $actividad = Actividad::with(['actividadCombos' => function ($consulta) {
+                $consulta->activo()->with(['combo', 'precioVigente']);
+                if (request()->boolean('con_precio')) {
+                    $consulta->whereHas('precios');
                 }
-            ])->findOrFail($id);
+            }])->findOrFail($id);
 
             $combos = $actividad->actividadCombos->map(function ($actividadCombo) {
                 return [

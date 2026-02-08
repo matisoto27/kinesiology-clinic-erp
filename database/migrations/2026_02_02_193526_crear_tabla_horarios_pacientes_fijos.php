@@ -11,20 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('turnos', function (Blueprint $table) {
+        Schema::create('horarios_pacientes_fijos', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedTinyInteger('nro_turno');
-            $table->datetime('fecha_hora');
-            $table->boolean('asiste')->default(false);
+            $table->unsignedTinyInteger('dia_semana');
+            $table->time('hora_inicio');
 
-            $table->foreignId('id_act_pac')
-                ->constrained(table: 'actividades_pacientes')
+            $table->foreignId('id_paciente_fijo')
+                ->constrained(table: 'pacientes_fijos')
                 ->onDelete('cascade');
 
             $table->timestamps();
 
-            $table->unique(['id_act_pac', 'fecha_hora']);
+            $table->unique(['id_paciente_fijo', 'dia_semana', 'hora_inicio'], 'pac_dia_hora_unique');
         });
     }
 
@@ -33,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('turnos');
+        Schema::dropIfExists('horarios_pacientes_fijos');
     }
 };

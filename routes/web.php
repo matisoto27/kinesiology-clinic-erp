@@ -7,6 +7,7 @@ use App\Http\Controllers\NotaTurnoController;
 use App\Http\Controllers\ObraSocialController;
 use App\Http\Controllers\ObraSocialPacienteController;
 use App\Http\Controllers\PacienteController;
+use App\Http\Controllers\PacienteFijoController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PrecioController;
 use App\Http\Controllers\TurnoController;
@@ -49,6 +50,11 @@ Route::controller(PacienteController::class)->group(function () {
     Route::get('/pacientes/{paciente}/editar', 'editar')->name('pacientes.editar');
     Route::put('/pacientes/{paciente}', 'actualizar')->name('pacientes.actualizar');
     Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
+});
+
+Route::controller(PacienteFijoController::class)->group(function () {
+    Route::get('/pacientes-fijos', 'inicio')->name('pacientes-fijos.inicio');
+    Route::get('/pacientes-fijos/crear', 'crear')->name('pacientes-fijos.crear');
 });
 
 Route::controller(PagoController::class)->group(function () {

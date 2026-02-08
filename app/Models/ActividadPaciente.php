@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ActividadPaciente extends Model
 {
@@ -48,9 +49,25 @@ class ActividadPaciente extends Model
         return $this->hasMany(Turno::class, 'id_act_pac');
     }
 
+    public function ultimoTurno(): HasOne
+    {
+        return $this->hasOne(Turno::class, 'id_act_pac')->latestOfMany('nro_turno');
+    }
+
+    public function pacienteFijo(): HasOne
+    {
+        return $this->hasOne(PacienteFijo::class, 'id_paciente', 'id_paciente')
+            ->whereColumn('id_actividad', 'actividades_pacientes.id_actividad');
+    }
+
     public function pagos(): HasMany
     {
         return $this->hasMany(Pago::class, 'id_act_pac');
+    }
+
+    public function scopeNoFijos(Builder $consulta): Builder
+    {
+        return $consulta->whereDoesntHave('pacienteFijo');
     }
 
     public function scopeSinPagar(Builder $consulta): Builder

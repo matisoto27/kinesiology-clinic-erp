@@ -31,7 +31,6 @@ class HorarioActividadSeeder extends Seeder
             ['id_horario' => $horas['18:00:00'], 'id_actividad' => 1],
             ['id_horario' => $horas['18:30:00'], 'id_actividad' => 1],
             ['id_horario' => $horas['19:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['19:30:00'], 'id_actividad' => 1],
             // Pilates
             ['id_horario' => $horas['08:00:00'], 'id_actividad' => 2],
             ['id_horario' => $horas['09:00:00'], 'id_actividad' => 2],

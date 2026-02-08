@@ -6,9 +6,8 @@ use App\Http\Requests\AlmacenarTurnoRequest;
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
-use App\Models\Turno;
+use App\Services\TurnoService;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -89,7 +88,7 @@ class ActividadPacienteController extends Controller
         }
     }
 
-    public function almacenar(AlmacenarTurnoRequest $request)
+    public function almacenar(AlmacenarTurnoRequest $request, TurnoService $turnoService)
     {
         $esConOrden = !$request->has('total_a_pagar') || $request->has('mes') || $request->has('dia');
         $ahora = Carbon::now();
@@ -112,12 +111,10 @@ class ActividadPacienteController extends Controller
             $actividadPaciente = ActividadPaciente::create($validados);
 
             $turnosParaInsertar = $validados['autogenerados']
-                ? $this->prepararTurnosAutomaticos($ahora, $validados, $actividadPaciente)
-                : $this->prepararTurnosManuales($validados['turnos'], $actividadPaciente);
+                ? $this->prepararTurnosAutomaticos($ahora, $validados, $turnoService)
+                : $turnoService->prepararTurnosManuales($validados['turnos']);
 
-            if (!empty($turnosParaInsertar)) {
-                Turno::insert($turnosParaInsertar);
-            }
+            $actividadPaciente->turnos()->createMany($turnosParaInsertar);
 
             DB::commit();
             return response()->json(['id_act_pac' => $actividadPaciente->id], 201);
@@ -135,7 +132,7 @@ class ActividadPacienteController extends Controller
         }
     }
 
-    private function prepararTurnosAutomaticos(Carbon $ahora, array $validados, ActividadPaciente $actividadPaciente): array
+    private function prepararTurnosAutomaticos(Carbon $ahora, array $validados, TurnoService $turnoService): array
     {
         $dias = [
             'Lunes'     => 1,
@@ -176,58 +173,11 @@ class ActividadPacienteController extends Controller
             }
         }
 
-        $actividad = Actividad::find($validados['id_actividad']);
-        $comienzo = $fechaBase->copy()->startOfWeek()->startOfDay();
-        $fin = $fechaBase->copy()->addWeeks($semanasNecesarias - 1)->addDays(4)->endOfDay();
-
-        $fechasDisponibles = array_flip($actividad->turnosDisponibles($validados['id_paciente'], $comienzo, $fin));
-
-        $turnosValidados = [];
-        $turnosParaInsertar = [];
-        $turnosSolicitadosStr = array_map(fn($t) => $t->toDateTimeString(), $turnosSolicitados);
-
-        foreach ($turnosSolicitados as $i => $turno) {
-            $turnoStr = $turnosSolicitadosStr[$i];
-            unset($turnosSolicitadosStr[$i]);
-
-            if ($turno->isPast() || !isset($fechasDisponibles[$turnoStr])) {
-                $fechasRestringidas = array_flip(array_merge($turnosValidados, $turnosSolicitadosStr));
-                $turnoStr = $actividad->buscarReemplazoTurno($turno, $fechasDisponibles, $fechasRestringidas);
-
-                if (!$turnoStr) {
-                    throw new Exception('No hay suficientes turnos disponibles para cubrir la cantidad de turnos solicitada.');
-                }
-            }
-
-            $turnosValidados[] = $turnoStr;
-            
-            $turnosParaInsertar[] = [
-                'id_act_pac' => $actividadPaciente->id,
-                'fecha_hora' => $turnoStr,
-                'asiste' => false
-            ];
-        }
-
-        return collect($turnosParaInsertar)
-            ->sortBy('fecha_hora')
-            ->values()
-            ->map(fn($turno, $indice) => array_merge($turno, ['nro_turno' => $indice + 1]))
-            ->toArray();
-    }
-
-    private function prepararTurnosManuales(array $turnos, ActividadPaciente $actividadPaciente): array
-    {
-        return collect($turnos)
-            ->sort()
-            ->values()
-            ->map(function (string $fecha, int $indice) use ($actividadPaciente) {
-                return [
-                    'id_act_pac' => $actividadPaciente->id,
-                    'nro_turno'  => $indice + 1,
-                    'fecha_hora' => $fecha,
-                    'asiste'     => false
-                ];
-            })
-            ->toArray();
+        return $turnoService->prepararFechas(
+            Actividad::find($validados['id_actividad']),
+            $validados['id_paciente'],
+            $turnosSolicitados,
+            $semanasNecesarias
+        );
     }
 }

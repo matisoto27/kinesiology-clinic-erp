@@ -8,7 +8,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class Actividad extends Model
 {
@@ -29,11 +31,15 @@ class Actividad extends Model
         return $this->belongsTo(TipoActividad::class, 'id_tipo_actividad');
     }
 
+    public function actividadCombos(): HasMany
+    {
+        return $this->hasMany(ActividadCombo::class, 'id_actividad');
+    }
+
     public function combos(): BelongsToMany
     {
         return $this->belongsToMany(Combo::class, 'actividades_combos', 'id_actividad', 'id_combo')
-            ->withPivot('activo')
-            ->using(ActividadCombo::class);
+            ->withPivot('activo');
     }
 
     public function horarios(): BelongsToMany
@@ -63,6 +69,71 @@ class Actividad extends Model
 
     public function obtenerHorasDeInicio() {
         return $this->horarios()->orderBy('hora_inicio')->pluck('hora_inicio');
+    }
+
+    public function turnosDisponiblesMes(int $idPaciente, Carbon $fechaUltimoTurno)
+    {
+        // Este método solo sirve en actividades de tipo general (Gimnasio / Pilates)
+        if (!$this->esActividadGeneral()) return collect();
+
+        $comienzo = $fechaUltimoTurno->copy()->startOfWeek()->addWeek()->startOfDay();
+        $fin = $fechaUltimoTurno->copy()->startOfWeek()->addWeeks(4)->addDays(4)->endOfDay();
+
+        $maximoTurnos = config('app.max_turnos_generales');
+        $consulta = Turno::conActPac()
+            ->deLaActividad($this->id)
+            ->select('fecha_hora')
+            ->entreFechas($comienzo, $fin)
+            ->groupBy('fecha_hora')
+            ->cantidadMayorIgualQue($maximoTurnos);
+
+        $turnosSinCupo = $consulta->pluck('fecha_hora')
+            ->map(fn($t) => $t->toDateTimeString())
+            ->flip()
+            ->toArray();
+
+        $periodo = CarbonPeriod::create($comienzo, $fin);
+        $horasInicio = $this->obtenerHorasDeInicio();
+
+        $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, $comienzo, $fin)
+            ->map(fn ($t) => [
+                'inicio' => $t->timestamp,
+                'fin'    => $t->timestamp + 3600
+            ])->toArray();
+
+        $turnosDisponibles = collect();
+
+        foreach ($periodo as $fecha) {
+            if ($fecha->isWeekEnd()) continue;
+
+            $fechaStr = $fecha->format('Y-m-d');
+
+            foreach ($horasInicio as $hora) {
+                $turnoStr = $fechaStr . ' ' . $hora;
+
+                if (isset($turnosSinCupo[$turnoStr])) continue;
+
+                $turno = Carbon::parse($turnoStr);
+                if ($turno->isPast()) continue;
+
+                $inicio = $turno->timestamp;
+                $fin = $inicio + 3600;
+
+                $seSolapa = false;
+                foreach ($rangosOcupados as $rango) {
+                    if ($inicio < $rango['fin'] && $fin > $rango['inicio']) {
+                        $seSolapa = true;
+                        break;
+                    }
+                }
+
+                if (!$seSolapa) {
+                    $turnosDisponibles->push($turnoStr);
+                }
+            }
+        }
+
+        return $turnosDisponibles;
     }
 
     public function turnosDisponibles(int $idPaciente, Carbon $comienzo, Carbon $fin): array
