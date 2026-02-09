@@ -11,12 +11,12 @@
 
     <h2 class="titulo-formulario">{{ 'Listado de ' . $titulo }}</h2>
 
-    <table class="table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full">
+    <table class="tabla-listado">
 
         <thead>
-            <tr class="bg-white text-[#014745]">
+            <tr class="tabla-listado__cabecera">
                 @foreach($columnas as $clave => $valor)
-                    <th class="py-3">{{ $valor }}</th>
+                    <th>{{ $valor }}</th>
                 @endforeach
                 <th colspan="2" class="py-3">Acciones</th>
             </tr>
@@ -24,9 +24,9 @@
 
         <tbody>
             @forelse($elementos as $el)
-                <tr class="hover:bg-[#F5D500] hover:font-bold hover:text-emerald-900 transition-colors duration-100">
+                <tr class="tabla-listado__fila">
                     @foreach($columnas as $clave => $valor)
-                        <td class="py-3">{{ $el[$clave] }}</td>
+                        <td>{{ $el[$clave] }}</td>
                     @endforeach
                     <td colspan="2" class="py-3">
                         <div class="flex justify-center items-center gap-25">

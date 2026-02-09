@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -33,6 +34,20 @@ class ActividadPaciente extends Model
         'fecha_emision_ord' => 'date',
         'pago_completado' => 'boolean'
     ];
+
+    protected function nuevoTotalAPagar(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->calcularNuevoTotal()
+        );
+    }
+
+    protected function deuda(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->calcularDeuda()
+        );
+    }
 
     public function actividad(): BelongsTo
     {
@@ -83,5 +98,33 @@ class ActividadPaciente extends Model
     public function scopeDeTipo(Builder $consulta, int $idTipoActividad): Builder
     {
         return $consulta->where('actividades.id_tipo_actividad', $idTipoActividad);
+    }
+
+    public function calcularNuevoTotal(): float
+    {
+        $nuevoTotal = (float) $this->total_a_pagar;
+
+        if ($this->actividad->id_tipo_actividad === 2 && $this->fecha_emision_ord !== null) {
+            $cantidadSesiones = (int) $this->cant_sesiones;
+            $sesionesCubiertas = (int) ($this->sesiones_cubiertas ?? 0);
+
+            $sesionesRestantes = max(0, $cantidadSesiones - $sesionesCubiertas);
+
+            if ($sesionesRestantes > 0) {
+                $nuevoTotal = ActividadCombo::calcularTotalAPagar($this->id_actividad, $sesionesRestantes, $this->actividad->nombre);
+            } else {
+                $nuevoTotal = 0;
+            }
+        }
+
+        return $nuevoTotal;
+    }
+
+    public function calcularDeuda(): float
+    {
+        $totalAPagar = (float) $this->nuevo_total_a_pagar;
+        $totalPagado = $this->pagos_sum_monto ?? $this->pagos->sum('monto');
+
+        return max(0, (float) ($totalAPagar - $totalPagado));
     }
 }

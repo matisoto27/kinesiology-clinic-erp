@@ -91,33 +91,32 @@ new class extends Component
 ?>
 
 <div>
-    <div class="mx-auto mt-10 mb-5 px-8 py-6 bg-[#006E6B] max-w-screen-3xl w-full">
-        <div>
-            @if (session()->has('error'))
-                <div class="p-4 mb-4 text-md text-red-100 bg-red-600 rounded-lg shadow-md animate-bounce">
-                    <span class="font-bold">¡Error!</span> {{ session('error') }}
-                </div>
-            @endif
-        </div>
+    <div class="contenedor-listado max-w-screen-3xl">
+        @if (session()->has('error'))
+            <div class="alerta-error">
+                <span class="font-bold">¡Error!</span>
+                {{ session('error') }}
+            </div>
+        @endif
 
         <h2 class="titulo-formulario">Listado de pacientes fijos</h2>
 
-        <table class="table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full">
+        <table class="tabla-listado">
                 <thead>
-                    <tr class="bg-white text-[#014745]">
-                        <th class="py-3">Paciente</th>
-                        <th class="py-3">Actividad</th>
-                        <th class="py-3">Horarios</th>
-                        <th class="py-3">Estado</th>
-                        <th class="py-3">Acciones</th>
+                    <tr class="tabla-listado__cabecera">
+                        <th>Paciente</th>
+                        <th>Actividad</th>
+                        <th>Horarios</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($pacientesFijos as $pacFijo)
-                        <tr class="group hover:bg-[#F5D500] hover:font-bold hover:text-emerald-900 transition-colors duration-100">
-                            <td class="py-3">{{ $pacFijo->paciente->nombre_completo }}</td>
-                            <td class="py-3">{{ $pacFijo->actividad->nombre }}</td>
-                            <td class="py-3">
+                        <tr class="group tabla-listado__fila">
+                            <td>{{ $pacFijo->paciente->nombre_completo }}</td>
+                            <td>{{ $pacFijo->actividad->nombre }}</td>
+                            <td>
                                 <div class="flex flex-wrap justify-center gap-2">
                                     @foreach ($pacFijo->horarios as $hor)
                                         <span class="px-2 py-1 inline-flex items-center bg-white/10 group-hover:bg-[#014745]/10 border-white/20 group-hover:border-[#014745]/20 border rounded text-xs">
@@ -129,7 +128,7 @@ new class extends Component
                                     @endforeach
                                 </div>
                             </td>
-                            <td class="py-3">
+                            <td>
                                 @if($pacFijo->activo)
                                     <button
                                         class="indicador-estado indicador-estado--activo"
@@ -150,7 +149,7 @@ new class extends Component
                                     </button>
                                 @endif
                             </td>
-                            <td class="py-3">
+                            <td>
                                 <button
                                     type="button"
                                     class="text-white hover:text-red-400 transition-colors duration-200"

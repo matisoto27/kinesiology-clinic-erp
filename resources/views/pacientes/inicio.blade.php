@@ -7,39 +7,39 @@
 @endpush
 
 @section('content')
-    <div class="mx-auto mt-10 mb-5 px-8 py-6 bg-[#006E6B] max-w-screen-3xl w-full">
+    <div class="contenedor-listado max-w-screen-3xl">
 
         <h2 class="titulo-formulario">Listado de Pacientes</h2>
 
         <div x-data="{ mostrarInfo: false, datos: {} }" @keydown.escape.window="mostrarInfo = false; datos = {}">
-            <table class="table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full">
+            <table class="tabla-listado">
                 <thead>
-                    <tr class="bg-white text-[#014745]">
-                        <th class="py-3">DNI</th>
-                        <th class="py-3">Nombre completo</th>
-                        <th class="py-3">Nacimiento</th>
-                        <th class="py-3">Edad</th>
-                        <th class="py-3">Domicilio</th>
-                        <th class="py-3">Teléfono</th>
-                        <th class="py-3">Profesión</th>
-                        <th class="py-3">Fecha de ingreso</th>
-                        <th class="py-3">Ver más</th>
-                        <th colspan="2" class="py-3">Acciones</th>
+                    <tr class="tabla-listado__cabecera">
+                        <th>DNI</th>
+                        <th>Nombre completo</th>
+                        <th>Nacimiento</th>
+                        <th>Edad</th>
+                        <th>Domicilio</th>
+                        <th>Teléfono</th>
+                        <th>Profesión</th>
+                        <th>Fecha de ingreso</th>
+                        <th>Ver más</th>
+                        <th colspan="2">Acciones</th>
                     </tr>
                 </thead>
 
                 <tbody>
                     @forelse($pacientes as $pac)
-                        <tr class="hover:bg-[#F5D500] hover:font-bold hover:text-emerald-900 transition-colors duration-100">
-                            <td class="py-3">{{ $pac['dni'] }}</td>
-                            <td class="py-3">{{ $pac['nombre_completo'] }}</td>
-                            <td class="py-3">{{ $pac['fecha_nacimiento'] }}</td>
-                            <td class="py-3">{{ $pac['edad'] }}</td>
-                            <td class="py-3">{{ $pac['domicilio'] }}</td>
-                            <td class="py-3">{{ $pac['telefono'] }}</td>
-                            <td class="py-3">{{ $pac['profesion'] }}</td>
-                            <td class="py-3">{{ $pac['fecha_ingreso'] }}</td>
-                            <td class="py-3">
+                        <tr class="tabla-listado__fila">
+                            <td>{{ $pac['dni'] }}</td>
+                            <td>{{ $pac['nombre_completo'] }}</td>
+                            <td>{{ $pac['fecha_nacimiento'] }}</td>
+                            <td>{{ $pac['edad'] }}</td>
+                            <td>{{ $pac['domicilio'] }}</td>
+                            <td>{{ $pac['telefono'] }}</td>
+                            <td>{{ $pac['profesion'] }}</td>
+                            <td>{{ $pac['fecha_ingreso'] }}</td>
+                            <td>
                                 <div class="flex justify-center items-center">
                                     <button
                                         type="button"

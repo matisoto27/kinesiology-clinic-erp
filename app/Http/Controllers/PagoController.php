@@ -58,12 +58,14 @@ class PagoController extends Controller
             'monto' => 'monto'
         ]);
 
-        $inscripcion = ActividadPaciente::withSum('pagos', 'monto')->find($validados['id_act_pac']);
-        $deudaTotal = $inscripcion->total_a_pagar - ($inscripcion->pagos_sum_monto ?? 0);
+        $inscripcion = ActividadPaciente::with('actividad')
+            ->withSum('pagos', 'monto')
+            ->find($validados['id_act_pac']);
+        $deudaActual = (float) $inscripcion->deuda;
 
-        if ($validados['monto'] > $deudaTotal) {
+        if ($validados['monto'] > $deudaActual) {
             throw ValidationException::withMessages([
-                'monto' => ["El monto ingresado ($" . number_format($validados['monto'], 2) . ") supera la deuda actual ($" . number_format($deudaTotal, 2) . ")."]
+                'monto' => ["El monto ingresado ($" . number_format($validados['monto'], 2) . ") supera la deuda actual ($" . number_format($deudaActual, 2) . ")."]
             ]);
         }
 
@@ -71,10 +73,9 @@ class PagoController extends Controller
 
         try {
             Pago::create($validados);
+            $inscripcion->loadSum('pagos', 'monto'); // Luego de crear el pago, la deuda va a disminuir
 
-            $totalPagado = $inscripcion->pagos()->sum('monto');
-
-            if ($totalPagado >= $inscripcion->total_a_pagar) {
+            if ($inscripcion->deuda <= 0) {
                 $inscripcion->update(['pago_completado' => true]);
             }
 

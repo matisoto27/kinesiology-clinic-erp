@@ -24,6 +24,7 @@ Route::controller(ActividadComboController::class)->group(function () {
 });
 
 Route::controller(ActividadPacienteController::class)->group(function () {
+    Route::get('/actividades-pacientes', 'inicio')->name('actividades-pacientes.inicio');
     Route::get('/actividades-pacientes/general/crear', 'crearGeneral')->name('actividades-pacientes.general.crear');
     Route::get('/actividades-pacientes/kinesiologia/orden/crear', 'crearKinesiologiaConOrden')->name('actividades-pacientes.kinesiologia.con-orden.crear');
     Route::get('/actividades-pacientes/kinesiologia/sin-orden/crear', 'crearKinesiologiaSinOrden')->name('actividades-pacientes.kinesiologia.sin-orden.crear');

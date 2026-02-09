@@ -30,6 +30,10 @@
         @apply  mx-auto py-5 w-full;
     }
 
+    .contenedor-listado {
+        @apply mx-auto mt-10 mb-5 px-8 py-6 bg-[#006E6B] w-full;
+    }
+
     .titulo-formulario {
         @apply mb-4 block font-semibold text-2xl text-center text-white;
     }
@@ -116,5 +120,26 @@
 
     .indicador-estado__punto {
         @apply mr-2 h-2 w-2 rounded-full animate-pulse;
-    }   
+    }
+
+    .alerta-error {
+        @apply mb-4 p-4 bg-red-600 text-red-100 animate-bounce rounded-lg shadow-md;
+    }
+
+    .tabla-listado {
+        @apply table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full;
+    }
+
+    .tabla-listado__cabecera {
+        @apply bg-white text-[#014745];
+    }
+
+    .tabla-listado th,
+    .tabla-listado td {
+        @apply py-3;
+    }
+
+    .tabla-listado__fila {
+        @apply hover:bg-[#F5D500] hover:text-emerald-900 hover:font-bold transition-colors duration-100;
+    }
 }

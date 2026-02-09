@@ -30,6 +30,11 @@ class ActividadPacienteController extends Controller
         return view('actividades-pacientes.kinesiologia.sin-orden.crear');
     }
 
+    public function inicio()
+    {
+        return view('actividades-pacientes.inicio');
+    }
+
     public function aplicarOrden()
     {
         $pendientesDePago = ActividadPaciente::select('actividades_pacientes.*')
