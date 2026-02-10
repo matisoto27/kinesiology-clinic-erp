@@ -6,6 +6,8 @@
             @csrf
             @method('PUT')
 
+            <x-alerta tipo="error" />
+
             <h2 class="titulo-formulario">Editar información del paciente</h2>
 
             <div class="mb-4 grid grid-cols-1 gap-y-5">
@@ -134,14 +136,6 @@
             </div>
 
             <button type="submit" class="mt-4 boton-registrar">Actualizar</button>
-
-            @if (session('error'))
-                <div class="mt-4 px-4 py-3 bg-red-100 border-red-400 border text-red-700 rounded relative" role="alert">
-                    <strong class="font-bold">¡Ups! Algo salió mal</strong>
-                    <span class="block">{{ session('error') }}</span>
-                </div>
-            @endif
-
         </form>
     </div>
 @endsection

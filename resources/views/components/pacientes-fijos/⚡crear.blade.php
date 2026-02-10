@@ -117,12 +117,7 @@ new class extends Component
 
 <div class="contenedor max-w-screen-sm">
     <form class="formulario" wire:submit.prevent="almacenar">
-        @if (session()->has('error'))
-            <div class="alerta-error">
-                <span class="font-bold">¡Error!</span>
-                {{ session('error') }}
-            </div>
-        @endif
+        <x-alerta tipo="error" />
 
         <h1 class="titulo-formulario">Registrar nuevo paciente fijo</h1>
 

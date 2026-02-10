@@ -92,12 +92,7 @@ new class extends Component
 
 <div>
     <div class="contenedor-listado max-w-screen-3xl">
-        @if (session()->has('error'))
-            <div class="alerta-error">
-                <span class="font-bold">¡Error!</span>
-                {{ session('error') }}
-            </div>
-        @endif
+        <x-alerta tipo="error" />
 
         <h2 class="titulo-formulario">Listado de pacientes fijos</h2>
 

@@ -5,22 +5,9 @@
         <form action="{{ route('pacientes.almacenar') }}" method="POST" class="formulario" id="formulario">
             @csrf
 
-            <h2 class="titulo-formulario">Registrar paciente</h2>
+            <x-alerta tipo="error" />
 
-            @if (session('error'))
-                <div class="mb-4 p-4 bg-red-100 border-l-4 border-red-500 text-red-700 font-bold shadow-md animate-fade-in">
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
-                            <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
-                            </svg>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <span class="block break-words font-bold">{{ session('error') }}</span>
-                        </div>
-                    </div>
-                </div>
-            @endif
+            <h2 class="titulo-formulario">Registrar paciente</h2>
 
             <div class="mb-4 grid grid-cols-1 gap-y-5">
                 <x-input-formulario label="DNI" placeholder="Ingrese el DNI" name="dni" />

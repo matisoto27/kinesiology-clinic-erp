@@ -204,8 +204,8 @@ class PacienteController extends Controller
             if (!empty($patologiasParaCrear)) {
                 $paciente->patologias()->syncWithoutDetaching(
                     collect($patologiasParaCrear)->mapWithKeys(function ($id) {
-                        return [$id => ['fecha_desde' => Carbon::now()]];
-                    })
+                        return [$id => ['fecha_desde' => now()]];
+                    })->toArray()
                 );
             }
 
@@ -226,7 +226,11 @@ class PacienteController extends Controller
 
             $sintomasParaCrear = array_diff($sintomasEnviados, $sintomasActivosPaciente);
             if (!empty($sintomasParaCrear)) {
-                $paciente->sintomas()->attach($sintomasParaCrear);
+                $paciente->sintomas()->attach(
+                    collect($sintomasParaCrear)->mapWithKeys(function ($id) {
+                        return [$id => ['fecha_desde' => now()]];
+                    })->toArray()
+                );
             }
 
             DB::commit();

@@ -84,77 +84,74 @@
                 {{ $pacientes->links() }}
             </div>
 
-            <div
-                class="fixed inset-0 bg-black/30 backdrop-blur-sm flex justify-center items-center z-50"
-                x-show="mostrarInfo"
-                x-cloak
-                x-transition.opacity
-            >
-                <div class="bg-white rounded-2xl shadow-lg w-full max-w-lg p-6 relative" @click.outside="mostrarInfo = false; datos = {}">
-                    <button
-                        @click="mostrarInfo = false; datos = {}"
-                        class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+            <div class="modal-informativo" x-show="mostrarInfo" x-cloak x-transition.opacity>
+                <div class="modal-informativo__ventana" @click.outside="mostrarInfo = false; datos = {}">
+                    <button class="modal-informativo__cerrar" @click="mostrarInfo = false; datos = {}">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
 
-                    <h2 x-text="'Información de ' + datos.apellido + ' ' + datos.nombre" class="mb-6 pb-2 border-b text-gray-800 text-2xl font-semibold"></h2>
+                    <h2 class="modal-informativo__titulo" x-text="'Información de ' + datos.nombre_completo"></h2>
 
                     <div class="space-y-3">
-                        <div class="p-3 flex justify-between items-center bg-gray-50 border-gray-100 border rounded-lg">
+                        <div class="modal-informativo__seccion flex justify-between items-center">
                             <div>
-                                <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">¿Realiza actividad física?</p>
-                                <p class="text-gray-700 font-medium" x-text="datos.actividad_fisica"></p>
+                                <p class="modal-informativo__etiqueta">¿Realiza actividad física?</p>
+                                <p class="modal-informativo__valor" x-text="datos.actividad_fisica"></p>
                             </div>
                             <div class="text-[#006E6B]">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                             </div>
                         </div>
 
-                        <div class="p-3 bg-gray-50 border-gray-100 border rounded-lg">
-                            <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">¿Es adulto mayor?</p>
-                            <p class="text-gray-700 font-medium" x-text="datos.es_adulto_mayor ? 'Si' : 'No'"></p>
+                        <div class="modal-informativo__seccion">
+                            <p class="modal-informativo__etiqueta">¿Es adulto mayor?</p>
+                            <p class="modal-informativo__valor" x-text="datos.es_adulto_mayor ? 'Si' : 'No'"></p>
 
                             <template x-if="datos.es_adulto_mayor">
                                 <div class="mt-2 pt-2 border-gray-200 border-t">
-                                    <p class="text-gray-400 text-xs">¿Con quién vive?</p>
-                                    <p class="text-gray-600" x-text="datos.vive_con"></p>
+                                    <p class="modal-informativo__etiqueta">¿Con quién vive?</p>
+                                    <p class="modal-informativo__valor" x-text="datos.vive_con"></p>
                                 </div>
                             </template>
                         </div>
 
-                        <div class="p-3 bg-gray-50 border-gray-100 border rounded-lg">
-                            <p class="mb-2 text-gray-400 text-xs font-bold uppercase tracking-wider">¿Tiene algún antecedente patológico?</p>
+                        <div class="modal-informativo__seccion">
+                            <p class="mb-2 modal-informativo__etiqueta">Obra Social</p>
+
+                            <p class="modal-informativo__valor" x-show="datos.obra_social" x-text="datos.obra_social"></p>
+                            <p class="modal-informativo__sin-valor" x-show="!datos.obra_social">Sin una obra social registrada.</p>
+                        </div>
+
+                        <div class="modal-informativo__seccion">
+                            <p class="mb-2 modal-informativo__etiqueta">¿Tiene algún antecedente patológico?</p>
 
                             <div class="space-y-3">
                                 <template x-for="patologia in datos.patologias" :key="patologia.id">
-                                    <div class="border-l-2 border-[#006E6B] pl-2">
-                                        <p class="text-gray-400 text-xs font-semibold uppercase" x-text="patologia.fecha_desde"></p>
-                                        <p class="text-gray-700" x-text="patologia.nombre"></p>
+                                    <div class="modal-informativo__elemento-lista">
+                                        <p class="modal-informativo__etiqueta" x-text="patologia.fecha_desde"></p>
+                                        <p class="modal-informativo__valor" x-text="patologia.nombre"></p>
                                     </div>
                                 </template>
                             </div>
 
-                            <div class="py-1 text-gray-400 text-sm italic" x-show="!datos.patologias || datos.patologias.length === 0">
+                            <div class="modal-informativo__sin-valor" x-show="!datos.patologias || datos.patologias.length === 0">
                                 Sin antecedentes patológicos.
                             </div>
                         </div>
 
-                        <div class="p-3 bg-gray-50 border-gray-100 border rounded-lg">
-                            <p class="mb-2 text-gray-400 text-xs font-bold uppercase tracking-wider">¿Presenta algún síntoma?</p>
+                        <div class="modal-informativo__seccion">
+                            <p class="mb-2 modal-informativo__etiqueta">¿Presenta algún síntoma?</p>
 
                             <div class="space-y-3">
                                 <template x-for="sintoma in datos.sintomas" :key="sintoma.id">
-                                    <div class="border-l-2 border-[#006E6B] pl-2">
-                                        <p class="text-gray-400 text-xs font-semibold uppercase" x-text="sintoma.fecha_desde"></p>
-                                        <p class="text-gray-700" x-text="sintoma.nombre"></p>
+                                    <div class="modal-informativo__elemento-lista">
+                                        <p class="modal-informativo__etiqueta" x-text="sintoma.fecha_desde"></p>
+                                        <p class="modal-informativo__valor" x-text="sintoma.nombre"></p>
                                     </div>
                                 </template>
                             </div>
 
-                            <div class="py-1 text-gray-400 text-sm italic" x-show="!datos.sintomas || datos.sintomas.length === 0">
+                            <div class="modal-informativo__sin-valor" x-show="!datos.sintomas || datos.sintomas.length === 0">
                                 No registra síntomas activos.
                             </div>
                         </div>
@@ -167,17 +164,18 @@
                             <span class="px-2 py-1 bg-white/50 text-[#014745] text-xs font-bold rounded">DISPONIBLES</span>
                         </div>
                     </div>
-                    <div class="mt-8 flex justify-end gap-3">
+
+                    <div class="modal-informativo__seccion-acciones">
                         <button
+                            class="modal-informativo__accion bg-gray-100 hover:bg-gray-200 text-gray-700"
                             @click="mostrarInfo = false; datos = {}"
-                            class="px-5 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition"
                         >
                                 Cerrar
                         </button>
                         <a
-                            x-show="datos.id"
                             :href="'{{ route('pacientes.editar', ['paciente' => 'ID_P']) }}'.replace('ID_P', datos.id)"
-                            class="px-5 py-2 bg-[#3A8F8E] hover:bg-[#014745] text-white font-medium rounded-xl shadow-sm transition"
+                            class="modal-informativo__accion bg-[#3A8F8E] hover:bg-[#014745] text-white"
+                            x-show="datos.id"
                         >
                             Editar paciente
                         </a>
@@ -186,20 +184,7 @@
             </div>
         </div>
 
-        @if (session('exito'))
-            <div class="mt-4 p-4 bg-green-100 border-l-4 border-green-500 text-green-700 font-bold shadow-md animate-fade-in">
-                <div class="flex items-start">
-                    <div class="flex-shrink-0">
-                        <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
-                        </svg>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <span class="block break-words font-bold">{{ session('exito') }}</span>
-                    </div>
-                </div>
-            </div>
-        @endif
+        <x-alerta tipo="exito" />
     </div>
 @endsection
 

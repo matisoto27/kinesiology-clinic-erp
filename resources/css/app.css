@@ -122,10 +122,6 @@
         @apply mr-2 h-2 w-2 rounded-full animate-pulse;
     }
 
-    .alerta-error {
-        @apply mb-4 p-4 bg-red-600 text-red-100 animate-bounce rounded-lg shadow-md;
-    }
-
     .tabla-listado {
         @apply table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full;
     }
@@ -141,5 +137,49 @@
 
     .tabla-listado__fila {
         @apply hover:bg-[#F5D500] hover:text-emerald-900 hover:font-bold transition-colors duration-100;
+    }
+
+    .modal-informativo {
+        @apply fixed inset-0 flex justify-center items-center bg-black/30 backdrop-blur-sm z-50;
+    }
+
+    .modal-informativo__ventana {
+        @apply p-6 relative bg-white rounded-2xl shadow-lg max-w-lg w-full;
+    }
+
+    .modal-informativo__cerrar {
+        @apply absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition;
+    }
+
+    .modal-informativo__titulo {
+        @apply mb-6 pb-2 text-gray-800 text-2xl font-semibold border-b;
+    }
+
+    .modal-informativo__seccion {
+        @apply p-3 bg-gray-50 border-gray-100 border rounded-lg;
+    }
+
+    .modal-informativo__etiqueta {
+        @apply text-gray-400 text-xs font-bold tracking-wider uppercase;
+    }
+
+    .modal-informativo__valor {
+        @apply text-gray-700 font-medium;
+    }
+
+    .modal-informativo__sin-valor {
+        @apply py-1 text-gray-400 text-sm italic;
+    }
+
+    .modal-informativo__elemento-lista {
+        @apply pl-2 border-[#006E6B] border-l-2;
+    }
+
+    .modal-informativo__seccion-acciones {
+        @apply mt-8 flex justify-end gap-3;
+    }
+
+    .modal-informativo__accion {
+        @apply px-5 py-2 font-medium rounded-xl shadow-sm transition;
     }
 }
