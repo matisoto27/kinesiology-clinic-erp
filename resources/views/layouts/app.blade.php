@@ -32,24 +32,24 @@
                         </a>
                     </li>
 
-                    <li class="relative group">
-                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                    <li class="menu-desplegable group">
+                        <button>
                             Pacientes
                             <x-iconos.flecha-abajo />
                         </button>
-                        <ul class="menu-desplegable">
+                        <ul>
                             <li><a href="{{ route('pacientes.inicio') }}">Lista de pacientes</a></li>
                             <li><a href="{{ route('pacientes.crear') }}">Registrar paciente</a></li>
                             <li><a href="{{ route('obras-sociales-pacientes.crear') }}">Actualizar obra social de un paciente</a></li>
                         </ul>
                     </li>
 
-                    <li class="relative group">
-                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                    <li class="menu-desplegable group">
+                        <button>
                             Inscripciones
                             <x-iconos.flecha-abajo />
                         </button>
-                        <ul class="menu-desplegable">
+                        <ul>
                             <li><a href="{{ route('actividades-pacientes.inicio') }}">Historial de inscripciones</a></li>
                             <li><a href="{{ route('actividades-pacientes.general.crear') }}">Nueva inscripción Gym/Pilates</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
@@ -59,32 +59,38 @@
                         </ul>
                     </li>
 
-                    <li class="relative group">
-                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                    <li class="menu-desplegable group">
+                        <button>
                             Pacientes Fijos
                             <x-iconos.flecha-abajo />
                         </button>
-                        <ul class="menu-desplegable">
+                        <ul>
                             <li><a href="{{ route('pacientes-fijos.inicio') }}">Lista de pacientes fijos</a></li>
                             <li><a href="{{ route('pacientes-fijos.crear') }}">Registrar paciente fijo</a></li>
                         </ul>
                     </li>
 
-                    <li class="relative group">
-                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                    <li class="menu-desplegable group">
+                        <button>
                             Turnos
                             <x-iconos.flecha-abajo />
                         </button>
-                        <ul class="menu-desplegable">
+                        <ul>
                             <li><a href="{{ route('turnos.inicio') }}">Historial de turnos</a></li>
                             <li><a href="{{ route('turnos.calendario') }}">Ver calendario</a></li>
                         </ul>
                     </li>
 
-                    <li>
-                        <a href="{{ route('pagos.crear') }}" class="px-4 h-full flex items-center hover:bg-[#2f7a79] transition">
-                            Registrar Pago
-                        </a>
+                    <li class="menu-desplegable group">
+                        <button>
+                            Gestión de caja
+                            <x-iconos.flecha-abajo />
+                        </button>
+                        <ul>
+                            <li><a href="{{ route('movimientos') }}">Movimientos de caja</a></li>
+                            <li><a href="{{ route('pagos.crear') }}">Registrar pago</a></li>
+                            <li><a>Registrar egreso</a></li>
+                        </ul>
                     </li>
                 </ul>
             </nav>

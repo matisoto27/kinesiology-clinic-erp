@@ -82,3 +82,5 @@ Route::controller(TurnoController::class)->group(function () {
     Route::get('/turnos/calendario', 'calendario')->name('turnos.calendario');
     Route::post('/turnos/{id}/confirmar-asistencia', 'confirmarAsistencia')->name('turnos.confirmar-asistencia');
 });
+
+Route::view('/movimientos', 'movimientos')->name('movimientos');
