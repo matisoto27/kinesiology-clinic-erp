@@ -1,7 +1,7 @@
 @props(['tipo'])
 
 @if (session()->has($tipo))
-    <div class="p-4 rounded-lg shadow-md {{ $tipo === 'exito' ? 'mt-4 bg-green-100 border-green-500 border-l-4 text-green-700 animate-fade-in' : 'mb-4 bg-red-600 text-red-100 animate-bounce' }}">
+    <div class="mb-4 p-4 rounded-lg shadow-md {{ $tipo === 'exito' ? 'bg-green-100 border-green-500 border-l-4 text-green-700 animate-fade-in' : 'bg-red-600 text-red-100 animate-bounce' }}">
         <div class="flex items-start">
             @if ($tipo === 'exito')
                 <svg class="w-6 h-6 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">

@@ -136,7 +136,7 @@
     }
 
     .tabla-listado__fila {
-        @apply hover:bg-[#F5D500] hover:text-emerald-900 hover:font-bold transition-colors duration-100;
+        @apply h-20 hover:bg-[#F5D500] hover:text-emerald-900 hover:font-bold transition-colors duration-100;
     }
 
     .modal-informativo {
@@ -181,5 +181,17 @@
 
     .modal-informativo__accion {
         @apply px-5 py-2 font-medium rounded-xl shadow-sm transition;
+    }
+
+    .turno-pasado {
+        @apply px-3 py-1 inline-flex items-center text-sm font-semibold rounded;
+    }
+
+    .turno-pendiente {
+        @apply px-3 py-1 bg-blue-500 text-white text-sm font-semibold rounded;
+    }
+
+    .centrado-total {
+        @apply flex justify-center items-center;
     }
 }

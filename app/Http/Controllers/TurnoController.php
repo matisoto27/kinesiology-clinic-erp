@@ -10,7 +10,12 @@ use Illuminate\Http\Request;
 
 class TurnoController extends Controller
 {
-    public function inicio()
+    public function inicio(?int $idActividad = null, ?string $nombreApellidoPac = null)
+    {
+        return view('turnos.inicio', compact('idActividad', 'nombreApellidoPac'));
+    }
+
+    public function home()
     {
         $horaActual = Carbon::now();
         $limInferior = $horaActual->copy()->startOfHour()->subHour();

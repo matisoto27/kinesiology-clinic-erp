@@ -27,10 +27,8 @@ class AppServiceProvider extends ServiceProvider
     {
         Carbon::setLocale('es');
 
-        View::composer(['inicio', 'turnos.calendario'], function ($view) {
-            $view->with('actividades', Cache::remember('todas_actividades', now()->addHours(12), function () {
-                return Actividad::all();
-            }));
+        View::composer(['inicio', 'turnos.calendario', 'turnos.inicio'], function ($vista) {
+            $vista->with('actividades', Cache::remember('todas_las_actividades', now()->addHours(12), fn () => Actividad::all()));
         });
 
         View::composer(['actividades-pacientes.crear'], function ($view) {

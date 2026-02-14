@@ -77,7 +77,8 @@ Route::controller(NotaTurnoController::class)->group(function () {
 });
 
 Route::controller(TurnoController::class)->group(function () {
-    Route::get('/', 'inicio')->name('inicio');
+    Route::get('/', 'home')->name('inicio');
+    Route::get('/turnos', 'inicio')->name('turnos.inicio');
     Route::get('/turnos/calendario', 'calendario')->name('turnos.calendario');
     Route::post('/turnos/{id}/confirmar-asistencia', 'confirmarAsistencia')->name('turnos.confirmar-asistencia');
 });

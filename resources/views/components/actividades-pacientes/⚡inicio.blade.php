@@ -77,8 +77,6 @@ new class extends Component
 ?>
 
 <div class="contenedor-listado max-w-screen-3xl">
-    <x-alerta tipo="error" />
-
     <h2 class="titulo-formulario">Listado de inscripciones</h2>
 
     <div class="fila-formulario">
@@ -91,6 +89,9 @@ new class extends Component
             </select>
         </div>
     </div>
+
+    <x-alerta tipo="exito" />
+    <x-alerta tipo="error" />
 
     <table class="tabla-listado">
         <thead>
@@ -108,6 +109,7 @@ new class extends Component
                 <th>Acciones</th>
             </tr>
         </thead>
+
         <tbody>
             @forelse($inscripciones as $actPac)
                 @php
@@ -187,9 +189,8 @@ new class extends Component
                             type="button"
                             class="text-white hover:text-red-400 transition-colors duration-200"
                             wire:click="eliminar({{ $actPac->id }})"
-                            wire:confirm="¿Estás seguro de que deseas eliminar la inscripción? Se eliminará tanto la inscripción como todos los turnos asociados a la misma."
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                            wire:confirm="¿Estás seguro de que deseas eliminar la inscripción? Se eliminará tanto la inscripción como todos los turnos asociados a la misma.">
+                            <x-iconos.basura />
                         </button>
                     </td>
                 </tr>
@@ -205,7 +206,7 @@ new class extends Component
         <div class="modal-informativo" wire:keydown.escape.window="cerrarModal">
             <div class="modal-informativo__ventana" wire:click.outside="cerrarModal">
                 <button class="modal-informativo__cerrar" wire:click="cerrarModal">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    <x-iconos.cruz />
                 </button>
 
                 <h2 class="modal-informativo__titulo">
@@ -242,11 +243,9 @@ new class extends Component
                                         <p class="modal-informativo__valor">{{ $turno->fecha_hora->format('d/m/Y H:i') }}</p>
                                     </div>
                                     @if($turno->fecha_hora->isFuture())
-                                        <span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded">
-                                            PENDIENTE
-                                        </span>
+                                        <span class="turno-pendiente">PENDIENTE</span>
                                     @else
-                                        <span class="px-2 py-1 text-xs font-bold rounded {{ $turno->asiste ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700' }}">
+                                        <span class="turno-pasado {{ $turno->asiste ? 'bg-emerald-500' : 'bg-red-500' }}">
                                             {{ $turno->asiste ? 'PRESENTE' : 'AUSENTE' }}
                                         </span>
                                     @endif
@@ -255,6 +254,17 @@ new class extends Component
                                 <p class="modal-informativo__sin-valor">No hay turnos registrados.</p>
                             @endforelse
                         </div>
+                        @if($inscripcionSeleccionada->turnos->count() > 0)
+                            <div class="mt-2 flex justify-center">
+                                <a href="{{ route('turnos.inicio', [
+                                        'idActividad' => $inscripcionSeleccionada->id_actividad,
+                                        'nombreApellidoPac' => $inscripcionSeleccionada->paciente->nombre . ' ' . $inscripcionSeleccionada->paciente->apellido
+                                    ]) }}"
+                                    class="text-blue-500 hover:text-blue-700 text-sm font-semibold underline transition-colors">
+                                    Editar turnos
+                                </a>
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -264,6 +274,4 @@ new class extends Component
             </div>
         </div>
     @endif
-
-    <x-alerta tipo="exito" />
 </div>
