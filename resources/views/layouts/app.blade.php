@@ -15,31 +15,79 @@
 </head>
 
 <body>
+    <header class="bg-[#006E6B] font-medium h-20 shadow-md">
+        <div class="mx-auto h-full w-[90%] lg:w-[80%] flex items-center text-white">
 
-    <header class="bg-[#006E6B] font-medium h-20">
-        <div class="flex mx-auto text-white h-full items-center w-[80%]">
-
-            <div class="flex bg-[white] items-center gap-3 rounded-sm">
+            <a href="{{ route('inicio') }}" class="flex items-center gap-3 bg-white rounded-sm overflow-hidden hover:opacity-90 transition">
                 <h1 class="text-black text-[28px] pl-2" style="font-family: 'Lato', sans-serif; font-weight: 500;">Punto</h1>
                 <img src="{{ asset('img/logo.png') }}" alt="Logo Punto Kinésico" class="h-12 w-auto">
                 <h1 class="text-black text-[28px] pr-2" style="font-family: 'Lato', sans-serif; font-weight: 500;">Kinésico</h1>
-            </div>
+            </a>
 
-            <ul class="ml-auto flex h-full gap-10 text-base">
-                <li class="h-full">
-                    <a href="../templates/index.html" class="h-full flex items-center px-6 hover:bg-[#2f7a79] transition">Asistencia de hoy</a>
-                </li>
-                <li class="h-full">
-                    <a href="../templates/cobrosPacientes.html" class="h-full flex items-center px-6 hover:bg-[#2f7a79] transition">Cobros pacientes</a>
-                </li>
-                <li class="h-full">
-                    <a href="../templates/registroDeActividades.html" class="h-full flex items-center px-6 hover:bg-[#2f7a79] transition">Registro de actividades</a>
-                </li>
-                <li class="h-full">
-                    <a href="../templates/turnos.html" class="h-full flex items-center px-6 hover:bg-[#2f7a79] transition">Turnos</a>
-                </li>
-            </ul>
+            <nav class="ml-auto h-full">
+                <ul class="h-full flex gap-2 text-sm lg:text-base">
+                    <li>
+                        <a href="{{ route('inicio') }}" class="px-4 h-full flex items-center hover:bg-[#2f7a79] transition">
+                            Inicio
+                        </a>
+                    </li>
 
+                    <li class="relative group">
+                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                            Pacientes
+                            <x-iconos.flecha-abajo />
+                        </button>
+                        <ul class="menu-desplegable">
+                            <li><a href="{{ route('pacientes.inicio') }}">Lista de pacientes</a></li>
+                            <li><a href="{{ route('pacientes.crear') }}">Registrar paciente</a></li>
+                            <li><a href="{{ route('obras-sociales-pacientes.crear') }}">Actualizar obra social de un paciente</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="relative group">
+                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                            Inscripciones
+                            <x-iconos.flecha-abajo />
+                        </button>
+                        <ul class="menu-desplegable">
+                            <li><a href="{{ route('actividades-pacientes.inicio') }}">Historial de inscripciones</a></li>
+                            <li><a href="{{ route('actividades-pacientes.general.crear') }}">Nueva inscripción Gym/Pilates</a></li>
+                            <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
+                            <li><a href="{{ route('actividades-pacientes.kinesiologia.sin-orden.crear') }}">Kinesiología (SIN orden médica)</a></li>
+                            <li><a href="{{ route('actividades-pacientes.aplicar-orden') }}">Aplicar orden médica a una inscripción</a></li>
+                            <li><a href="{{ route('precios.crear') }}">Actualizar precios de los combos</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="relative group">
+                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                            Pacientes Fijos
+                            <x-iconos.flecha-abajo />
+                        </button>
+                        <ul class="menu-desplegable">
+                            <li><a href="{{ route('pacientes-fijos.inicio') }}">Lista de pacientes fijos</a></li>
+                            <li><a href="{{ route('pacientes-fijos.crear') }}">Registrar paciente fijo</a></li>
+                        </ul>
+                    </li>
+
+                    <li class="relative group">
+                        <button class="px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition">
+                            Turnos
+                            <x-iconos.flecha-abajo />
+                        </button>
+                        <ul class="menu-desplegable">
+                            <li><a href="{{ route('turnos.inicio') }}">Historial de turnos</a></li>
+                            <li><a href="{{ route('turnos.calendario') }}">Ver calendario</a></li>
+                        </ul>
+                    </li>
+
+                    <li>
+                        <a href="{{ route('pagos.crear') }}" class="px-4 h-full flex items-center hover:bg-[#2f7a79] transition">
+                            Registrar Pago
+                        </a>
+                    </li>
+                </ul>
+            </nav>
         </div>
     </header>
 
@@ -48,7 +96,6 @@
     </main>
 
     @stack('scripts')
-
 </body>
 
 </html>

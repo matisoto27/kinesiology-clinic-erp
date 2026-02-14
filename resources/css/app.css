@@ -194,4 +194,16 @@
     .centrado-total {
         @apply flex justify-center items-center;
     }
+
+    .menu-desplegable {
+        @apply hidden group-hover:block absolute w-56 z-50 bg-white text-gray-800 border-[#006E6B] border-t-2 shadow-xl;
+    }
+
+    .menu-desplegable li a {
+        @apply px-4 py-3 block hover:bg-gray-100 border-b;
+    }
+
+    .menu-desplegable li:last-child a {
+        @apply border-b-0;
+    }
 }

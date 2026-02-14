@@ -38,7 +38,7 @@ Route::controller(ObraSocialController::class)->group(function () {
 });
 
 Route::controller(ObraSocialPacienteController::class)->group(function () {
-    Route::get('/obras-sociales-pacientes/crear', 'crear');
+    Route::get('/obras-sociales-pacientes/crear', 'crear')->name('obras-sociales-pacientes.crear');
     Route::post('/obras-sociales-pacientes', 'almacenar')->name('obras-sociales-pacientes.almacenar');
 });
 
