@@ -6,6 +6,7 @@ use App\Models\Actividad;
 use App\Models\Egreso;
 use App\Models\Pago;
 use App\Models\Patologia;
+use App\Models\Profesional;
 use App\Models\TipoSintoma;
 use App\Observers\EgresoObserver;
 use App\Observers\PagoObserver;
@@ -33,6 +34,12 @@ class AppServiceProvider extends ServiceProvider
 
         Egreso::observe(EgresoObserver::class);
         Pago::observe(PagoObserver::class);
+
+        View::composer(['egresos.crear'], function ($vista) {
+            $vista->with('profesionales', Cache::remember('profesionales_activos', now()->addHours(12), function () {
+                return Profesional::where('activo', true)->orderByDesc('nombre')->get();
+            }));
+        });
 
         View::composer(['inicio', 'turnos.calendario', 'turnos.inicio'], function ($vista) {
             $vista->with('actividades', Cache::remember('todas_las_actividades', now()->addHours(12), fn () => Actividad::all()));

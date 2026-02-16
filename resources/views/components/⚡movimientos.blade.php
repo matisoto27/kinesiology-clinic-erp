@@ -65,7 +65,6 @@ new class extends Component
                 ->get()
                 ->map(function ($egreso) {
                     $egreso->tipo = 'egreso';
-                    $egreso->metodo = 'Efectivo'; // Regla de negocio
                     $egreso->fecha = $egreso->created_at;
                     return $egreso;
                 });
@@ -113,7 +112,7 @@ new class extends Component
 
         <tbody>
             @forelse($movimientos as $mov)
-                <tr class="tabla-listado__fila">
+                <tr class="tabla-listado__fila group">
                     <td>{{ $mov->fecha->format('d/m/Y H:i') }}</td>
                     <td>
                         @if($mov->tipo === 'ingreso')
@@ -129,10 +128,16 @@ new class extends Component
                     <td>{{ $mov->profesional->nombre }} {{ $mov->profesional->apellido}}</td>
                     <td>
                         @if($mov->tipo === 'ingreso')
-                            <small class="block text-gray-400">Pago #{{ $mov->nro_pago }}</small>
-                            {{ $mov->actividadPaciente->paciente->nombre_completo }}
+                            <small class="block text-gray-400 group-hover:text-emerald-900">
+                                Pago #{{ $mov->nro_pago }}
+                            </small>
+                            <span class="group-hover:text-emerald-900">
+                                {{ $mov->actividadPaciente->paciente->nombre_completo }}
+                            </span>
                         @else
-                            <span class="text-gray-300 italic">{{ $mov->motivo }}</span>
+                            <span class="text-gray-300 italic group-hover:text-emerald-900">
+                                {{ $mov->motivo }}
+                            </span>
                         @endif
                     </td>
                     <td>

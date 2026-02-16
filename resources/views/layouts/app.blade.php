@@ -89,7 +89,7 @@
                         <ul>
                             <li><a href="{{ route('movimientos') }}">Movimientos de caja</a></li>
                             <li><a href="{{ route('pagos.crear') }}">Registrar pago</a></li>
-                            <li><a>Registrar egreso</a></li>
+                            <li><a href="{{ route('egresos.crear') }}">Registrar egreso</a></li>
                         </ul>
                     </li>
                 </ul>
