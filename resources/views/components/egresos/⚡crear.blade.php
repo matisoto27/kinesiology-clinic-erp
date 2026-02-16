@@ -2,6 +2,8 @@
 
 use App\Models\Egreso;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Livewire\Component;
 
 new class extends Component

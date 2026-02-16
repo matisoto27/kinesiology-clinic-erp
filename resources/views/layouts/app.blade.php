@@ -92,6 +92,16 @@
                             <li><a href="{{ route('egresos.crear') }}">Registrar egreso</a></li>
                         </ul>
                     </li>
+
+                    <li class="menu-desplegable group">
+                        <button>
+                            Para el personal
+                            <x-iconos.flecha-abajo />
+                        </button>
+                        <ul>
+                            <li><a href="{{ route('horas-trabajadas.crear') }}">Registrar horas trabajadas</a></li>
+                        </ul>
+                    </li>
                 </ul>
             </nav>
         </div>

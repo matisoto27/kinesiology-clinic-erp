@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('dni', length: 8)->unique();
             $table->string('nombre', length: 30);
             $table->string('apellido', length: 30);
+            $table->integer('valor_por_hora')->default(0);
+            $table->char('codigo_personal', 5);
             $table->boolean('activo')->default(true);
 
             $table->timestamps();

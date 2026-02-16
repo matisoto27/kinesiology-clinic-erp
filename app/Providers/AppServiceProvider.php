@@ -35,7 +35,7 @@ class AppServiceProvider extends ServiceProvider
         Egreso::observe(EgresoObserver::class);
         Pago::observe(PagoObserver::class);
 
-        View::composer(['egresos.crear'], function ($vista) {
+        View::composer(['egresos.crear', 'profesionales.horas-trabajadas.crear'], function ($vista) {
             $vista->with('profesionales', Cache::remember('profesionales_activos', now()->addHours(12), function () {
                 return Profesional::where('activo', true)->orderByDesc('nombre')->get();
             }));

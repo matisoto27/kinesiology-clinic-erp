@@ -86,6 +86,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
 
     Route::view('/egresos/crear', 'egresos.crear')->name('egresos.crear');
     Route::view('/movimientos', 'movimientos')->name('movimientos');
+    Route::view('/profesionales/horas-trabajadas/crear', 'profesionales.horas-trabajadas.crear')->name('horas-trabajadas.crear');
 });
 
 Route::get('/', function () {
