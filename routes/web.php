@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccesoController;
 use App\Http\Controllers\ActividadComboController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ActividadPacienteController;
@@ -87,22 +88,18 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::view('/egresos/crear', 'egresos.crear')->name('egresos.crear');
     Route::view('/movimientos', 'movimientos')->name('movimientos');
     Route::view('/profesionales/horas-trabajadas/crear', 'profesionales.horas-trabajadas.crear')->name('horas-trabajadas.crear');
+
+    Route::middleware(['verificar.acceso.admin'])->group(function () {
+        Route::view('/profesionales/crear', 'profesionales.crear')->name('profesionales.crear');
+        Route::view('/profesionales', 'profesionales.inicio')->name('profesionales.inicio');
+        Route::view('/profesionales/{profesional}/editar', 'profesionales.editar')->name('profesionales.editar');
+    });
 });
 
-Route::get('/', function () {
-    if (session('autorizado')) {
-        return redirect()->route('inicio');
-    }
-    return view('acceso');
-})->name('acceso.inicio');
-
-Route::post('/acceso', function (\Illuminate\Http\Request $request) {
-    $codigo = env('CODIGO_ACCESO_SISTEMA');
-
-    if ($request->codigo === $codigo) {
-        session(['autorizado' => true]);
-        return redirect()->route('inicio');
-    }
-
-    return back()->withErrors(['error' => 'El código ingresado es incorrecto.']);
-})->name('acceso.verificar');
+Route::controller(AccesoController::class)->group(function () {
+    Route::get('/', 'mostrarAcceso')->name('acceso.inicio');
+    Route::post('/acceso', 'verificarAcceso')->name('acceso.verificar');
+    Route::get('/admin', 'mostrarAdmin')->name('admin.inicio');
+    Route::post('/admin', 'verificarAdmin')->name('admin.verificar');
+    Route::post('/salir', 'salir')->name('admin.salir');
+});

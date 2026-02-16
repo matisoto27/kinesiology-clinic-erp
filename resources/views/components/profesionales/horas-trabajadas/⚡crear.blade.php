@@ -22,7 +22,7 @@ new class extends Component
         'cantidad_horas' => 'required|integer|min:1|max:8',
         'fecha_trabajada' => 'required|date',
         'id_profesional' => 'required|exists:profesionales,id',
-        'codigo_personal' => 'required|integer|digits:5'
+        'codigo_personal' => 'required|numeric|digits:5'
     ];
 
     public function mount()

@@ -102,6 +102,33 @@
                             <li><a href="{{ route('horas-trabajadas.crear') }}">Registrar horas trabajadas</a></li>
                         </ul>
                     </li>
+
+                    @if (session('acceso_admin'))
+                        <li class="menu-desplegable group">
+                            <button>
+                                Administración
+                                <x-iconos.flecha-abajo />
+                            </button>
+                            <ul>
+                                <li><a href="{{ route('profesionales.inicio') }}">Lista de profesionales</a></li>
+                                <li><a href="{{ route('profesionales.crear') }}">Registrar nuevo profesional</a></li>
+                                <li>
+                                    <form action="{{ route('admin.salir') }}" method="POST" class="px-4 py-3 block hover:bg-red-700">
+                                        @csrf
+                                        <button type="submit">
+                                            Cerrar sesión admin
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    @else
+                        <li>
+                            <a href="{{ route('admin.inicio') }}" class="px-4 h-full flex items-center hover:bg-[#2f7a79] transition">
+                                Ingresar como administrador
+                            </a>
+                        </li>
+                    @endif
                 </ul>
             </nav>
         </div>

@@ -199,7 +199,7 @@
         @apply relative;
     }
 
-    .menu-desplegable button {
+    .menu-desplegable > button {
         @apply px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition;
     }
 
