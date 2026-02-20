@@ -42,13 +42,13 @@ class AppServiceProvider extends ServiceProvider
             }));
         });
 
-        View::composer(['turnos.calendario'], function ($vista) {
+        View::composer(['principal', 'turnos.calendario'], function ($vista) {
             $vista->with('tiposActividad', Cache::remember('todos_tipos_actividad', now()->addHours(12), function () {
                 return TipoActividad::with('actividades')->get();
             }));
         });
 
-        View::composer(['inicio', 'turnos.inicio'], function ($vista) {
+        View::composer(['turnos.inicio'], function ($vista) {
             $vista->with('actividades', Cache::remember('todas_las_actividades', now()->addHours(12), fn () => Actividad::all()));
         });
 

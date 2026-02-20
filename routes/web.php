@@ -11,7 +11,6 @@ use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\PacienteFijoController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PrecioController;
-use App\Http\Controllers\TurnoController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['verificar.acceso'])->group(function () {
@@ -78,12 +77,9 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::delete('/notas/{id}', 'eliminar');
     });
 
-    Route::controller(TurnoController::class)->group(function () {
-        Route::get('/inicio', 'home')->name('inicio');
-        Route::get('/turnos', 'inicio')->name('turnos.inicio');
-        Route::get('/turnos/calendario', 'calendario')->name('turnos.calendario');
-        Route::post('/turnos/{id}/confirmar-asistencia', 'confirmarAsistencia')->name('turnos.confirmar-asistencia');
-    });
+    Route::view('/home', 'principal')->name('inicio');
+    Route::view('/turnos', 'turnos.inicio')->name('turnos.inicio');
+    Route::view('/turnos/calendario', 'turnos.calendario')->name('turnos.calendario');
 
     Route::view('/egresos/crear', 'egresos.crear')->name('egresos.crear');
     Route::view('/movimientos', 'movimientos')->name('movimientos');
