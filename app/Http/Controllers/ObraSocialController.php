@@ -18,9 +18,11 @@ class ObraSocialController extends Controller
                 return response()->json(['obras' => []], 200);
             }
 
-            $obras = ObraSocial::select('id', 'nombre')->where('nombre', 'like', "$nombre%")
-                ->limit(10)
+            $obras = ObraSocial::select('id', 'nombre')
+                ->where('activo', true)
+                ->where('nombre', 'like', $nombre . '%')
                 ->orderBy('nombre')
+                ->limit(10)
                 ->get();
 
             return response()->json(['obras' => $obras], 200);

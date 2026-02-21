@@ -100,14 +100,14 @@
                     <label class="etiqueta-formulario">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        @foreach ($tipos_sintomas as $tipo)
-                            @if (!$tipo->sintomas->isEmpty())
+                        @foreach ($tiposSintoma as $tipo)
+                            @if (!$tipo->sintomasActivos->isEmpty())
                                 <div class="bg-[#3A8F8E] p-4 rounded-md shadow-lg">
 
                                     <h3 class="mb-2 font-semibold text-xl text-white">{{ $tipo->nombre }}</h3>
 
                                     <div class="space-y-4">
-                                        @foreach ($tipo->sintomas as $sintoma)
+                                        @foreach ($tipo->sintomasActivos as $sintoma)
                                             <div class="flex items-center gap-2">
                                                 <input
                                                     type="checkbox"

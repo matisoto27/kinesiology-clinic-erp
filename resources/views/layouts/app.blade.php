@@ -14,7 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
 
-<body>
+<body class="min-h-screen flex flex-col">
     <header class="bg-[#006E6B] font-medium h-20 shadow-md">
         <div class="mx-auto h-full w-[90%] lg:w-[80%] flex items-center text-white">
 
@@ -135,9 +135,33 @@
         </div>
     </header>
 
-    <main>
+    <main class="flex-grow">
         @yield('content')
     </main>
+
+    <footer class="py-6 bg-[#006E6B] border-white/10 border-t">
+        <div class="mx-auto px-4 max-w-7xl flex flex-col md:flex-row justify-center items-center gap-4">
+            <div class="flex items-center gap-3 group">
+                <span class="text-white/50 text-xs font-light tracking-[0.4em] uppercase">
+                    Desarrollado por
+                </span>
+
+                <div class="px-4 py-2 flex items-center gap-2 bg-black/10 hover:bg-black/20 border-white/5 border backdrop-blur-sm rounded-full transition-all duration-300">
+                    <x-tempesta-logo />
+                    <div class="flex flex-col leading-none">
+                        <span class="text-white text-lg font-bold tracking-tighter">TEMPESTA</span>
+                        <span class="ml-0.5 text-[#00ffa2] text-[10px] font-black tracking-[0.2em]">TECH</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mx-2 h-8 w-[1px] hidden md:block bg-white/10"></div>
+
+            <p class="text-white/30 text-xs font-light tracking-wide">
+                &copy; {{ date('Y') }} — Todos los derechos reservados.
+            </p>
+        </div>
+    </footer>
 
     @stack('scripts')
 </body>

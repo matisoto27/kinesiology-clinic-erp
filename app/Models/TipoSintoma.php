@@ -24,4 +24,9 @@ class TipoSintoma extends Model
     {
         return $this->hasMany(Sintoma::class, 'id_tipo');
     }
+
+    public function sintomasActivos(): HasMany
+    {
+        return $this->sintomas()->where('activo', true);
+    }
 }
