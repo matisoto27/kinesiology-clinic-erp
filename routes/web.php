@@ -89,6 +89,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::view('/profesionales/crear', 'profesionales.crear')->name('profesionales.crear');
         Route::view('/profesionales', 'profesionales.inicio')->name('profesionales.inicio');
         Route::view('/profesionales/{profesional}/editar', 'profesionales.editar')->name('profesionales.editar');
+        Route::view('/profesionales/horas-trabajadas', 'profesionales.horas-trabajadas.inicio')->name('horas-trabajadas.inicio');
     });
 });
 

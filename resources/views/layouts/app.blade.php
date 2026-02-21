@@ -110,8 +110,9 @@
                                 <x-iconos.flecha-abajo />
                             </button>
                             <ul>
-                                <li><a href="{{ route('profesionales.inicio') }}">Lista de profesionales</a></li>
                                 <li><a href="{{ route('profesionales.crear') }}">Registrar nuevo profesional</a></li>
+                                <li><a href="{{ route('profesionales.inicio') }}">Lista de profesionales</a></li>
+                                <li><a href="{{ route('horas-trabajadas.inicio') }}">Historial de horas trabajadas</a></li>
                                 <li>
                                     <form action="{{ route('admin.salir') }}" method="POST" class="px-4 py-3 block hover:bg-red-700">
                                         @csrf
