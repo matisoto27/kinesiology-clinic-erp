@@ -19,6 +19,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::get('/actividades/{id}/combos', 'obtenerCombos');
         Route::get('/actividades/{id}/turnos-disponibles', 'obtenerTurnosDisponibles');
     });
+    Route::view('/actividades/turnos-disponibles', 'actividades.turnos-disponibles')->name('actividades.turnos-disponibles');
 
     Route::controller(ActividadComboController::class)->group(function () {
         Route::get('/actividades-combos/{id}/precio-vigente', 'obtenerPrecioVigente');

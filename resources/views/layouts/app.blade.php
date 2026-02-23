@@ -78,6 +78,7 @@
                         <ul>
                             <li><a href="{{ route('turnos.inicio') }}">Historial de turnos</a></li>
                             <li><a href="{{ route('turnos.calendario') }}">Ver calendario</a></li>
+                            <li><a href="{{ route('actividades.turnos-disponibles') }}">Consultar disponibilidad</a></li>
                         </ul>
                     </li>
 

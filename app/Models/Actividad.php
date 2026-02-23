@@ -135,12 +135,10 @@ class Actividad extends Model
         return $turnosDisponibles;
     }
 
-    public function turnosDisponibles(int $idPaciente, Carbon $comienzo, Carbon $fin): array
+    public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin): array
     {
         if ($this->esActividadGeneral()) {
-
             $maximoTurnos = config('app.max_turnos_generales');
-
             $consulta = Turno::conActPac()
                 ->deLaActividad($this->id)
                 ->select('fecha_hora')
@@ -149,9 +147,7 @@ class Actividad extends Model
                 ->cantidadMayorIgualQue($maximoTurnos);
 
         } else {
-
             $maximoTurnos = config('app.max_turnos_kinesiologia');
-
             $consulta = Turno::conActPac()
                 ->conActividad()
                 ->deTipo(self::TIPO_KINESIOLOGIA)
@@ -174,11 +170,14 @@ class Actividad extends Model
         $periodo = CarbonPeriod::create($comienzo, $fin);
         $horasInicio = $this->obtenerHorasDeInicio();
 
-        $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, $comienzo, $fin)
-            ->map(fn ($t) => [
-                'inicio' => $t->timestamp,
-                'fin'    => $t->timestamp + 3600
-            ])->toArray();
+        $rangosOcupados = [];
+        if ($idPaciente) {
+            $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, $comienzo, $fin)
+                ->map(fn ($t) => [
+                    'inicio' => $t->timestamp,
+                    'fin'    => $t->timestamp + 3600
+                ])->toArray();
+        }
 
         $turnosDisponibles = [];
 
@@ -195,14 +194,16 @@ class Actividad extends Model
                 $turno = Carbon::parse($turnoStr);
                 if ($turno->isPast()) continue;
 
-                $inicio = $turno->timestamp;
-                $fin = $inicio + 3600;
-
                 $seSolapa = false;
-                foreach ($rangosOcupados as $rango) {
-                    if ($inicio < $rango['fin'] && $fin > $rango['inicio']) {
-                        $seSolapa = true;
-                        break;
+                if ($idPaciente) {
+                    $inicioTs = $turno->timestamp;
+                    $finTs = $inicioTs + 3600;
+
+                    foreach ($rangosOcupados as $rango) {
+                        if ($inicioTs < $rango['fin'] && $finTs > $rango['inicio']) {
+                            $seSolapa = true;
+                            break;
+                        }
                     }
                 }
 
