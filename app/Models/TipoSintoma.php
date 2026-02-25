@@ -27,6 +27,8 @@ class TipoSintoma extends Model
 
     public function sintomasActivos(): HasMany
     {
-        return $this->sintomas()->where('activo', true);
+        return $this->sintomas()
+            ->where('activo', true)
+            ->orderBy('nombre');
     }
 }

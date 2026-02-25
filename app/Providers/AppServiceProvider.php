@@ -54,10 +54,12 @@ class AppServiceProvider extends ServiceProvider
 
         View::composer(['pacientes.crear', 'pacientes.editar'], function ($view) {
             $view->with('tiposSintoma', Cache::remember('tipos_sintoma_activos', now()->addHours(12), function () {
-                return TipoSintoma::where('activo', true)->get();
+                return TipoSintoma::where('activo', true)
+                    ->with('sintomasActivos')
+                    ->get();
             }));
             $view->with('todasPatologias', Cache::remember('patologias_activas', now()->addHours(12), function () {
-                return Patologia::where('activo', true)->get();
+                return Patologia::where('activo', true)->orderBy('nombre')->get();
             }));
         });
     }

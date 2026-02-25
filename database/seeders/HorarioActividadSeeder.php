@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Horario;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -12,52 +13,27 @@ class HorarioActividadSeeder extends Seeder
      */
     public function run(): void
     {
-        $horas = DB::table('horarios')->pluck('id', 'hora_inicio');
+        $horas = Horario::pluck('id', 'hora_inicio');
 
-        $horariosActividades = [
-            // Gimnasio
-            ['id_horario' => $horas['08:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['08:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['09:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['09:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['10:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['10:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['11:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['11:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['16:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['16:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['17:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['17:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['18:00:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['18:30:00'], 'id_actividad' => 1],
-            ['id_horario' => $horas['19:00:00'], 'id_actividad' => 1],
-            // Pilates
-            ['id_horario' => $horas['08:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['09:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['10:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['11:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['16:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['17:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['18:00:00'], 'id_actividad' => 2],
-            ['id_horario' => $horas['19:00:00'], 'id_actividad' => 2],
-            // Kinesiología convencional
-            ['id_horario' => $horas['08:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['08:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['09:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['09:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['10:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['10:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['11:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['11:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['16:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['16:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['17:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['17:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['18:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['18:30:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['19:00:00'], 'id_actividad' => 3],
-            ['id_horario' => $horas['19:30:00'], 'id_actividad' => 3]
-        ];
+        $bloqueGym = ['07:00:00', '07:30:00', '08:00:00', '08:30:00', '09:00:00', '09:30:00', '10:00:00', '10:30:00', '11:00:00', '16:00:00', '16:30:00', '17:00:00', '17:30:00', '18:00:00', '18:30:00', '19:00:00'];
+        $bloquePilates = ['07:00:00', '08:00:00', '09:00:00', '10:00:00', '11:00:00', '15:00:00', '16:00:00', '17:00:00', '18:00:00', '19:00:00'];
+        $bloqueKinesio = ['08:00:00', '08:30:00', '09:00:00', '09:30:00', '10:00:00', '10:30:00', '11:00:00', '11:30:00', '16:00:00', '16:30:00', '17:00:00', '17:30:00', '18:00:00', '18:30:00', '19:00:00', '19:30:00'];
+
+        $horariosActividades = [];
+
+        foreach ($bloqueGym as $h) {
+            $horariosActividades[] = ['id_horario' => $horas[$h], 'id_actividad' => 1];
+        }
+
+        foreach ($bloquePilates as $h) {
+            $horariosActividades[] = ['id_horario' => $horas[$h], 'id_actividad' => 2];
+        }
+
+        for ($idAct = 3; $idAct <= 8; $idAct++) {
+            foreach ($bloqueKinesio as $h) {
+                $horariosActividades[] = ['id_horario' => $horas[$h], 'id_actividad' => $idAct];
+            }
+        }
 
         foreach ($horariosActividades as $horAct) {
             DB::table('horarios_actividades')->updateOrInsert(

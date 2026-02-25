@@ -17,7 +17,32 @@ class PatologiaSeeder extends Seeder
             ['nombre' => 'HTA'],
             ['nombre' => 'ACV'],
             ['nombre' => 'ASMA'],
-            ['nombre' => 'EPOC']
+            ['nombre' => 'EPOC'],
+            ['nombre' => 'Hernia de Disco'],
+            ['nombre' => 'Escoliosis'],
+            ['nombre' => 'Artritis Reumatoidea'],
+            ['nombre' => 'Artrosis'],
+            ['nombre' => 'Esguince'],
+            ['nombre' => 'Desgarro Muscular'],
+            ['nombre' => 'Tendinitis'],
+            ['nombre' => 'Síndrome del Túnel Carpiano'],
+            ['nombre' => 'Fascitis Plantar'],
+            ['nombre' => 'Fibromialgia'],
+            ['nombre' => 'Parálisis Facial'],
+            ['nombre' => 'Enfermedad de Parkinson'],
+            ['nombre' => 'Esclerosis Múltiple'],
+            ['nombre' => 'Lumbociatalgia'],
+            ['nombre' => 'Fractura'],
+            ['nombre' => 'Luxación'],
+            ['nombre' => 'Bursitis'],
+            ['nombre' => 'Pubalgia'],
+            ['nombre' => 'Pie Plano / Cavo'],
+            ['nombre' => 'Linfedema'],
+            ['nombre' => 'Post-operatorio de LCA'],
+            ['nombre' => 'Reemplazo de Cadera'],
+            ['nombre' => 'Reemplazo de Rodilla'],
+            ['nombre' => 'Cefalea Tensional'],
+            ['nombre' => 'Bruxismo']
         ];
 
         foreach ($patologias as $pat) {
