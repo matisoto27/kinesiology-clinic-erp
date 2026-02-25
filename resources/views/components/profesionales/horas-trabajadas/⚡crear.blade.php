@@ -28,6 +28,10 @@ new class extends Component
     public function mount()
     {
         $this->fecha_trabajada = Carbon::now()->toDateString();
+
+        $this->profesionales = Profesional::where('activo', true)
+            ->orderByDesc('nombre')
+            ->get();
     }
 
     public function almacenar()

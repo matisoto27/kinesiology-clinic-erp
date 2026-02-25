@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Egreso;
+use App\Models\Profesional;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -30,6 +31,13 @@ new class extends Component
         'motivo.required' => 'El motivo del egreso es obligatorio.',
         'id_profesional.required' => 'Por favor, seleccione un profesional.'
     ];
+
+    public function mount()
+    {
+        $this->profesionales = Profesional::where('activo', true)
+            ->orderByDesc('nombre')
+            ->get();
+    }
 
     public function almacenar()
     {
