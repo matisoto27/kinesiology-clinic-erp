@@ -30,17 +30,9 @@ class ActividadComboSeeder extends Seeder
             ['id_actividad' => 3, 'id_combo' => 7],
             ['id_actividad' => 3, 'id_combo' => 8],
             ['id_actividad' => 3, 'id_combo' => 9],
-            // Quiropraxia
-            ['id_actividad' => 4, 'id_combo' => 6],
-            ['id_actividad' => 4, 'id_combo' => 7],
-            ['id_actividad' => 4, 'id_combo' => 8],
-            ['id_actividad' => 4, 'id_combo' => 9],
-            // RPG
-            ['id_actividad' => 5, 'id_combo' => 6],
-            ['id_actividad' => 5, 'id_combo' => 7],
-            ['id_actividad' => 5, 'id_combo' => 8],
-            ['id_actividad' => 5, 'id_combo' => 9],
             // El resto de actividades de Tipo II
+            ['id_actividad' => 4, 'id_combo' => 6],
+            ['id_actividad' => 5, 'id_combo' => 6],
             ['id_actividad' => 6, 'id_combo' => 6],
             ['id_actividad' => 7, 'id_combo' => 6],
             ['id_actividad' => 8, 'id_combo' => 6]

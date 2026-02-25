@@ -72,12 +72,12 @@ function obtenerDatosFormulario() {
     const datos = {
         idPaciente: obtenerValor(idPacienteSeleccionado),
         idActividad: obtenerValor(actividadSelect),
-        cantidadSesiones: obtenerValor(cantidadInput),
+        cantidadSesiones: obtenerValor(cantidadSelect),
         frecuenciaSemanal: obtenerValor(frecuenciaSelect)
     };
 
     const todosNumerosValidos = Object.values(datos).every(v => v !== null);
-    const cantidadValida = datos.cantidadSesiones <= 20;
+    const cantidadValida = datos.cantidadSesiones <= 10;
 
     return (todosNumerosValidos && cantidadValida) ? datos : null;
 }
@@ -300,15 +300,8 @@ async function actualizarPagina(datos, signal) {
     }
 }
 
-function limpiarFrecuenciaPrecioTurnos() {
-    frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
-    habilitarElemento(frecuenciaSelect, false);
-    restablecerMoneda(precioInput);
-    contenedorTurnos.innerHTML = '';
-}
-
 const actividadSelect = document.getElementById('actividad-select');
-const cantidadInput = document.getElementById('cantidad-input');
+const cantidadSelect = document.getElementById('cantidad-select');
 const contenedorTurnos = document.getElementById('contenedor-turnos');
 const formulario = document.getElementById('formulario');
 const frecuenciaSelect = document.getElementById('frecuencia-select');
@@ -353,34 +346,49 @@ actividadSelect.addEventListener('change', async function() {
         combos.map(combo => [combo.cantidad_sesiones, combo.precio_vigente])
     );
 
-    cantidadInput.value = '';
-    habilitarElemento(cantidadInput, true);
+    cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una cantidad');
+    if (idActividad === 3) {
+        agregarOpcion(cantidadSelect, 1, '1');
+        agregarOpcion(cantidadSelect, 3, '3');
+        agregarOpcion(cantidadSelect, 5, '5');
+        agregarOpcion(cantidadSelect, 10, '10');
+    } else {
+        for (let i = 1; i <= 10; i++) {
+            agregarOpcion(cantidadSelect, i, `${i}`);
+        }
+    }
+    habilitarElemento(cantidadSelect, true);
 
+    frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
+    habilitarElemento(frecuenciaSelect, false);
+    actualizarUltimaFrecuenciaValida('');
     restablecerMoneda(precioInput);
     limpiarTurnos(contenedorTurnos);
-
-    intentarActualizarPagina();
 });
 
-cantidadInput.addEventListener('input', function() {
-    actualizarTotalAPagar(0);
-
-    const cantidadIngresada = obtenerValor(this);
-    if (cantidadIngresada === null || cantidadIngresada > 20) {
-        limpiarFrecuenciaPrecioTurnos();
-        return;
-    }
-
+cantidadSelect.addEventListener('change', function() {
+    // ALMACENAR FRECUENCIA SELECCIONADA PREVIA
     const frecuenciaSeleccionada = obtenerValor(frecuenciaSelect);
 
     frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
-    agregarOpcion(frecuenciaSelect, 1, '1 vez por semana');
+    habilitarElemento(frecuenciaSelect, false);
+    restablecerMoneda(precioInput);
+    actualizarTotalAPagar(0);
+    limpiarTurnos(contenedorTurnos);
+
+    const idActividad = obtenerValor(actividadSelect);
+    const cantidadIngresada = obtenerValor(this);
+    if (idActividad === null || cantidadIngresada === null || cantidadIngresada > 10) return;
+
+    if (idActividad !== 3 || cantidadIngresada !== 10) {
+        agregarOpcion(frecuenciaSelect, 1, '1 vez por semana');
+    }
     for (let i = 2; i <= 5 && i <= cantidadIngresada; i++) {
         agregarOpcion(frecuenciaSelect, i, `${i} veces por semana`);
     }
     habilitarElemento(frecuenciaSelect, true);
 
-    if (frecuenciaSeleccionada !== null) {
+    if (frecuenciaSeleccionada !== null && idActividad !== 3) {
         frecuenciaSelect.value = frecuenciaSeleccionada <= cantidadIngresada
             ? frecuenciaSeleccionada
             : Math.min(cantidadIngresada, 5);
@@ -391,23 +399,17 @@ cantidadInput.addEventListener('input', function() {
         return;
     }
 
-    const cantidadesDisponibles = Object.keys(combosActividad)
-        .map(Number)
-        .sort((a, b) => b - a);
+    const cantidadesDisponibles = Object.keys(combosActividad).map(Number);
+    let precioCombo;
 
-    let precioTotal = 0;
-    let sesionesRestantes = cantidadIngresada;
-
-    for (const cantidadCombo of cantidadesDisponibles) {
-        while (sesionesRestantes >= cantidadCombo) {
-            precioTotal += combosActividad[cantidadCombo];
-            sesionesRestantes -= cantidadCombo;
-        }
+    if (cantidadesDisponibles.length === 1) {
+        precioCombo = combosActividad[1] * cantidadIngresada;
+    } else {
+        precioCombo = combosActividad[cantidadIngresada] || (combosActividad[1] * cantidadIngresada);
     }
 
-    actualizarTotalAPagar(precioTotal);
-    precioInput.value = `$${precioTotal}`;
-
+    precioInput.value = `$${precioCombo}`;
+    actualizarTotalAPagar(precioCombo);
     intentarActualizarPagina();
 });
 

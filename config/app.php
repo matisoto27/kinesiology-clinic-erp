@@ -124,6 +124,8 @@ return [
     ],
 
     'max_turnos_generales' => env('MAX_TURNOS_GENERALES', 6),
-    'max_turnos_kinesiologia' => env('MAX_TURNOS_KINESIOLOGIA', 4)
+    'max_turnos_kinesiologia' => env('MAX_TURNOS_KINESIOLOGIA', 4),
+    'codigo_acceso' => env('CODIGO_ACCESO_SISTEMA'),
+    'codigo_admin' => env('CODIGO_ADMINISTRADOR')
 
 ];

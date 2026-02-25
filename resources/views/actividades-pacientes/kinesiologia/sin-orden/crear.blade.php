@@ -24,12 +24,14 @@
 
             <div class="fila-formulario">
 
-                <div class="columna-campo w-[35%]">
-                    <label class="etiqueta-formulario">Cantidad de sesiones</label>
-                    <input type="number" class="entrada" min="1" max="20" placeholder="Ingrese una cantidad" id="cantidad-input" disabled required />
+                <div class="columna-campo w-[40%]">
+                    <label for="cantidad-select" class="etiqueta-formulario">Cantidad de sesiones</label>
+                    <select id="cantidad-select" class="entrada" disabled required>
+                        <option value="" disabled selected>Seleccione una cantidad</option>
+                    </select>
                 </div>
 
-                <div class="columna-campo w-[45%]">
+                <div class="columna-campo w-[40%]">
                     <label class="etiqueta-formulario">Frecuencia semanal de turnos</label>
                     <select class="entrada" id="frecuencia-select" disabled required>
                         <option value="" disabled selected>Seleccione una frecuencia</option>

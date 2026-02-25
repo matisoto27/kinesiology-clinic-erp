@@ -14,7 +14,7 @@ class AccesoController extends Controller
 
     public function verificarAcceso(Request $request)
     {
-        if ($request->codigo === env('CODIGO_ACCESO_SISTEMA')) {
+        if ($request->codigo === config('app.codigo_acceso')) {
             session(['autorizado' => true]);
             return redirect()->route('inicio');
         }
@@ -29,7 +29,7 @@ class AccesoController extends Controller
 
     public function verificarAdmin(Request $request)
     {
-        if ($request->codigo === env('CODIGO_ADMINISTRADOR')) {
+        if ($request->codigo === config('app.codigo_admin')) {
             session([
                 'acceso_admin' => true,
                 'timestamp_ingreso' => now()->timestamp

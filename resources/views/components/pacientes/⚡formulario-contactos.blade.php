@@ -63,7 +63,6 @@ new class extends Component
 
         unset($this->contactos[$indice]);
         $this->contactos = array_values($this->contactos);
-        Log::info('Aa', ['Bb' => $this->contactos]);
     }
 };
 ?>

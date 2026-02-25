@@ -16,11 +16,13 @@ new class extends Component
     {
         return ActividadCombo::with(['actividad', 'combo'])
             ->join('actividades', 'actividades_combos.id_actividad', '=', 'actividades.id')
+            ->join('combos', 'actividades_combos.id_combo', '=', 'combos.id')
             ->select('actividades_combos.*')
             ->when($this->filtroEstado === 'activos', fn($c) => $c->where('actividades_combos.activo', true))
             ->when($this->filtroEstado === 'inactivos', fn($c) => $c->where('actividades_combos.activo', false))
             ->orderBy('actividades.id_tipo_actividad')
             ->orderBy('actividades.nombre')
+            ->orderBy('combos.cantidad_sesiones')
             ->get();
     }
 
