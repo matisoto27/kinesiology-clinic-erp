@@ -19,7 +19,6 @@ return new class extends Migration
             $table->boolean('es_fijo');
             $table->decimal('total_a_pagar', total: 10, places: 2);
             $table->date('fecha_emision_ord')->nullable();
-            $table->unsignedTinyInteger('sesiones_cubiertas')->nullable();
             $table->boolean('pago_completado')->default(false);
 
             $table->foreignId('id_actividad')->constrained(table: 'actividades');

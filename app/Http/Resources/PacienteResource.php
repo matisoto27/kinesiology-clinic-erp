@@ -21,7 +21,6 @@ class PacienteResource extends JsonResource
             'actividad_fisica' => $this->actividad_fisica,
             'es_adulto_mayor' => $this->es_adulto_mayor,
             'vive_con' => $this->vive_con,
-            'sesiones_a_favor' => $this->sesiones_a_favor,
             'created_at' => $this->fecha_ingreso,
             'obra_social' => $this->afiliacionVigente?->nombre,
             'patologias' => $this->transformarRelacion($this->whenLoaded('patologias')),

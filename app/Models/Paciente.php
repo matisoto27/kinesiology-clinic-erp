@@ -31,8 +31,7 @@ class Paciente extends Model
         'profesion',
         'actividad_fisica',
         'es_adulto_mayor',
-        'vive_con',
-        'sesiones_a_favor'
+        'vive_con'
     ];
 
     protected $casts = [
@@ -124,7 +123,8 @@ class Paciente extends Model
         return $consulta->where(function ($subconsulta) use ($termino) {
             $subconsulta->where('apellido', 'LIKE', "%{$termino}%")
                 ->orWhere('nombre', 'LIKE', "%{$termino}%")
-                ->orWhere(DB::raw("CONCAT(apellido, ' ', nombre)"), 'LIKE', "%{$termino}%");
+                ->orWhere(DB::raw("CONCAT(apellido, ' ', nombre)"), 'LIKE', "%{$termino}%")
+                ->orWhere(DB::raw("CONCAT(nombre, ' ', apellido)"), 'LIKE', "%{$termino}%");
         });
     }
 

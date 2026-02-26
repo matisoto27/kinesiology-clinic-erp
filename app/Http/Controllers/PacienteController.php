@@ -94,7 +94,7 @@ class PacienteController extends Controller
     public function inicio()
     {
         $consultaPacientes = Paciente::query()
-            ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'actividad_fisica', 'es_adulto_mayor', 'vive_con', 'sesiones_a_favor', 'created_at'])
+            ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'actividad_fisica', 'es_adulto_mayor', 'vive_con', 'created_at'])
             ->with(['sintomasActivos:id,nombre', 'patologias:id,nombre'])
             ->latest()
             ->paginate(10);
@@ -113,7 +113,7 @@ class PacienteController extends Controller
                 return response()->json(['pacientes' => []], 200);
             }
 
-            $consultaPacientes = Paciente::select('id', 'nombre', 'apellido', 'sesiones_a_favor')
+            $consultaPacientes = Paciente::select('id', 'nombre', 'apellido')
                 ->buscarPorApNom($nombre)
                 ->orderBy('apellido')
                 ->orderBy('nombre')

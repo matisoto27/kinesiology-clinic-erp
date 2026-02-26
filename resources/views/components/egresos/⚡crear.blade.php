@@ -55,8 +55,7 @@ new class extends Component
             ]);
 
             DB::commit();
-            session()->flash('mensaje', '¡Egreso registrado con éxito!');
-            return redirect()->route('movimientos');
+            return redirect()->route('movimientos')->with('exito', '¡Egreso registrado con éxito!');
 
         } catch (\Throwable $ex) {
             DB::rollBack();

@@ -8,7 +8,6 @@ use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Services\TurnoService;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -35,64 +34,6 @@ class ActividadPacienteController extends Controller
         return view('actividades-pacientes.inicio');
     }
 
-    public function aplicarOrden()
-    {
-        $pendientesDePago = ActividadPaciente::select('actividades_pacientes.*')
-            ->with(['actividad:id,nombre', 'paciente:id,nombre,apellido,sesiones_a_favor'])
-            ->conActividad()
-            ->deTipo(2)
-            ->whereNull('actividades_pacientes.sesiones_cubiertas')
-            ->whereHas('paciente', function($consulta) {
-                $consulta->tieneObraSocial();
-            })
-            ->doesntHave('pagos')
-            ->get();
-
-        return view('actividades-pacientes.aplicar-orden', compact('pendientesDePago'));
-    }
-
-    public function actualizarOrdenMedica(Request $request)
-    {
-        $validados = $request->validate([
-            'id_act_pac' => 'required|integer|exists:actividades_pacientes,id',
-            'mes' => 'required|integer|min:1|max:12',
-            'dia' => 'required|integer|min:1|max:31',
-            'sesiones_cubiertas' => 'required|integer|in:5,10'
-        ]);
-
-        DB::beginTransaction();
-
-        try {
-            $inscripcion = ActividadPaciente::with('paciente')->find($validados['id_act_pac']);
-            $paciente = $inscripcion->paciente;
-
-            $sumatoria = ($validados['sesiones_cubiertas'] - $inscripcion->cant_sesiones) + $paciente->sesiones_a_favor;
-            $sesionesAFavor = max(0, $sumatoria);
-
-            $paciente->update([
-                'sesiones_a_favor' => $sesionesAFavor
-            ]);
-            $inscripcion->update([
-                'fecha_emision_ord' => Carbon::create(date('Y'), $validados['mes'], $validados['dia']),
-                'sesiones_cubiertas' => $validados['sesiones_cubiertas'],
-                'pago_completado' => $sumatoria >= 0
-            ]);
-
-            DB::commit();
-            return redirect()->route('inicio')->with('exito', '¡La orden médica ha sido aplicada con éxito!');
-
-        } catch (Throwable $ex) {
-
-            Log::error('[ActividadPacienteController@actualizarOrdenMedica] Error al aplicar la orden médica', [
-                'id_act_pac' => $request->id_act_pac,
-                'excepcion' => $ex->getMessage()
-            ]);
-            DB::rollBack();
-
-            return back()->withErrors(['error' => 'Ocurrió un error inesperado al intentar aplicar la orden médica'])->withInput();
-        }
-    }
-
     public function almacenar(AlmacenarTurnoRequest $request, TurnoService $turnoService)
     {
         $esConOrden = !$request->has('total_a_pagar') || $request->has('mes') || $request->has('dia');
@@ -104,8 +45,10 @@ class ActividadPacienteController extends Controller
             $validados = $request->validated();
 
             if ($esConOrden) {
-                $validados['cant_sesiones'] = $validados['sesiones_cubiertas'];
-                $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar($validados['id_actividad'], $validados['sesiones_cubiertas']);
+                $cantidadSesiones = (int) $validados['sesiones_cubiertas'];
+
+                $validados['cant_sesiones'] = $cantidadSesiones;
+                $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar($validados['id_actividad'], $cantidadSesiones);
                 $validados['fecha_emision_ord'] = Carbon::create($ahora->year, $validados['mes'], $validados['dia']);
             }
 
@@ -125,11 +68,14 @@ class ActividadPacienteController extends Controller
             return response()->json(['id_act_pac' => $actividadPaciente->id], 201);
 
         } catch (Throwable $ex) {
-
-            $mensajeError = $ex->getMessage();
+            if ($ex instanceof \Illuminate\Database\QueryException && $ex->errorInfo[1] == 1062) {
+                $mensajeError = "El paciente ya ha realizado una inscripción a esta actividad en la fecha de hoy.";
+            } else {
+                $mensajeError = $ex->getMessage();
+            }
 
             DB::rollBack();
-            Log::error('[ActividadPacienteController@crear] Error al registrar los turnos del paciente', ['excepción' => $mensajeError]);
+            Log::error('[ActividadPacienteController@crear] Error al registrar los turnos del paciente', ['excepción' => $ex->getMessage()]);
 
             return response()->json([
                 'error' => $mensajeError

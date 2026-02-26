@@ -20,22 +20,12 @@ class PagoController extends Controller
             $pendientesDePago = ActividadPaciente::with(['actividad', 'paciente'])
                 ->withSum('pagos', 'monto')
                 ->sinPagar()
-                ->get()
-                ->map(function ($inscripcion) {
-                    if ($inscripcion->actividad->id_tipo_actividad === 2) {
-                        $sesionesRestantes = max(0, $inscripcion->cant_sesiones - ($inscripcion->sesiones_cubiertas ?? 0));
+                ->get();
 
-                        if ($sesionesRestantes > 0) {
-                            $nuevoTotal = ActividadCombo::calcularTotalAPagar($inscripcion->id_actividad, $sesionesRestantes, $inscripcion->actividad->nombre);
-                        } else {
-                            $nuevoTotal = 0;
-                        }
-
-                        $inscripcion->total_a_pagar = $nuevoTotal;
-                    }
-                    return $inscripcion;
-                });
-            $profesionales = Profesional::activo()->orderBy('apellido')->get(['id', 'nombre', 'apellido']);
+            $profesionales = Profesional::activo()
+                ->orderBy('apellido')
+                ->orderBy('nombre')
+                ->get(['id', 'nombre', 'apellido']);
 
             return view('pagos.crear', compact('pendientesDePago', 'profesionales', 'id'));
 
@@ -80,7 +70,7 @@ class PagoController extends Controller
             }
 
             DB::commit();
-            return redirect()->route('inicio')->with('exito', '¡El pago ha sido registrado con éxito!');
+            return redirect()->route('movimientos')->with('exito', '¡El pago ha sido registrado con éxito!');
 
         } catch (Throwable $ex) {
             $mensajeError = $ex->getMessage();

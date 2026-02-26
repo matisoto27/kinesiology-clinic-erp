@@ -153,14 +153,6 @@
                                 No registra síntomas activos.
                             </div>
                         </div>
-
-                        <div class="p-3 flex justify-between items-center bg-[#e6f4f4] border-[#3A8F8E]/20 border rounded-lg">
-                            <div>
-                                <p class="text-[#3A8F8E] text-xs font-bold uppercase tracking-wider">Sesiones a favor</p>
-                                <p class="text-[#014745] text-xl font-bold" x-text="datos.sesiones_a_favor"></p>
-                            </div>
-                            <span class="px-2 py-1 bg-white/50 text-[#014745] text-xs font-bold rounded">DISPONIBLES</span>
-                        </div>
                     </div>
 
                     <div class="modal-informativo__seccion-acciones">

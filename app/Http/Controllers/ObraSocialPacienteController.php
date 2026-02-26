@@ -13,9 +13,9 @@ use Throwable;
 
 class ObraSocialPacienteController extends Controller
 {
-    public function crear($id = null)
+    public function crear()
     {
-        return view('obras-sociales-pacientes.crear', compact('id'));
+        return view('obras-sociales-pacientes.crear');
     }
 
     public function almacenar(Request $request)

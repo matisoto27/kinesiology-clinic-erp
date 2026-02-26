@@ -37,7 +37,7 @@ new class extends Component
             $consulta->where('pago_completado', false);
         }
 
-        $this->inscripciones = $consulta->orderByDesc('fecha_comienzo')->get();
+        $this->inscripciones = $consulta->orderByDesc('created_at')->get();
     }
 
     public function verDetalles(int $id)
@@ -57,7 +57,12 @@ new class extends Component
         DB::beginTransaction();
 
         try {
-            $inscripcion = ActividadPaciente::findOrFail($id);
+            $inscripcion = ActividadPaciente::withCount('pagos')->findOrFail($id);
+            if ($inscripcion->pagos_count > 0) {
+                session()->flash('error', 'No se puede eliminar la inscripción porque ya tiene pagos registrados.');
+                return;
+            }
+
             $inscripcion->delete();
 
             DB::commit();
@@ -77,7 +82,7 @@ new class extends Component
 ?>
 
 <div class="contenedor-listado max-w-screen-3xl">
-    <h2 class="titulo-formulario">Listado de inscripciones</h2>
+    <h2 class="titulo-formulario">Historial de Inscripciones</h2>
 
     <div class="fila-formulario">
         <div class="columna-campo">
@@ -101,8 +106,7 @@ new class extends Component
                 <th>Fecha Comienzo</th>
                 <th>Cantidad de Turnos</th>
                 <th>Total a Pagar</th>
-                <th>Sesiones Cubiertas OS</th>
-                <th>Nuevo Total a Pagar</th>
+                <th>Cubierta por OS</th>
                 <th>Estado Pago</th>
                 <th>Deuda</th>
                 <th>Ver más</th>
@@ -115,8 +119,7 @@ new class extends Component
                 @php
                     $cantidadSesiones = (int) $actPac->cant_sesiones;
                     $esGeneral = $actPac->actividad->esActividadGeneral();
-                    $sesionesCubiertas = (int) ($actPac->sesiones_cubiertas ?? 0);
-                    $diferencia = $sesionesCubiertas - $cantidadSesiones;
+                    $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
                 @endphp
 
                 <tr class="tabla-listado__fila">
@@ -140,21 +143,7 @@ new class extends Component
                         @if ($esGeneral)
                             <span class="text-gray-400 italic">N/A</span>
                         @else
-                            @if ($diferencia > 0)
-                                <div class="font-bold">{{ $sesionesCubiertas }}</div>
-                                <small>
-                                    ({{ $diferencia }} a favor)
-                                </small>
-                            @else
-                                {{ $sesionesCubiertas }}
-                            @endif
-                        @endif
-                    </td>
-                    <td>
-                        @if($actPac->total_a_pagar != $actPac->nuevo_total_a_pagar)
-                            ${{ number_format($actPac->nuevo_total_a_pagar, 2, ',', '.') }}
-                        @else
-                            <span class="text-gray-400 italic">N/A</span>
+                            {{ $cubiertaOS ? 'Si' : 'No' }}
                         @endif
                     </td>
                     <td>
@@ -222,13 +211,19 @@ new class extends Component
                     </div>
 
                     <div class="modal-informativo__seccion">
-                        <p class="modal-informativo__etiqueta">Fecha emisión orden médica</p>
+                        <p class="modal-informativo__etiqueta">Orden Médica</p>
                         @if($inscripcionSeleccionada->actividad->esActividadGeneral())
                             <p class="modal-informativo__sin-valor">N/A</p>
                         @elseif(!$inscripcionSeleccionada->fecha_emision_ord)
                             <p class="modal-informativo__sin-valor">No se ha aplicado una orden médica.</p>
                         @else
-                            <p class="modal-informativo__valor">{{ $inscripcionSeleccionada->fecha_emision_ord->format('d/m/Y') }}</p>
+                            <p class="modal-informativo__valor">
+                                Emitida el {{ $inscripcionSeleccionada->fecha_emision_ord->format('d/m/Y') }}
+                                <br>
+                                <span class="text-blue-500 text-xs font-bold uppercase">
+                                    Cobertura total ({{ $inscripcionSeleccionada->cant_sesiones }} sesiones)
+                                </span>
+                            </p>
                         @endif
                     </div>
 

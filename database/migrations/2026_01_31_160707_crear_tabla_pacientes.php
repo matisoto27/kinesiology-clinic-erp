@@ -24,7 +24,6 @@ return new class extends Migration
             $table->string('actividad_fisica', length: 45);
             $table->boolean('es_adulto_mayor');
             $table->string('vive_con', length: 150)->nullable();
-            $table->unsignedTinyInteger('sesiones_a_favor')->default(0);
 
             $table->timestamps();
             $table->softDeletes();
