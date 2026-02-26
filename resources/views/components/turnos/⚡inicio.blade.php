@@ -136,9 +136,7 @@ new class extends Component
         }
 
         if ($this->consultaPaciente !== '') {
-            $consulta->whereHas('actividadPaciente.paciente', function ($consulta) {
-                $consulta->where(DB::raw("CONCAT(nombre, ' ', apellido)"), 'like', '%' . $this->consultaPaciente . '%');
-            });
+            $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
         }
 
         return $this->view(['turnos' => $consulta->orderByDesc('fecha_hora')->paginate(8)]);
@@ -156,7 +154,7 @@ new class extends Component
                 id="buscar-paciente"
                 type="text"
                 class="entrada w-[28ch]"
-                placeholder="Ingrese nombre + apellido"
+                placeholder="Ingrese nombre y/o apellido"
                 wire:model.live.debounce.300ms="consultaPaciente"
             >
         </div>

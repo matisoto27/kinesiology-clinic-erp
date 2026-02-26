@@ -117,6 +117,17 @@ class Paciente extends Model
         return $consulta->whereHas('afiliacionVigente');
     }
 
+    public function scopeBuscarPorApNom(Builder $consulta, $termino): Builder
+    {
+        $termino = trim($termino);
+
+        return $consulta->where(function ($subconsulta) use ($termino) {
+            $subconsulta->where('apellido', 'LIKE', "%{$termino}%")
+                ->orWhere('nombre', 'LIKE', "%{$termino}%")
+                ->orWhere(DB::raw("CONCAT(apellido, ' ', nombre)"), 'LIKE', "%{$termino}%");
+        });
+    }
+
     public function obtenerActividadesGeneralesSinSuscripcion(): Collection
     {
         $diferenciaEnDias = 3;

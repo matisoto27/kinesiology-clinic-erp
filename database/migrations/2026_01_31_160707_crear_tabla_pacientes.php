@@ -15,8 +15,8 @@ return new class extends Migration
             $table->id();
 
             $table->string('dni', length: 8)->unique();
-            $table->string('nombre', length: 30);
-            $table->string('apellido', length: 30);
+            $table->string('nombre', length: 30)->index();
+            $table->string('apellido', length: 30)->index();
             $table->date('fecha_nac');
             $table->string('domicilio', length: 100);
             $table->string('telefono', length: 20);
@@ -28,8 +28,6 @@ return new class extends Migration
 
             $table->timestamps();
             $table->softDeletes();
-
-            $table->index('nombre');
         });
     }
 

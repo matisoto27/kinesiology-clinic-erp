@@ -106,18 +106,18 @@ class PacienteController extends Controller
 
     public function buscarPorNombre(Request $request)
     {
-        $nombre = $request->input('consulta', '');
+        $nombre = trim($request->input('consulta', ''));
 
         try {
             if (strlen($nombre) < 2) {
                 return response()->json(['pacientes' => []], 200);
             }
 
-            $consultaPacientes = Paciente::select('id', 'nombre', 'apellido')
-                ->where('nombre', 'like', "$nombre%")
-                ->limit(10)
+            $consultaPacientes = Paciente::select('id', 'nombre', 'apellido', 'sesiones_a_favor')
+                ->buscarPorApNom($nombre)
                 ->orderBy('apellido')
-                ->orderBy('nombre');
+                ->orderBy('nombre')
+                ->limit(10);
 
             if ($request->boolean('incluir_obra')) {
                 $consultaPacientes->with(['afiliacionVigente' => function ($consulta) {

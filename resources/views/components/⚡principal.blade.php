@@ -79,9 +79,7 @@ new class extends Component
                 $consulta->whereHas('actividadPaciente', fn($sc) => $sc->where('id_actividad', $this->idActividad));
             })
             ->when(!empty($this->consultaPaciente), function($consulta) {
-                $consulta->whereHas('actividadPaciente.paciente', function ($subconsulta) {
-                    $subconsulta->where(DB::raw("CONCAT(apellido, ' ', nombre)"), 'LIKE', "%{$this->consultaPaciente}%");
-                });
+                $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
             })
             ->orderBy('fecha_hora')
             ->paginate(10);
@@ -157,7 +155,7 @@ new class extends Component
             <input
                 id="buscar-paciente"
                 type="text"
-                placeholder="Ingrese nombre o apellido"
+                placeholder="Ingrese nombre y/o apellido"
                 class="entrada"
                 wire:model.live.debounce.350ms="consultaPaciente"
             >

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="contenedor max-w-4xl">
+    <div class="contenedor max-w-5xl">
         <form action="{{ route('pagos.almacenar') }}" method="POST" class="formulario">
             @csrf
             <input type="hidden" name="monto" id="monto-para-enviar">

@@ -25,9 +25,7 @@ new class extends Component
         return RegistroHoras::query()
             ->with('profesional')
             ->when(!empty($this->consultaProfesional), function ($consulta) {
-                $consulta->whereHas('profesional', function ($subconsulta) {
-                    $subconsulta->where(DB::raw("CONCAT(apellido, ' ', nombre)"), 'LIKE', "%{$this->consultaProfesional}%");
-                });
+                $consulta->whereHas('profesional', fn($sc) => $sc->buscarPorApNom($this->consultaProfesional));
             })
             ->orderByDesc('fecha_trabajada')
             ->paginate(10);
@@ -87,7 +85,7 @@ new class extends Component
             <input
                 id="buscar-profesional"
                 type="text"
-                placeholder="Ingrese nombre o apellido"
+                placeholder="Ingrese nombre y/o apellido"
                 class="entrada w-xs"
                 wire:model.live.debounce.300ms="consultaProfesional"
             >

@@ -28,7 +28,7 @@ new class extends Component
             return;
         }
 
-        $this->sugerencias = Paciente::where(DB::raw("CONCAT(apellido, ' ', nombre)"), 'like', '%' . $apellidoNombrePaciente . '%')
+        $this->sugerencias = Paciente::buscarPorApNom($apellidoNombrePaciente)
             ->limit(5)
             ->get(['id', 'nombre', 'apellido'])
             ->toArray();

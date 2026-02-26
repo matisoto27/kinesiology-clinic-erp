@@ -20,7 +20,7 @@ class ObraSocialController extends Controller
 
             $obras = ObraSocial::select('id', 'nombre')
                 ->where('activo', true)
-                ->where('nombre', 'like', $nombre . '%')
+                ->where('nombre', 'like', trim($nombre) . '%')
                 ->orderBy('nombre')
                 ->limit(10)
                 ->get();

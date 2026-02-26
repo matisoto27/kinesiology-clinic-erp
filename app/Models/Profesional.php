@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Profesional extends Model
 {
@@ -36,5 +37,16 @@ class Profesional extends Model
     public function scopeActivo(Builder $consulta): Builder
     {
         return $consulta->where('activo', true);
+    }
+
+    public function scopeBuscarPorApNom(Builder $consulta, $termino): Builder
+    {
+        $termino = trim($termino);
+
+        return $consulta->where(function ($subconsulta) use ($termino) {
+            $subconsulta->where('apellido', 'LIKE', "%{$termino}%")
+                ->orWhere('nombre', 'LIKE', "%{$termino}%")
+                ->orWhere(DB::raw("CONCAT(apellido, ' ', nombre)"), 'LIKE', "%{$termino}%");
+        });
     }
 }
