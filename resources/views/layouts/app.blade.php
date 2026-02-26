@@ -115,6 +115,7 @@
                                 <li><a href="{{ route('profesionales.inicio') }}">Lista de profesionales</a></li>
                                 <li><a href="{{ route('horas-trabajadas.inicio') }}">Historial de horas trabajadas</a></li>
                                 <li><a href="{{ route('actividades-combos.inicio') }}">Administrar combos de actividades</a></li>
+                                <li><a href="{{ route('obras-sociales.inicio') }}">Administrar obras sociales</a></li>
                                 <li>
                                     <form action="{{ route('admin.salir') }}" method="POST" class="px-4 py-3 block hover:bg-red-700">
                                         @csrf
