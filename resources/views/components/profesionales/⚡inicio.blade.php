@@ -120,7 +120,7 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="py-10 text-center text-gray-300 italic">No hay profesionales registrados.</td>
+                    <td colspan="6" class="py-10 text-center text-gray-300 italic">No se encontraron profesionales para el filtro seleccionado.</td>
                 </tr>
             @endforelse
         </tbody>

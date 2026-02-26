@@ -31,7 +31,7 @@
     }
 
     .contenedor-listado {
-        @apply mx-auto mt-10 mb-5 px-8 py-6 bg-[#006E6B] w-full;
+        @apply mx-auto my-3 px-8 py-6 bg-[#006E6B] w-full;
     }
 
     .titulo-formulario {
@@ -136,7 +136,7 @@
     }
 
     .tabla-listado__fila {
-        @apply h-20 hover:bg-[#F5D500] hover:text-emerald-900 hover:font-bold transition-colors duration-100;
+        @apply h-22 hover:bg-[#F5D500] hover:text-emerald-900 hover:font-bold transition-colors duration-100;
     }
 
     .modal-informativo {

@@ -139,7 +139,7 @@ new class extends Component
             $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
         }
 
-        return $this->view(['turnos' => $consulta->orderByDesc('fecha_hora')->paginate(8)]);
+        return $this->view(['turnos' => $consulta->orderByDesc('fecha_hora')->paginate(10)]);
     }
 };
 ?>
@@ -218,7 +218,7 @@ new class extends Component
     </table>
 
     <div class="mt-4">
-        {{ $turnos->links() }}
+        {{ $turnos->links(data: ['scrollTo' => false]) }}
     </div>
 
     @if($mostrarModal && $turnoSeleccionado)

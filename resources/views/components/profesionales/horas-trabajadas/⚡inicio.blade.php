@@ -142,7 +142,9 @@ new class extends Component
         </tbody>
     </table>
 
-    {{ $this->registros->links() }}
+    <div class="mt-4">
+        {{ $this->registros->links(data: ['scrollTo' => false]) }}
+    </div>
 
     @if($mostrarModal && $registroSeleccionado)
         <div class="modal-informativo" wire:keydown.escape.window="cerrarModal">

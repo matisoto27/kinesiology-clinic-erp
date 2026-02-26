@@ -49,7 +49,7 @@ new class extends Component
         $egresos = collect();
 
         if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'ingreso') {
-            $ingresos = Pago::with(['profesional', 'actividadPaciente.paciente'])
+            $ingresos = Pago::with(['profesional', 'actividadPaciente.actividad', 'actividadPaciente.paciente'])
                 ->latest()
                 ->take(500)
                 ->get()
@@ -98,6 +98,9 @@ new class extends Component
         </div>
     </div>
 
+    <x-alerta tipo="exito" />
+    <x-alerta tipo="error" />
+
     <table class="tabla-listado">
         <thead>
             <tr class="tabla-listado__cabecera">
@@ -128,9 +131,24 @@ new class extends Component
                     <td>{{ $mov->profesional->nombre }} {{ $mov->profesional->apellido}}</td>
                     <td>
                         @if($mov->tipo === 'ingreso')
+                            @php
+                                $actPac = $mov->actividadPaciente;
+                                $nombreActividad = $actPac->actividad->nombre;
+                                $cantidadSesiones = (int) $actPac->cant_sesiones;
+                            @endphp
+
+                            <small class="block text-emerald-400 group-hover:text-emerald-900 font-bold tracking-wide uppercase">
+                                @if($actPac->actividad->esActividadGeneral())
+                                    {{ $nombreActividad }} ({{ (int)($cantidadSesiones / 4) }} {{ (int)($cantidadSesiones / 4) === 1 ? 'vez' : 'veces' }} por semana)
+                                @else
+                                    {{ $nombreActividad }} ({{ $cantidadSesiones }} {{ $cantidadSesiones === 1 ? 'sesión' : 'sesiones' }})
+                                @endif
+                            </small>
+
                             <small class="block text-gray-400 group-hover:text-emerald-900">
                                 Pago #{{ $mov->nro_pago }}
                             </small>
+
                             <span class="group-hover:text-emerald-900">
                                 {{ $mov->actividadPaciente->paciente->nombre_completo }}
                             </span>
@@ -156,6 +174,6 @@ new class extends Component
     </table>
 
     <div class="mt-4">
-        {{ $movimientos->links() }}
+        {{ $movimientos->links(data: ['scrollTo' => false]) }}
     </div>
 </div>

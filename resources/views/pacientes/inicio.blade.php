@@ -79,7 +79,7 @@
             </table>
 
             <div class="mt-4">
-                {{ $pacientes->links() }}
+                {{ $pacientes->links(data: ['scrollTo' => false]) }}
             </div>
 
             <div class="modal-informativo" x-show="mostrarInfo" x-cloak x-transition.opacity>

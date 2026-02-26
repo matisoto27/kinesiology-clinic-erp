@@ -182,14 +182,14 @@ new class extends Component
                         <td class="w-2/11 text-center py-3">{{ $turno->fecha_hora->format('H:i') }}</td>
                         <td class="w-3/11 text-center py-3">{{ $turno->actividadPaciente->paciente->apellido . ' ' . $turno->actividadPaciente->paciente->nombre }}</td>
                         <td class="w-3/11 text-center py-3">{{ $turno->actividadPaciente->actividad->nombre }}</td>
-                        <td class="w-3/11 text-center py-3">
+                        <td class="w-3/11 text-center py-3 group">
                             @if($turno->asiste)
-                                <button class="bg-green-300 text-black py-2 px-4 rounded-full transition-colors" disabled>Confirmada</button>
+                                <button class="px-4 py-2 bg-green-300 font-semibold rounded-full transition-colors" disabled>Confirmada</button>
                             @else
                                 <button
-                                    class="turno-button py-2 px-4 rounded-full transition-colors bg-[#F5D500]"
+                                    class="px-4 py-2 bg-[#F5D500] group-hover:bg-green-300 active:scale-95 group-hover:scale-105 rounded-full transition-all duration-100"
                                     wire:click="confirmarAsistenciaTurno({{ $turno->id }})"
-                                    wire:confirm="¿Está seguro de que desea confirmar la asistencia del turno?"
+                                    wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
                                     wire:loading.attr="disabled">
                                     Confirmar
                                 </button>
@@ -205,5 +205,7 @@ new class extends Component
         </tbody>
     </table>
 
-    {{ $this->turnos->links() }}
+    <div class="mt-4">
+        {{ $this->turnos->links(data: ['scrollTo' => false]) }}
+    </div>
 </div>
