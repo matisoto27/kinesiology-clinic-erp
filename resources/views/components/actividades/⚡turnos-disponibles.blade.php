@@ -14,10 +14,25 @@ new class extends Component
     public Collection $actividades;
 
     public ?int $idActividad = null;
+    public bool $soloEnPunto = false;
     public string $busquedaPaciente = '';
     public ?int $idPacienteSeleccionado = null;
     public string $nombrePacienteSeleccionado = '';
     public array $sugerencias = [];
+
+    public function updatedIdActividad($value)
+    {
+        if ($value !== 1) {
+            $this->soloEnPunto = false;
+        }
+    }
+
+    public function updatedSoloEnPunto($value)
+    {
+        if ($this->idActividad !== 1) {
+            $this->soloEnPunto = false;
+        }
+    }
 
     public function updatedBusquedaPaciente()
     {
@@ -54,10 +69,18 @@ new class extends Component
             return;
         }
 
-        $lunes = Carbon::now()->startOfWeek();
-        $viernesSiguiente = $lunes->copy()->addWeek()->addDays(4);
+        $ahora = Carbon::now();
 
-        $turnos = $actividad->turnosDisponibles($this->idPacienteSeleccionado, $lunes->startOfDay(), $viernesSiguiente->endOfDay());
+        $enUnaHora = $ahora->copy()->addHour();
+        $viernesSiguiente = $ahora->copy()->startOfWeek()->addWeek()->addDays(4)->endOfDay();
+
+        $turnos = $actividad->turnosDisponibles($this->idPacienteSeleccionado, $enUnaHora, $viernesSiguiente);
+
+        if ($this->soloEnPunto) {
+            $turnos = array_filter($turnos, function($turno) {
+                return Carbon::parse($turno)->format('i') === '00';
+            });
+        }
 
         if (empty($turnos)) {
             session()->flash('error', 'No hay turnos disponibles cercanos.');
@@ -151,12 +174,26 @@ new class extends Component
             </div>
         </div>
 
+        <div class="mb-4 flex items-center gap-1">
+            <input
+                id="en-punto-checkbox"
+                type="checkbox"
+                class="checkbox-formulario"
+                wire:model.live="soloEnPunto"
+                @if($idActividad !== 1) disabled @endif
+            >
+            <label for="en-punto-checkbox" class="etiqueta-formulario {{ $idActividad !== 1 ? 'opacity-50' : '' }}">
+                Incluir solo turnos en punto
+            </label>
+        </div>
+
         <button
             type="button"
             class="boton-registrar"
             wire:click="copiarTurnos"
             wire:loading.attr="disabled"
             wire:target="copiarTurnos"
+            @if(!$idActividad) disabled @endif
         >
             <span wire:loading.remove wire:target="copiarTurnos">Copiar turnos disponibles</span>
             <span wire:loading wire:target="copiarTurnos">Generando...</span>
