@@ -6,13 +6,16 @@ function crearLiObra(obra, esUltima) {
     const idObra = obra.id;
     const esObraPaciente = idObraPaciente !== null && idObra === idObraPaciente;
 
-    li.classList.add('p-2', 'text-left', 'bg-white');
+    li.classList.add('p-2', 'bg-white');
 
     if (esObraPaciente) {
-        li.classList.add('pointer-events-none', 'text-gray-500');
-        li.textContent = `${obra.nombre} (Afiliación vigente del paciente)`;
+        li.classList.add('flex', 'flex-col', 'text-gray-500', 'pointer-events-none');
+        li.innerHTML = `
+            ${obra.nombre}
+            <span class="text-red-600 text-xs font-semibold italic leading-none">(Afiliación vigente del paciente)</span>
+        `;
     } else {
-        li.classList.add('cursor-pointer', 'hover:bg-[#F5D500]', 'text-black');
+        li.classList.add('hover:bg-[#F5D500]', 'cursor-pointer');
         li.textContent = obra.nombre;
     }
 
@@ -29,7 +32,7 @@ function crearLiPaciente(paciente, esUltimo) {
     if (esUltimo) li.classList.add('rounded-b-md');
     li.textContent = `${paciente.apellido} ${paciente.nombre}`;
     li.dataset.idPaciente = paciente.id;
-    li.dataset.idObra = paciente.afiliacion_vigente?.id_obra_social ?? 0;
+    li.dataset.idObra = paciente.afiliacion_vigente?.id ?? 0;
 
     return li;
 }

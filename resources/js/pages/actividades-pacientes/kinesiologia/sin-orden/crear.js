@@ -335,9 +335,25 @@ actividadSelect.addEventListener('change', async function() {
         return;
     }
 
-    if (combos.length === 0) {
+    const cantidadCombos = combos.length;
+
+    if (cantidadCombos === 0) {
         this.value = obtenerUltimaActividadValida();
-        await mostrarAlerta('error', 'No hay combos disponibles', 'No existen combos con un precio registrado para la actividad seleccionada.');
+        await mostrarAlerta('error', 'Combos no disponibles', 'La actividad seleccionada no tiene combos con precios registrados.');
+        return;
+    }
+
+    // REGLA DE NEGOCIO
+    if (idActividad === 3 && cantidadCombos !== 4) {
+        this.value = obtenerUltimaActividadValida();
+        await mostrarAlerta('error', 'Combos sin precios definidos', 'Por favor, registre los precios de los 4 combos de Kinesiología Convencional.');
+        return;
+    }
+
+    const precioSesionIndExiste = combos.some(c => c.cantidad_sesiones === 1);
+    if (!precioSesionIndExiste) {
+        this.value = obtenerUltimaActividadValida();
+        await mostrarAlerta('error', 'Precio no definido', 'La actividad seleccionada no tiene un precio definido para su sesión individual.');
         return;
     }
 
