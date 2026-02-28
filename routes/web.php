@@ -68,7 +68,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
 
     Route::controller(PrecioController::class)->group(function () {
         Route::get('/precios/crear', 'crear')->name('precios.crear');
-        Route::get('/actividades-combos/{id}/precios/crear', 'crear')->name('actividades-combos.precios.crear');
         Route::post('/precios', 'almacenar')->name('precios.almacenar');
     });
 

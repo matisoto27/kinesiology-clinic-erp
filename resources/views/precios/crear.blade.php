@@ -14,7 +14,7 @@
                     <select class="entrada" name="id_actividad_combo" id="actcom-select" required>
                         <option value="" disabled @selected(old('id_actividad_combo') === null)>Seleccione un combo</option>
                         @foreach($actividadesCombos as $actCom)
-                            <option data-precio="{{ $actCom->precio_vigente }}" value="{{ $actCom->id }}" @selected($actCom->id == old('id_actividad_combo', $id))>
+                            <option data-precio="{{ $actCom->precio_vigente }}" value="{{ $actCom->id }}" @selected($actCom->id == old('id_actividad_combo'))>
                                 {{ $actCom->actividad->nombre }} - {{ $actCom->combo->nombre }}
                             </option>
                         @endforeach

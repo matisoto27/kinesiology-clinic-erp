@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\Pago;
 use App\Models\Profesional;
