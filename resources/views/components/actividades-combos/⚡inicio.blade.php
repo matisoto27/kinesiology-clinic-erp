@@ -14,7 +14,7 @@ new class extends Component
     #[Computed]
     public function registrosFiltrados()
     {
-        return ActividadCombo::with(['actividad', 'combo'])
+        return ActividadCombo::with(['actividad', 'combo', 'precioVigente'])
             ->join('actividades', 'actividades_combos.id_actividad', '=', 'actividades.id')
             ->join('combos', 'actividades_combos.id_combo', '=', 'combos.id')
             ->select('actividades_combos.*')
@@ -71,7 +71,8 @@ new class extends Component
                 <th>Actividad</th>
                 <th>Combo</th>
                 <th>Sesiones</th>
-                <th>Mensual</th>
+                <th>¿Es mensual?</th>
+                <th>Precio vigente</th>
                 <th>Estado</th>
                 <th>Acciones</th>
             </tr>
@@ -83,6 +84,13 @@ new class extends Component
                     <td>{{ $actCom->combo->nombre }}</td>
                     <td>{{ $actCom->combo->cantidad_sesiones }}</td>
                     <td>{{ $actCom->combo->es_mensual ? 'Sí' : 'No' }}</td>
+                    <td>
+                        {{
+                            $actCom->precioVigente?->valor === null
+                                ? 'Sin asignar'
+                                : '$' . number_format($actCom->precioVigente->valor, 2, ',', '.')
+                        }}
+                    </td>
                     <td>
                         <span class="px-3 py-1 inline-flex items-center {{ $actCom->activo ? 'bg-emerald-500' : 'bg-amber-500' }} text-white text-sm font-semibold rounded">
                             {{ $actCom->activo ? 'Activo' : 'Inactivo' }}
