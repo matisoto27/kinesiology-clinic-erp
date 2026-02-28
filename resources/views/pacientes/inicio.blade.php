@@ -39,7 +39,9 @@
                             <td>{{ $pac['edad'] }}</td>
                             <td>{{ $pac['domicilio'] }}</td>
                             <td>{{ $pac['telefono'] }}</td>
-                            <td>{{ $pac['profesion'] }}</td>
+                            <td class="break-words">
+                                {{ $pac['profesion'] }}
+                            </td>
                             <td>{{ $pac['fecha_ingreso'] }}</td>
                             <td>
                                 <div class="flex justify-center items-center">

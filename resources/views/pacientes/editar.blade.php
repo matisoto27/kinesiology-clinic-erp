@@ -25,13 +25,7 @@
 
                 <x-input-formulario label="Teléfono" placeholder="Ingrese el teléfono" :value="$paciente->telefono" name="telefono" />
 
-                <x-select-formulario
-                    label="Profesión"
-                    opcionPorDefecto="Seleccione una profesión"
-                    :value="$paciente->profesion"
-                    name="profesion"
-                    :opciones="['Estudiante', 'Desempleado', 'Empleado', 'Ama de casa', 'Trabajo independiente', 'Jubilado/Pensionado']"
-                />
+                <x-input-formulario label="Profesión" placeholder="¿A qué se dedica?" :value="$paciente->profesion" name="profesion" />
 
                 <x-select-formulario
                     label="Actividad física"

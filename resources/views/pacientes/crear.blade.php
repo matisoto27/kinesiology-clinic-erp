@@ -22,7 +22,7 @@
 
                 <x-input-formulario label="Teléfono" placeholder="Ingrese el teléfono" name="telefono" />
 
-                <x-select-formulario label="Profesión" opcionPorDefecto="Seleccione una profesión" name="profesion" :opciones="['Estudiante', 'Desempleado', 'Empleado', 'Ama de casa', 'Trabajo independiente', 'Jubilado/Pensionado']" />
+                <x-input-formulario label="Profesión" placeholder="¿A qué se dedica?" name="profesion" />
 
                 <x-select-formulario label="Actividad física" opcionPorDefecto="Seleccione una frecuencia" name="actividad_fisica" :opciones="['Sedentario', 'Ocasional', 'Moderada', 'Intensa', 'Alto rendimiento/Competencia']" />
 

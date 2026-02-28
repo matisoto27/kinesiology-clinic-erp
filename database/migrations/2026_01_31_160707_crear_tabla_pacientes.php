@@ -20,7 +20,7 @@ return new class extends Migration
             $table->date('fecha_nac');
             $table->string('domicilio', length: 100);
             $table->string('telefono', length: 20);
-            $table->string('profesion', length: 45);
+            $table->string('profesion', length: 40);
             $table->string('actividad_fisica', length: 45);
             $table->boolean('es_adulto_mayor');
             $table->string('vive_con', length: 150)->nullable();

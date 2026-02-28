@@ -59,7 +59,7 @@ class AlmacenarPacienteRequest extends FormRequest
             'fecha_nac' => 'required|date',
             'domicilio' => 'required|string|regex:/^[A-Za-z0-9\s.,áéíóúÁÉÍÓÚñÑ#-]+$/|max:100',
             'telefono' => 'required|numeric|digits_between:8,20',
-            'profesion' => 'required|string|in:Estudiante,Desempleado,Empleado,Ama de casa,Trabajo independiente,Jubilado/Pensionado',
+            'profesion' => 'required|string|max:40',
             'actividad_fisica' => 'required|string|in:Sedentario,Ocasional,Moderada,Intensa,Alto rendimiento/Competencia',
             'es_adulto_mayor' => 'required|boolean',
             'vive_solo' => 'exclude_if:es_adulto_mayor,false|boolean',
