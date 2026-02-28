@@ -55,7 +55,6 @@
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.sin-orden.crear') }}">Kinesiología (SIN orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.aplicar-orden') }}">Aplicar orden médica a una inscripción</a></li>
-                            <li><a href="{{ route('precios.crear') }}">Actualizar precios de los combos</a></li>
                         </ul>
                     </li>
 
@@ -115,6 +114,7 @@
                                 <li><a href="{{ route('profesionales.inicio') }}">Lista de profesionales</a></li>
                                 <li><a href="{{ route('horas-trabajadas.inicio') }}">Historial de horas trabajadas</a></li>
                                 <li><a href="{{ route('actividades-combos.inicio') }}">Administrar combos de actividades</a></li>
+                                <li><a href="{{ route('precios.crear') }}">Actualizar precios de los combos</a></li>
                                 <li><a href="{{ route('obras-sociales.inicio') }}">Administrar obras sociales</a></li>
                                 <li>
                                     <form action="{{ route('admin.salir') }}" method="POST" class="px-4 py-3 block hover:bg-red-700">

@@ -66,11 +66,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
     });
 
-    Route::controller(PrecioController::class)->group(function () {
-        Route::get('/precios/crear', 'crear')->name('precios.crear');
-        Route::post('/precios', 'almacenar')->name('precios.almacenar');
-    });
-
     Route::controller(NotaTurnoController::class)->group(function () {
         Route::get('/turnos/{id}/notas', 'obtenerNotasDesdeTurno');
         Route::post('/turnos/{id}/notas', 'almacenar');
@@ -91,6 +86,10 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::view('/profesionales/{profesional}/editar', 'profesionales.editar')->name('profesionales.editar');
         Route::view('/profesionales/horas-trabajadas', 'profesionales.horas-trabajadas.inicio')->name('horas-trabajadas.inicio');
         Route::view('/actividades-combos', 'actividades-combos.inicio')->name('actividades-combos.inicio');
+        Route::controller(PrecioController::class)->group(function () {
+            Route::get('/precios/crear', 'crear')->name('precios.crear');
+            Route::post('/precios', 'almacenar')->name('precios.almacenar');
+        });
         Route::view('/obras-sociales', 'obras-sociales.inicio')->name('obras-sociales.inicio');
     });
 });
