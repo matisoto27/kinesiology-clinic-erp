@@ -8,7 +8,6 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class PrecioController extends Controller
 {
@@ -42,8 +41,12 @@ class PrecioController extends Controller
 
             return redirect()->route('inicio')->with('exito', '¡El precio ha sido actualizado con éxito!');
 
-        } catch (Throwable $ex) {
-            $mensajeError = $ex->getMessage();
+        } catch (\Throwable $ex) {
+            if ($ex instanceof \Illuminate\Database\QueryException && $ex->errorInfo[1] == 1062) {
+                $mensajeError = "Ya se ha registrado un precio para este Combo de Actividad en la fecha de hoy.";
+            } else {
+                $mensajeError = $ex->getMessage();
+            }
 
             DB::rollBack();
             Log::error('[PrecioController@almacenar] Error al almacenar el precio', [
