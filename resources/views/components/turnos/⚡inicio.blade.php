@@ -49,7 +49,14 @@ new class extends Component
 
     public function abrirModal(int $id)
     {
-        $this->turnoSeleccionado = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])->find($id);
+        $turno = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])->find($id);
+
+        if ($turno->asiste) {
+            session()->flash('error', 'No se puede editar un turno donde el paciente ya ha asistido.');
+            return;
+        }
+
+        $this->turnoSeleccionado = $turno;
         $fechaHora = $this->turnoSeleccionado->fecha_hora;
 
         $actividad = $this->turnoSeleccionado->actividadPaciente->actividad;
@@ -101,7 +108,16 @@ new class extends Component
 
     public function actualizar()
     {
-        if (!$this->fechaSeleccionada || !$this->horaSeleccionada) return;
+        if (!$this->fechaSeleccionada || !$this->horaSeleccionada) {
+            $this->cerrarModal();
+            return;
+        }
+
+        if ($this->turnoSeleccionado->asiste) {
+            session()->flash('error', 'No se puede editar un turno donde el paciente ya ha asistido.');
+            $this->cerrarModal();
+            return;
+        }
 
         DB::beginTransaction();
 
@@ -203,9 +219,15 @@ new class extends Component
                     </td>
                     <td>
                         <div class="centrado-total">
-                            <button type="button" wire:click="abrirModal({{ $turno->id }})">
-                                <x-iconos.lapiz />
-                            </button>
+                            @if(!$turno->asiste)
+                                <button type="button" wire:click="abrirModal({{ $turno->id }})">
+                                    <x-iconos.lapiz />
+                                </button>
+                            @else
+                                <span class="text-gray-500 cursor-not-allowed opacity-50">
+                                    <x-iconos.lapiz />
+                                </span>
+                            @endif
                         </div>
                     </td>
                 </tr>
