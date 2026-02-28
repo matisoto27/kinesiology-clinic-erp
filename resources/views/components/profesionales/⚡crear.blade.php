@@ -14,8 +14,8 @@ new class extends Component
 
     protected $rules = [
         'dni' => 'required|unique:profesionales,dni|numeric|digits_between:7,8',
-        'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
-        'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
+        'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
+        'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
         'codigo_personal' => 'required|numeric|digits:5'
     ];
 
@@ -24,6 +24,8 @@ new class extends Component
         'dni.unique' => 'Ya existe un profesional registrado con este DNI.',
         'nombre.required' => 'El nombre es obligatorio.',
         'apellido.required' => 'El apellido es obligatorio.',
+        'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
+        'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
         'codigo_personal.required' => 'El código personal es obligatorio.',
         'codigo_personal.digits' => 'El código debe ser de exactamente 5 dígitos.'
     ];

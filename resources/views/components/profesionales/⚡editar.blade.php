@@ -27,8 +27,8 @@ new class extends Component
     public function actualizar()
     {
         $this->validate([
-            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
-            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
+            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
+            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'valorPorHoraStr' => 'required',
             'codigo_personal' => 'required|numeric|digits:5',
             'activo' => 'required|boolean'

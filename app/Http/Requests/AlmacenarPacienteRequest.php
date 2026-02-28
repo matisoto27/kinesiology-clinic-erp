@@ -54,8 +54,8 @@ class AlmacenarPacienteRequest extends FormRequest
             'dni' => $idPaciente
                 ? 'nullable'
                 : 'required|unique:pacientes,dni|numeric|digits_between:7,8',
-            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30', // Permite espacios
-            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ]+$/|max:30', // No permite espacios
+            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
+            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'fecha_nac' => 'required|date',
             'domicilio' => 'required|string|regex:/^[A-Za-z0-9\s.,áéíóúÁÉÍÓÚñÑ#-]+$/|max:100',
             'telefono' => 'required|numeric|digits_between:8,20',
@@ -80,7 +80,7 @@ class AlmacenarPacienteRequest extends FormRequest
     {
         return [
             'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
-            'apellido.regex' => 'El apellido solo puede contener letras.',
+            'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
             'vive_con.required_if' => 'Por favor, especifique con quién vive el paciente.'
         ];
     }
