@@ -23,6 +23,12 @@ class PacienteResource extends JsonResource
             'vive_con' => $this->vive_con,
             'created_at' => $this->fecha_ingreso,
             'obra_social' => $this->afiliacionVigente?->nombre,
+            'contactos_emergencia' => $this->whenLoaded('contactosEmergencia')->map(fn($cont) => [
+                'id' => $cont->id,
+                'nombre' => $cont->nombre,
+                'telefono' => $cont->telefono,
+                'vinculo' => $cont->vinculo
+            ]),
             'patologias' => $this->transformarRelacion($this->whenLoaded('patologias')),
             'sintomas' => $this->transformarRelacion($this->whenLoaded('sintomasActivos'))
         ];

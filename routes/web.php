@@ -46,14 +46,12 @@ Route::middleware(['verificar.acceso'])->group(function () {
 
     Route::controller(PacienteController::class)->group(function () {
         Route::get('/pacientes', 'inicio')->name('pacientes.inicio');
-        Route::get('/pacientes/crear', 'crear')->name('pacientes.crear');
-        Route::post('/pacientes', 'almacenar')->name('pacientes.almacenar');
         Route::get('/buscar-pacientes', 'buscarPorNombre');
         Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
         Route::get('/pacientes/{paciente}/editar', 'editar')->name('pacientes.editar');
-        Route::put('/pacientes/{paciente}', 'actualizar')->name('pacientes.actualizar');
         Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
     });
+    Route::view('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
 
     Route::controller(PacienteFijoController::class)->group(function () {
         Route::get('/pacientes-fijos', 'inicio')->name('pacientes-fijos.inicio');

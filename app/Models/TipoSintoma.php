@@ -22,13 +22,11 @@ class TipoSintoma extends Model
 
     public function sintomas(): HasMany
     {
-        return $this->hasMany(Sintoma::class, 'id_tipo');
+        return $this->hasMany(Sintoma::class, 'id_tipo')->orderBy('nombre');
     }
 
     public function sintomasActivos(): HasMany
     {
-        return $this->sintomas()
-            ->where('activo', true)
-            ->orderBy('nombre');
+        return $this->sintomas()->where('activo', true);
     }
 }
