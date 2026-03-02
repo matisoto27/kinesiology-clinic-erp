@@ -108,9 +108,34 @@
                             <p class="modal-informativo__valor" x-text="datos.es_adulto_mayor ? 'Si' : 'No'"></p>
 
                             <template x-if="datos.es_adulto_mayor">
-                                <div class="mt-2 pt-2 border-gray-200 border-t">
-                                    <p class="modal-informativo__etiqueta">¿Con quién vive?</p>
-                                    <p class="modal-informativo__valor" x-text="datos.vive_con"></p>
+                                <div class="mt-2 pt-2 space-y-2 border-gray-200 border-t">
+                                    <div>
+                                        <p class="modal-informativo__etiqueta">¿Con quién vive?</p>
+                                        <p class="modal-informativo__valor" x-text="datos.vive_con"></p>
+                                    </div>
+                                    <div>
+                                        <p class="mb-1 modal-informativo__etiqueta">Contactos de Emergencia</p>
+                                        <div class="space-y-2">
+                                            <template x-for="contacto in datos.contactos_emergencia" :key="contacto.id">
+                                                <div class="p-2 bg-gray-50 border-gray-200 border rounded-lg">
+                                                    <div class="flex justify-between">
+                                                        <div>
+                                                            <p class="text-[#3A8F8E] text-sm font-semibold" x-text="contacto.vinculo"></p>
+                                                            <p class="modal-informativo__valor" x-text="contacto.nombre"></p>
+                                                        </div>
+                                                        <div class="text-right">
+                                                            <p class="modal-informativo__etiqueta">Teléfono</p>
+                                                            <p class="modal-informativo__valor" x-text="contacto.telefono"></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </template>
+
+                                            <div class="modal-informativo__sin-valor" x-show="!datos.contactos_emergencia || datos.contactos_emergencia.length === 0">
+                                                No hay contactos de emergencia registrados.
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </template>
                         </div>
