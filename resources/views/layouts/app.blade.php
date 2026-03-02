@@ -6,6 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Punto Kinésico</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;500;700&display=swap" rel="stylesheet">
+
     <link rel="icon" type="image/x-icon" href="{{ asset('img/icono.ico') }}">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -17,11 +22,12 @@
 <body class="min-h-screen flex flex-col">
     <header class="bg-[#006E6B] font-medium h-20 shadow-md">
         <div class="mx-auto h-full w-[90%] lg:w-[80%] flex items-center text-white">
-
-            <a href="{{ route('inicio') }}" class="flex items-center gap-3 bg-white rounded-sm overflow-hidden hover:opacity-90 transition">
-                <h1 class="text-black text-[28px] pl-2" style="font-family: 'Lato', sans-serif; font-weight: 500;">Punto</h1>
-                <img src="{{ asset('img/logo.png') }}" alt="Logo Punto Kinésico" class="h-12 w-auto">
-                <h1 class="text-black text-[28px] pr-2" style="font-family: 'Lato', sans-serif; font-weight: 500;">Kinésico</h1>
+            <a href="{{ route('inicio') }}" class="px-2 py-1 flex flex-shrink-0 bg-white overflow-hidden rounded-sm transition hover:opacity-90">
+                <h1 class="flex items-center gap-3 text-black text-[28px] font-medium font-lato">
+                    <span>Punto</span>
+                    <img src="{{ asset('img/logo.png') }}" alt="Logo Punto Kinésico" class="h-12 w-auto">
+                    <span>Kinésico</span>
+                </h1>
             </a>
 
             <nav class="ml-auto h-full">
