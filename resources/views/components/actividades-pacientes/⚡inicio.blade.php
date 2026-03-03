@@ -185,7 +185,7 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="11" class="py-10 text-center text-gray-300 italic">No hay registros disponibles.</td>
+                    <td colspan="10" class="py-10 text-center text-gray-300 italic">No hay registros disponibles.</td>
                 </tr>
             @endforelse
         </tbody>

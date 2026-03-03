@@ -464,40 +464,46 @@ quitarPacienteButton.addEventListener('click', function() {
     limpiarTurnos(contenedorTurnos);
 });
 
-sugerenciasPaciente.addEventListener('click', async function(e) {
+sugerenciasPaciente.addEventListener('click', function(e) {
     const elementoClickeado = e.target.closest('li');
     if (!elementoClickeado) return;
 
     const idPaciente = obtenerValor(elementoClickeado.dataset.idPaciente);
     if (idPaciente === null) return;
 
-    let actividades = [];
-
-    try {
-        actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
-    } catch (error) {
-        console.error(error);
-        mostrarAlerta('error', 'Error al cargar las actividades', error.message);
-        return;
-    }
-
-    actualizarUltimaActividadValida('');
-
     idPacienteSeleccionado.value = idPaciente;
     pacienteInput.value = elementoClickeado.textContent;
+
     habilitarBuscador(false);
     limpiarSugerencias(this);
 
-    if (actividades.length === 0) {
-        actividadSelect.innerHTML = crearOpcionPorDefecto('Paciente suscripto a todas');
-        return;
-    }
-
-    actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
-    actividades.forEach(actividad => {
-        agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
-    });
-    habilitarElemento(actividadSelect, true);
+    actualizarUltimaActividadValida('');
+    cargarActividadesPaciente(idPaciente);
 });
+
+async function cargarActividadesPaciente(idPaciente) {
+    actividadSelect.innerHTML = crearOpcionPorDefecto('Cargando actividades...');
+    habilitarElemento(actividadSelect, false);
+
+    try {
+        const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
+
+        if (actividades.length === 0) {
+            actividadSelect.innerHTML = crearOpcionPorDefecto('Paciente suscripto a todas');
+            return;
+        }
+
+        actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
+        actividades.forEach(actividad => {
+            agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
+        });
+        habilitarElemento(actividadSelect, true);
+
+    } catch (error) {
+        console.error(error);
+        actividadSelect.innerHTML = crearOpcionPorDefecto('Error al cargar');
+        mostrarAlerta('error', 'Error al cargar las actividades', error.message);
+    }
+}
 
 turnosCheckbox.addEventListener('change', manejarCambio);

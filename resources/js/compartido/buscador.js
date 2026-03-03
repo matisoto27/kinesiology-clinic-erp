@@ -75,19 +75,21 @@ export function configurarBuscador(nombre, url, constructorLi) {
         const pacientesSugeridos = sugerencias.querySelectorAll('li');
         const cantidad = pacientesSugeridos.length;
 
-        if (cantidad === 0) return;
+        if (cantidad === 0 || (cantidad === 1 && pacientesSugeridos[0].textContent.includes('Sin coincidencias'))) {
+            return;
+        }
 
         switch(event.key) {
             case 'ArrowDown':
             case 'Tab':
                 event.preventDefault();
                 indiceSeleccionado = (indiceSeleccionado + 1) % cantidad;
-                actualizarSeleccion(pacientesSugeridos);
+                actualizarSeleccion(pacientesSugeridos, indiceSeleccionado);
                 break;
             case 'ArrowUp':
                 event.preventDefault();
                 indiceSeleccionado = (indiceSeleccionado - 1 + cantidad) % cantidad;
-                actualizarSeleccion(pacientesSugeridos);
+                actualizarSeleccion(pacientesSugeridos, indiceSeleccionado);
                 break;
             case 'Enter':
                 event.preventDefault();
@@ -121,8 +123,13 @@ export function configurarBuscador(nombre, url, constructorLi) {
 }
 
 function redondearBordeInferior(elemento, confirma) {
-    elemento.classList.toggle('rounded-b-xl', confirma);
-    elemento.classList.toggle('rounded-b-none', !confirma);
+    if (confirma) {
+        elemento.classList.add('rounded-b-xl');
+        elemento.classList.remove('rounded-b-none');
+    } else {
+        elemento.classList.add('rounded-b-none');
+        elemento.classList.remove('rounded-b-xl');
+    }
 }
 
 export function limpiarSugerencias(sugerencias) {
@@ -130,7 +137,7 @@ export function limpiarSugerencias(sugerencias) {
     mostrarElemento(sugerencias, false);
 }
 
-function actualizarSeleccion(sugerenciasRecibidas) {
+function actualizarSeleccion(sugerenciasRecibidas, indiceSeleccionado) {
     sugerenciasRecibidas.forEach((sugerencia, indice) => {
         const esSeleccionado = indice === indiceSeleccionado;
         sugerencia.classList.toggle('bg-[#F5D500]', esSeleccionado);
