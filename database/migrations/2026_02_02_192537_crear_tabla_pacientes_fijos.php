@@ -13,8 +13,6 @@ return new class extends Migration
     {
         Schema::create('pacientes_fijos', function (Blueprint $table) {
             $table->id();
-            $table->boolean('activo')->default(true);
-
             $table->foreignId('id_actividad')->constrained(table: 'actividades');
             $table->foreignId('id_paciente')->constrained(table: 'pacientes');
 

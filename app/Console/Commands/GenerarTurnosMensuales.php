@@ -34,8 +34,7 @@ class GenerarTurnosMensuales extends Command
     public function handle(TurnoService $turnoService)
     {
         $consulta = PacienteFijo::select('id', 'id_actividad', 'id_paciente')
-            ->with('horarios:id_paciente_fijo,dia_semana,hora_inicio')
-            ->where('activo', true);
+            ->with('horarios:id_paciente_fijo,dia_semana,hora_inicio');
 
         if ($id = $this->option('id_paciente_fijo')) {
             $consulta->where('id', $id);

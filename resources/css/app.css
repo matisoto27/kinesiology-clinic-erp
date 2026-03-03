@@ -107,22 +107,6 @@
         }
     }
 
-    .indicador-estado {
-        @apply px-4 py-1.5 inline-flex items-center text-xs font-black uppercase border rounded-full tracking-wider shadow-sm transition-all;
-    }
-
-    .indicador-estado--activo {
-        @apply bg-[#00A39E] group-hover:bg-[#014745] text-white border-[#01C2BB] group-hover:border-[#014745];
-    }
-
-    .indicador-estado--suspendido {
-        @apply bg-[#F5D500] group-hover:bg-white text-[#014745] group-hover:text-[#014745] border-[#D9BD00];
-    }
-
-    .indicador-estado__punto {
-        @apply mr-2 h-2 w-2 rounded-full animate-pulse;
-    }
-
     .tabla-listado {
         @apply table-fixed bg-[#014745] text-white text-center overflow-hidden rounded-xl w-full;
     }

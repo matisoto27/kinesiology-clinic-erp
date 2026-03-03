@@ -8,7 +8,6 @@ use App\Http\Controllers\NotaTurnoController;
 use App\Http\Controllers\ObraSocialController;
 use App\Http\Controllers\ObraSocialPacienteController;
 use App\Http\Controllers\PacienteController;
-use App\Http\Controllers\PacienteFijoController;
 use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PrecioController;
 use Illuminate\Support\Facades\Route;
@@ -53,10 +52,8 @@ Route::middleware(['verificar.acceso'])->group(function () {
     });
     Route::view('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
 
-    Route::controller(PacienteFijoController::class)->group(function () {
-        Route::get('/pacientes-fijos', 'inicio')->name('pacientes-fijos.inicio');
-        Route::get('/pacientes-fijos/crear', 'crear')->name('pacientes-fijos.crear');
-    });
+    Route::view('/pacientes-fijos', 'pacientes-fijos.inicio')->name('pacientes-fijos.inicio');
+    Route::view('/pacientes-fijos/crear', 'pacientes-fijos.crear')->name('pacientes-fijos.crear');
 
     Route::controller(PagoController::class)->group(function () {
         Route::get('/pagos/crear', 'crear')->name('pagos.crear');

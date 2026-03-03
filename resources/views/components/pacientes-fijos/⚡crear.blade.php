@@ -1,18 +1,18 @@
 <?php
 
 use App\Models\Actividad;
+use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
 {
-    public Collection $inscripciones;
-
     public string $inscripcionSeleccionada = '';
 
     public string $fechaUltimoTurno = 'Sin datos';
@@ -24,6 +24,24 @@ new class extends Component
     public array $turnos = [];
 
     public Collection $turnosPorDia;
+
+    #[Computed]
+    public function inscripciones()
+    {
+        return ActividadPaciente::select('id', 'id_actividad', 'id_paciente', 'fecha_comienzo', 'cant_sesiones')
+            ->whereHas('actividad', function ($consulta) {
+                $consulta->where('id_tipo_actividad', Actividad::TIPO_GENERAL);
+            })
+            ->with([
+                'actividad' => function ($consulta) {
+                    $consulta->select('id', 'nombre')->with('horarios:id,hora_inicio');
+                },
+                'paciente:id,nombre,apellido',
+                'ultimoTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora'
+            ])
+            ->noFijos()
+            ->get();
+    }
 
     public function updatedInscripcionSeleccionada()
     {
@@ -84,8 +102,12 @@ new class extends Component
         ]);
 
         $inscripcion = $this->inscripciones->firstWhere('id', $this->inscripcionSeleccionada);
-        $idPacienteFijo = null;
+        if (!$inscripcion) {
+            session()->flash('error', 'La inscripción seleccionada ya no está disponible o no es válida.');
+            return;
+        }
 
+        $idPacienteFijo = null;
         try {
             $idPacienteFijo = DB::transaction(function () use ($inscripcion) {
                 $pacienteFijo = new PacienteFijo();
@@ -101,7 +123,7 @@ new class extends Component
                 '--id_paciente_fijo' => $idPacienteFijo
             ]);
 
-            return redirect()->route('inicio')->with('exito', 'El paciente ha sido marcado como paciente recurrente. A partir de ahora, los turnos mensuales se generaran automáticamente.');
+            return redirect()->route('inicio')->with('exito', 'El paciente ha sido marcado como paciente recurrente. A partir de ahora, los turnos mensuales se generarán automáticamente.');
 
         } catch (\Throwable $ex) {
             Log::error('[(ComponenteLivewire)PacienteFijo@almacenar] Error al marcar el paciente como paciente recurrente.', ['excepcion' => $ex->getMessage()]);
@@ -125,8 +147,8 @@ new class extends Component
             <label for="select-inscripcion" class="etiqueta-formulario">Inscripción</label>
             <select id="select-inscripcion" class="entrada" wire:model.live="inscripcionSeleccionada" required>
                 <option value="" disabled selected>Seleccione una inscripción</option>
-                @foreach ($inscripciones as $actPac)
-                    <option value="{{ $actPac->id }}">{{ $actPac->paciente->nombre_completo }} - {{ $actPac->actividad->nombre }} (Inicio: {{ $actPac->fecha_comienzo->format('d-m-Y') }})</option>
+                @foreach ($this->inscripciones as $insc)
+                    <option value="{{ $insc->id }}">{{ $insc->paciente->nombre_completo }} - {{ $insc->actividad->nombre }} (Inicio: {{ $insc->fecha_comienzo->format('d-m-Y') }})</option>
                 @endforeach
             </select>
         </div>
