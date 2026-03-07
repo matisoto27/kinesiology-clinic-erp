@@ -68,7 +68,7 @@ new class extends Component
 
         return Turno::query()
             ->with([
-                'actividadPaciente.actividad:id,nombre',
+                'actividadPaciente.actividad',
                 'actividadPaciente.paciente:id,nombre,apellido'
             ])
             ->whereBetween('fecha_hora', [$limInferior, $limSuperior])
@@ -85,32 +85,66 @@ new class extends Component
             ->paginate(10);
     }
 
-    public function confirmarAsistenciaTurno(int $idTurno)
+    public function confirmarAsistencia(int $id)
     {
         try {
-            DB::transaction(function () use ($idTurno) {
-                $turno = Turno::lockForUpdate()->findOrFail($idTurno);
-
-                if ($turno->asiste) {
-                    throw new \Exception('La asistencia ya se encuentra confirmada.');
+            DB::transaction(function () use ($id) {
+                $turno = Turno::lockForUpdate()->findOrFail($id);
+                if ($turno->estado === 'Ausente avisó') {
+                    throw new \Exception('No es posible confirmar la asistencia de un turno con aviso de ausencia previo.');
                 }
-
-                $turno->update(['asiste' => true]);
+                if (str_contains($turno->estado, 'Presente')) {
+                    throw new \Exception('La asistencia de este turno ya ha sido confirmada previamente.');
+                }
+                $turno->update(['estado' => 'Presente']);
             });
 
             session()->flash('exito', '¡Asistencia confirmada con éxito!');
-        } catch (\Throwable $ex) {
-            Log::error('[(Livewire)principal@confirmarAsistenciaTurno] Error al confirmar la asistencia del turno.', [
-                'id' => $idTurno,
-                'excepción' => $ex->getMessage()
+
+        } catch (\Throwable $th) {
+            Log::error('[(Livewire) principal@confirmarAsistencia] Error al actualizar estado del turno.', [
+                'id' => $id,
+                'excepción' => $th->getMessage()
             ]);
-            session()->flash('error', $ex instanceof \Exception ? $ex->getMessage() : 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+
+            session()->flash('error', $th instanceof \Exception
+                ? $th->getMessage()
+                : 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+        }
+    }
+
+    public function marcarAusenteAviso($id)
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $turno = Turno::lockForUpdate()->findOrFail($id);
+
+                if (!$turno->actividadPaciente->actividad->esActividadGeneral()) {
+                    throw new \Exception("Los turnos de tipo kinesiología solo admiten estados 'Ausente' o 'Presente'.");
+                } else if (str_contains($turno->estado, 'Presente')) {
+                    throw new \Exception("No puede marcarse como 'Ausente avisó' un turno cuya asistencia ya fue confirmada.");
+                }
+
+                $turno->update(['estado' => 'Ausente avisó']);
+            });
+
+            session()->flash('exito', "El turno ha sido marcado como 'Ausente avisó'.");
+
+        } catch (\Throwable $th) {
+            Log::error('[(Livewire) principal@marcarAusenteAviso] Error al actualizar estado del turno.', [
+                'id' => $id,
+                'excepción' => $th->getMessage()
+            ]);
+
+            session()->flash('error', $th instanceof \Exception
+                ? $th->getMessage()
+                : 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
     }
 };
 ?>
 
-<div class="contenedor my-5 px-8 max-w-screen-lg bg-[#006E6B] rounded-3xl" wire:poll.60s="actualizarReloj">
+<div class="contenedor my-5 px-8 max-w-screen-xl bg-[#006E6B] rounded-3xl" wire:poll.60s="actualizarReloj">
     <div class="mb-4 flex justify-between text-white">
         <div class="text-3xl font-bold">
             <h2>Asistencia de hoy</h2>
@@ -168,32 +202,87 @@ new class extends Component
     <table class="my-5 w-full overflow-hidden rounded-xl">
         <thead class="bg-[#014745] text-white">
             <tr>
-                <th class="py-3 w-2/11 text-center">Hora de ingreso</th>
-                <th class="py-3 w-3/11 text-center">Paciente</th>
-                <th class="py-3 w-3/11 text-center">Actividad</th>
-                <th class="py-3 w-3/11 text-center">Asistencia</th>
+                <th class="py-3 w-2/13 text-center">Hora de ingreso</th>
+                <th class="py-3 w-3/13 text-center">Paciente</th>
+                <th class="py-3 w-3/13 text-center">Actividad</th>
+                <th class="py-3 w-5/13 text-center">Acciones / Estado</th>
             </tr>
         </thead>
 
         <tbody class="bg-white">
             @if($this->turnos->count())
                 @foreach($this->turnos as $turno)
-                    <tr class="border-b last:border-b-0" wire:key="turno-{{ $turno->id }}">
-                        <td class="w-2/11 text-center py-3">{{ $turno->fecha_hora->format('H:i') }}</td>
-                        <td class="w-3/11 text-center py-3">{{ $turno->actividadPaciente->paciente->apellido . ' ' . $turno->actividadPaciente->paciente->nombre }}</td>
-                        <td class="w-3/11 text-center py-3">{{ $turno->actividadPaciente->actividad->nombre }}</td>
-                        <td class="w-3/11 text-center py-3 group">
-                            @if($turno->asiste)
-                                <button class="px-4 py-2 bg-green-300 font-semibold rounded-full transition-colors" disabled>Confirmada</button>
-                            @else
-                                <button
-                                    class="px-4 py-2 bg-[#F5D500] group-hover:bg-green-300 active:scale-95 group-hover:scale-105 rounded-full transition-all duration-100"
-                                    wire:click="confirmarAsistenciaTurno({{ $turno->id }})"
-                                    wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
-                                    wire:loading.attr="disabled">
-                                    Confirmar
-                                </button>
-                            @endif
+                    <tr class="h-24 border-b last:border-b-0" wire:key="turno-{{ $turno->id }}">
+                        <td class="w-2/13 text-center">{{ $turno->fecha_hora->format('H:i') }}</td>
+                        <td class="w-3/13 text-center">{{ $turno->actividadPaciente->paciente->apellido . ' ' . $turno->actividadPaciente->paciente->nombre }}</td>
+                        <td class="w-3/13 text-center">{{ $turno->actividadPaciente->actividad->nombre }}</td>
+                        <td class="w-5/13 text-center">
+                            <div class="w-fit mx-auto grid grid-cols-2 gap-2">
+                                @if ($turno->id_turno_original === null)
+                                    @if ($turno->actividadPaciente->actividad->esActividadGeneral())
+                                        @if ($turno->estado === 'Ausente avisó')
+                                            <div class="col-span-2 flex justify-center">
+                                                <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                    Ausente avisó (AA)
+                                                </span>
+                                            </div>
+                                        @elseif (str_contains($turno->estado, 'Presente'))
+                                            <div class="col-span-2 flex justify-center">
+                                                <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                    {{ $turno->estado }}
+                                                </span>
+                                            </div>
+                                        @else
+                                            <button
+                                                class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                                wire:click="confirmarAsistencia({{ $turno->id }})"
+                                                wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
+                                                wire:loading.attr="disabled">
+                                                Confirmar asistencia
+                                            </button>
+                                            <button
+                                                class="px-4 py-2 bg-orange-400 hover:bg-red-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                                wire:click="marcarAusenteAviso({{ $turno->id }})"
+                                                wire:confirm="¿Estás seguro de que deseas actualizar el estado del turno a 'Ausente avisó'?"
+                                                wire:loading.attr="disabled">
+                                                No viene pero avisó
+                                            </button>
+                                        @endif
+                                    @else
+                                        @if ($turno->estado === 'Ausente')
+                                            <button
+                                                class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                                wire:click="confirmarAsistencia({{ $turno->id }})"
+                                                wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
+                                                wire:loading.attr="disabled">
+                                                Confirmar asistencia
+                                            </button>
+                                            <div></div>
+                                        @else
+                                            <div class="col-span-2 flex justify-center">
+                                                <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">Presente</span>
+                                            </div>
+                                        @endif
+                                    @endif
+                                @else
+                                    @if ($turno->estado === 'Ausente')
+                                        <button
+                                            class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                            wire:click="confirmarAsistencia({{ $turno->id }})"
+                                            wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
+                                            wire:loading.attr="disabled">
+                                            Confirmar asistencia
+                                        </button>
+                                        <div></div>
+                                    @else
+                                        <div class="col-span-2 flex justify-center">
+                                            <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                {{ $turno->estado }}
+                                            </span>
+                                        </div>
+                                    @endif
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @endforeach

@@ -16,10 +16,15 @@ return new class extends Migration
 
             $table->unsignedTinyInteger('nro_turno');
             $table->datetime('fecha_hora');
-            $table->boolean('asiste')->default(false);
+            $table->string('estado', length: 20)->default('Ausente'); // Ausente - Ausente avisó - Presente
 
             $table->foreignId('id_act_pac')
                 ->constrained(table: 'actividades_pacientes')
+                ->onDelete('cascade');
+
+            $table->foreignId('id_turno_original')
+                ->nullable()
+                ->constrained(table: 'turnos')
                 ->onDelete('cascade');
 
             $table->timestamps();

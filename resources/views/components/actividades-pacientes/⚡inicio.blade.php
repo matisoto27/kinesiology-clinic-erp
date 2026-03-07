@@ -234,14 +234,17 @@ new class extends Component
                             @forelse($inscripcionSeleccionada->turnos as $turno)
                                 <div class="modal-informativo__elemento-lista flex justify-between items-center">
                                     <div>
+                                        @if($turno->id_turno_original)
+                                            <span class="text-blue-500 text-sm font-semibold uppercase">Reprogramado</span>
+                                        @endif
                                         <p class="modal-informativo__etiqueta">Turno #{{ $turno->nro_turno }}</p>
                                         <p class="modal-informativo__valor">{{ $turno->fecha_hora->format('d/m/Y H:i') }}</p>
                                     </div>
-                                    @if($turno->fecha_hora->isFuture())
+                                    @if($turno->fecha_hora->isFuture() && $turno->estado === 'Ausente')
                                         <span class="turno-pendiente">PENDIENTE</span>
                                     @else
-                                        <span class="turno-pasado {{ $turno->asiste ? 'bg-emerald-500' : 'bg-red-500' }}">
-                                            {{ $turno->asiste ? 'PRESENTE' : 'AUSENTE' }}
+                                        <span class="turno-pasado {{ str_contains($turno->estado, 'Ausente') ? 'bg-red-500' : 'bg-emerald-500' }}">
+                                            {{ $turno->estado }}
                                         </span>
                                     @endif
                                 </div>
@@ -252,8 +255,8 @@ new class extends Component
                         @if($inscripcionSeleccionada->turnos->count() > 0)
                             <div class="mt-2 flex justify-center">
                                 <a href="{{ route('turnos.inicio', [
-                                        'idActividad' => $inscripcionSeleccionada->id_actividad,
-                                        'nombreApellidoPac' => $inscripcionSeleccionada->paciente->nombre . ' ' . $inscripcionSeleccionada->paciente->apellido
+                                        'actividad' => $inscripcionSeleccionada->id_actividad,
+                                        'paciente' => $inscripcionSeleccionada->paciente->nombre . ' ' . $inscripcionSeleccionada->paciente->apellido
                                     ]) }}"
                                     class="text-blue-500 hover:text-blue-700 text-sm font-semibold underline transition-colors">
                                     Editar turnos

@@ -5,6 +5,9 @@ use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -12,22 +15,20 @@ new class extends Component
 {
     use WithPagination;
 
-    protected $queryString = [
-        'filtroActividad' => ['as' => 'idActividad', 'except' => null],
-        'consultaPaciente' => ['as' => 'nombreApellidoPac', 'except' => '']
-    ];
-
     public Collection $actividades;
 
-    public ?int $filtroActividad = null;
+    #[Url(as: 'actividad')]
+    public int $idActividad = 0;
 
+    #[Url(as: 'paciente')]
     public string $consultaPaciente = '';
 
     public bool $mostrarModal = false;
 
     public ?Turno $turnoSeleccionado = null;
 
-    public array $turnosTotalesDisponibles = [];
+    #[Locked] 
+    public ?Collection $turnosTotalesDisponibles = null;
 
     public array $fechasUnicas = [];
 
@@ -37,47 +38,63 @@ new class extends Component
 
     public string $horaSeleccionada = '';
 
-    public function updatedConsultaPaciente()
+    #[Computed]
+    public function turnos()
     {
-        $this->resetPage();
+        return Turno::query()
+            ->with([
+                'actividadPaciente.actividad',
+                'actividadPaciente.paciente',
+                'turnoOriginal',
+                'turnoRecuperacion'
+            ])
+            ->when($this->idActividad > 0, function($consulta) {
+                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->where('id_actividad', $this->idActividad));
+            })
+            ->when(!empty($this->consultaPaciente), function($consulta) {
+                $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
+            })
+            ->orderByDesc('fecha_hora')
+            ->paginate(10);
     }
 
-    public function updatedFiltroActividad()
+    #[Computed]
+    public function esMismoTurno(): bool
     {
-        $this->resetPage();
+        if (!$this->turnoSeleccionado || !$this->fechaSeleccionada || !$this->horaSeleccionada) {
+            return true;
+        }
+
+        $original = $this->turnoSeleccionado->fecha_hora->format('Y-m-d H:i:s');
+        $nueva = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada)->format('Y-m-d H:i:s');
+
+        return $original === $nueva;
     }
 
     public function abrirModal(int $id)
     {
-        $turno = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])->find($id);
-
-        if ($turno->asiste) {
-            session()->flash('error', 'No se puede editar un turno donde el paciente ya ha asistido.');
-            return;
-        }
-
-        $this->turnoSeleccionado = $turno;
+        $this->turnoSeleccionado = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])->findOrFail($id);
         $fechaHora = $this->turnoSeleccionado->fecha_hora;
 
         $actividad = $this->turnoSeleccionado->actividadPaciente->actividad;
         $idPaciente = $this->turnoSeleccionado->actividadPaciente->id_paciente;
         $comienzo = $fechaHora->copy()->startOfWeek()->startOfDay();
-        $fin = $comienzo->copy()->addDays(4)->endOfDay();
+        $fin = $comienzo->copy()->addWeek()->addDays(4)->endOfDay();
 
-        $this->turnosTotalesDisponibles = $actividad->turnosDisponibles($idPaciente, $comienzo, $fin);
-        $this->turnosTotalesDisponibles[] = $fechaHora->format('Y-m-d H:i:s');
+        $this->turnosTotalesDisponibles = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin))
+            ->push($fechaHora->format('Y-m-d H:i:s'))
+            ->sort()
+            ->values();
 
         $diasOcupadosInscripcion = $this->turnoSeleccionado->actividadPaciente->turnos()
             ->whereBetween('fecha_hora', [$comienzo, $fin])
             ->where('id', '!=', $this->turnoSeleccionado->id)
             ->pluck('fecha_hora')
             ->map(fn($fecha) => $fecha->format('Y-m-d'))
-            ->unique()
-            ->values()
-            ->toArray();
+            ->unique();
 
-        $this->fechasUnicas = collect($this->turnosTotalesDisponibles)
-            ->map(fn($t) => Carbon::parse($t)->format('Y-m-d'))
+        $this->fechasUnicas = $this->turnosTotalesDisponibles
+            ->map(fn($t) => substr($t, 0, 10))
             ->unique()
             ->diff($diasOcupadosInscripcion)
             ->values()
@@ -93,14 +110,14 @@ new class extends Component
     public function updatedFechaSeleccionada($valor)
     {
         $this->obtenerHorasParaFecha($valor);
-        $this->horaSeleccionada = $this->horasDisponiblesParaFecha[0] ?? '';
+        $this->horaSeleccionada = $this->horasDisponiblesParaFecha[0];
     }
 
     public function obtenerHorasParaFecha($fecha)
     {
-        $this->horasDisponiblesParaFecha = collect($this->turnosTotalesDisponibles)
+        $this->horasDisponiblesParaFecha = $this->turnosTotalesDisponibles
             ->filter(fn($t) => str_starts_with($t, $fecha))
-            ->map(fn($t) => Carbon::parse($t)->format('H:i:s'))
+            ->map(fn($t) => substr($t, 11, 8))
             ->sort()
             ->values()
             ->toArray();
@@ -108,26 +125,38 @@ new class extends Component
 
     public function actualizar()
     {
-        if (!$this->fechaSeleccionada || !$this->horaSeleccionada) {
-            $this->cerrarModal();
-            return;
-        }
-
-        if ($this->turnoSeleccionado->asiste) {
+        if (str_contains($this->turnoSeleccionado->estado, 'Presente')) {
             session()->flash('error', 'No se puede editar un turno donde el paciente ya ha asistido.');
             $this->cerrarModal();
             return;
         }
 
-        DB::beginTransaction();
-
         try {
-            $nuevaFechaHora = $this->fechaSeleccionada . ' ' . $this->horaSeleccionada;
-            $this->turnoSeleccionado->update(['fecha_hora' => $nuevaFechaHora]);
-            DB::commit();
+            $mensaje = DB::transaction(function () {
+                $nuevaFechaHora = $this->fechaSeleccionada . ' ' . $this->horaSeleccionada;
+
+                if ($this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral()) {
+                    if ($this->turnoSeleccionado->estado !== 'Ausente avisó') {
+                        $this->turnoSeleccionado->update(['estado' => 'Ausente avisó']);
+                    }
+
+                    Turno::create([
+                        'id_act_pac' => $this->turnoSeleccionado->id_act_pac,
+                        'nro_turno' => $this->turnoSeleccionado->nro_turno,
+                        'fecha_hora' => $nuevaFechaHora,
+                        'id_turno_original' => $this->turnoSeleccionado->id
+                    ]);
+
+                    return '¡El turno ha sido reprogramado con éxito!';
+
+                } else {
+                    $this->turnoSeleccionado->update(['fecha_hora' => $nuevaFechaHora]);
+                    return 'La fecha del turno de Kinesiología ha sido actualizada.';
+                }
+            });
 
             $this->cerrarModal();
-            session()->flash('exito', '¡El turno ha sido reasignado con éxito!');
+            session()->flash('exito', $mensaje);
 
         } catch (\Throwable $ex) {
             DB::rollBack();
@@ -141,21 +170,6 @@ new class extends Component
     public function cerrarModal()
     {
         $this->reset(['mostrarModal', 'turnoSeleccionado', 'turnosTotalesDisponibles', 'fechasUnicas', 'fechaSeleccionada', 'horasDisponiblesParaFecha', 'horaSeleccionada']);
-    }
-
-    public function render()
-    {
-        $consulta = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente']);
-
-        if ($this->filtroActividad) {
-            $consulta->whereHas('actividadPaciente', fn ($c) => $c->where('id_actividad', $this->filtroActividad));
-        }
-
-        if ($this->consultaPaciente !== '') {
-            $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
-        }
-
-        return $this->view(['turnos' => $consulta->orderByDesc('fecha_hora')->paginate(10)]);
     }
 };
 ?>
@@ -177,8 +191,8 @@ new class extends Component
 
         <div class="columna-campo">
             <label for="filtro-actividad" class="etiqueta-formulario">Filtrar por Actividad</label>
-            <select id="filtro-actividad" class="entrada" wire:model.live="filtroActividad">
-                <option value="">Todas las actividades</option>
+            <select id="filtro-actividad" class="entrada" wire:model.live="idActividad">
+                <option value="0">Todas las actividades</option>
                 @foreach($actividades as $act)
                     <option value="{{ $act->id }}">{{ $act->nombre }}</option>
                 @endforeach
@@ -192,9 +206,7 @@ new class extends Component
     <table class="tabla-listado">
         <thead>
             <tr class="tabla-listado__cabecera">
-                <th># Turno</th>
-                <th>Paciente</th>
-                <th>Actividad</th>
+                <th>Actividad | Paciente | Nro.Turno</th>
                 <th>Fecha y Hora</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -202,24 +214,35 @@ new class extends Component
         </thead>
 
         <tbody>
-            @forelse($turnos as $turno)
+            @forelse($this->turnos as $turno)
                 <tr class="tabla-listado__fila">
-                    <td class="text-gray-400 font-bold">#ID{{ $turno->id_act_pac }} - NRO{{ $turno->nro_turno }}</td>
-                    <td>{{ $turno->actividadPaciente->paciente->nombre_completo }}</td>
-                    <td>{{ $turno->actividadPaciente->actividad->nombre }}</td>
+                    <td>
+                        <span>
+                            {{ $turno->actividadPaciente->actividad->nombre }} |
+                        </span>
+                        <span>
+                            {{ $turno->actividadPaciente->paciente->nombre_completo }} |
+                        </span>
+                        <span>
+                            T#{{ $turno->nro_turno }}
+                        </span>
+                        @if($turno->id_turno_original)
+                            <span class="px-2 py-1 bg-blue-500 text-white text-sm font-semibold rounded uppercase">Reprogramado</span>
+                        @endif
+                    </td>
                     <td>{{ $turno->fecha_hora->format('d/m/Y H:i') }} hs</td>
                     <td>
-                        @if($turno->fecha_hora->isFuture())
+                        @if ($turno->fecha_hora->isFuture() && $turno->estado === 'Ausente')
                             <span class="turno-pendiente inline-flex items-center">PENDIENTE</span>
                         @else
-                            <span class="turno-pasado {{ $turno->asiste ? 'bg-emerald-500' : 'bg-red-500' }}">
-                                {{ $turno->asiste ? 'PRESENTE' : 'AUSENTE' }}
+                            <span class="turno-pasado {{ str_contains($turno->estado, 'Ausente') ? 'bg-red-500' : 'bg-emerald-500' }}">
+                                {{ $turno->estado }}
                             </span>
                         @endif
                     </td>
                     <td>
                         <div class="centrado-total">
-                            @if(!$turno->asiste)
+                            @if($turno->puedeSerReprogramado())
                                 <button type="button" wire:click="abrirModal({{ $turno->id }})">
                                     <x-iconos.lapiz />
                                 </button>
@@ -233,14 +256,14 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="py-10 text-center text-gray-300 italic">No se encontraron turnos.</td>
+                    <td colspan="4" class="py-10 text-center text-gray-300 italic">No se encontraron turnos.</td>
                 </tr>
             @endforelse
         </tbody>
     </table>
 
     <div class="mt-4">
-        {{ $turnos->links(data: ['scrollTo' => false]) }}
+        {{ $this->turnos->links(data: ['scrollTo' => false]) }}
     </div>
 
     @if($mostrarModal && $turnoSeleccionado)
@@ -271,7 +294,7 @@ new class extends Component
 
                     <div class="modal-informativo__seccion">
                         <label class="modal-informativo__etiqueta mb-1 block">Horario disponible</label>
-                        <select class="entrada w-full" wire:model="horaSeleccionada">
+                        <select class="entrada w-full" wire:model.live="horaSeleccionada">
                             @forelse($horasDisponiblesParaFecha as $hora)
                                 <option value="{{ $hora }}">
                                     {{ Carbon::parse($hora)->format('H:i') }} hs
@@ -287,7 +310,12 @@ new class extends Component
                     <button class="modal-informativo__accion flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" wire:click="cerrarModal">
                         Cancelar
                     </button>
-                    <button class="modal-informativo__accion flex-1 bg-emerald-600 hover:bg-emerald-700 text-white transition-all" wire:click="actualizar" wire:loading.attr="disabled">
+                    <button
+                        class="modal-informativo__accion flex-1 transition-all {{ $this->esMismoTurno ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-emerald-600 hover:bg-emerald-700 text-white' }}"
+                        wire:click="actualizar"
+                        wire:loading.attr="disabled"
+                        @disabled($this->esMismoTurno)
+                    >
                         Guardar Cambios
                     </button>
                 </div>

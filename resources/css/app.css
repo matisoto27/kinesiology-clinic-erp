@@ -169,7 +169,7 @@
     }
 
     .turno-pasado {
-        @apply px-3 py-1 inline-flex items-center text-sm font-semibold rounded;
+        @apply px-3 py-1 inline-flex items-center text-white text-sm font-semibold rounded;
     }
 
     .turno-pendiente {
