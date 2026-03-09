@@ -30,14 +30,8 @@
                 </h1>
             </a>
 
-            <nav class="ml-auto h-full">
+            <nav class="ml-8 h-full">
                 <ul class="h-full flex gap-2 text-sm lg:text-base">
-                    <li>
-                        <a href="{{ route('inicio') }}" class="px-4 h-full flex items-center hover:bg-[#2f7a79] transition">
-                            Inicio
-                        </a>
-                    </li>
-
                     <li class="menu-desplegable group">
                         <button>
                             Pacientes
