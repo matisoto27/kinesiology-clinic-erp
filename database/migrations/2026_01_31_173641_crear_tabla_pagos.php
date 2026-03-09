@@ -17,13 +17,25 @@ return new class extends Migration
             $table->unsignedTinyInteger('nro_pago');
             $table->enum('metodo', ['Efectivo', 'Transferencia']);
             $table->decimal('monto', total: 10, places: 2);
+            $table->boolean('es_copago')->default(false);
 
-            $table->foreignId('id_act_pac')->constrained(table: 'actividades_pacientes');
-            $table->foreignId('id_profesional')->constrained(table: 'profesionales');
+            // Para pacientes en general
+            $table->foreignId('id_act_pac')
+                ->nullable()
+                ->constrained(table: 'actividades_pacientes');
+
+            // Para pacientes casuales (Gympass / Clase prueba de Pilates)
+            $table->foreignId('id_turno_directo')
+                ->nullable()
+                ->constrained(table: 'turnos_directos');
+
+            $table->foreignId('id_profesional')
+                ->constrained(table: 'profesionales');
 
             $table->timestamps();
 
             $table->unique(['id_act_pac', 'nro_pago']);
+            $table->unique(['id_turno_directo', 'nro_pago']);
         });
     }
 
