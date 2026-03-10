@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('telefono', length: 20);
 
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

@@ -52,6 +52,10 @@ Route::middleware(['verificar.acceso'])->group(function () {
     });
     Route::view('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
 
+    Route::livewire('/pacientes-casuales', 'pacientes-casuales.inicio')->name('pacientes-casuales.inicio');
+    Route::livewire('/pacientes-casuales/crear', 'pacientes-casuales.crear')->name('pacientes-casuales.crear');
+    Route::livewire('/pacientes-casuales/{paciente}/editar', 'pacientes-casuales.editar')->name('pacientes-casuales.editar');
+
     Route::view('/pacientes-fijos', 'pacientes-fijos.inicio')->name('pacientes-fijos.inicio');
     Route::view('/pacientes-fijos/crear', 'pacientes-fijos.crear')->name('pacientes-fijos.crear');
 
