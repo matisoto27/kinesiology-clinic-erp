@@ -92,11 +92,6 @@ class PacienteController extends Controller
         }
     }
 
-    public function editar(Paciente $paciente)
-    {
-        return view('pacientes.editar', compact('paciente'));
-    }
-
     public function eliminar(Paciente $paciente)
     {
         $paciente->delete();

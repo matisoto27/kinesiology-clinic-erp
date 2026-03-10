@@ -14,26 +14,6 @@ use Throwable;
 
 class ActividadPacienteController extends Controller
 {
-    public function crearGeneral()
-    {
-        return view('actividades-pacientes.general.crear');
-    }
-
-    public function crearKinesiologiaConOrden()
-    {
-        return view('actividades-pacientes.kinesiologia.con-orden.crear');
-    }
-
-    public function crearKinesiologiaSinOrden()
-    {
-        return view('actividades-pacientes.kinesiologia.sin-orden.crear');
-    }
-
-    public function inicio()
-    {
-        return view('actividades-pacientes.inicio');
-    }
-
     public function almacenar(AlmacenarTurnoRequest $request, TurnoService $turnoService)
     {
         $esConOrden = !$request->has('total_a_pagar') || $request->has('mes') || $request->has('dia');

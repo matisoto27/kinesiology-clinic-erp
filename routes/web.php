@@ -25,14 +25,16 @@ Route::middleware(['verificar.acceso'])->group(function () {
     });
 
     Route::controller(ActividadPacienteController::class)->group(function () {
-        Route::get('/actividades-pacientes', 'inicio')->name('actividades-pacientes.inicio');
-        Route::get('/actividades-pacientes/general/crear', 'crearGeneral')->name('actividades-pacientes.general.crear');
-        Route::get('/actividades-pacientes/kinesiologia/orden/crear', 'crearKinesiologiaConOrden')->name('actividades-pacientes.kinesiologia.con-orden.crear');
-        Route::get('/actividades-pacientes/kinesiologia/sin-orden/crear', 'crearKinesiologiaSinOrden')->name('actividades-pacientes.kinesiologia.sin-orden.crear');
         Route::post('/actividades-pacientes', 'almacenar')->name('actividades-pacientes.almacenar');
         Route::post('/actividades-pacientes/actualizar-orden-medica', 'actualizarOrdenMedica')->name('actividades-pacientes.actualizar-orden-medica');
     });
-    Route::view('/actividades-pacientes/aplicar-orden', 'actividades-pacientes.aplicar-orden')->name('actividades-pacientes.aplicar-orden');
+
+    Route::view('/actividades-pacientes/general/crear', 'actividades-pacientes.general.crear')->name('actividades-pacientes.general.crear');
+    Route::view('/actividades-pacientes/kinesiologia/orden/crear', 'actividades-pacientes.kinesiologia.con-orden.crear')->name('actividades-pacientes.kinesiologia.con-orden.crear');
+    Route::view('/actividades-pacientes/kinesiologia/sin-orden/crear', 'actividades-pacientes.kinesiologia.sin-orden.crear')->name('actividades-pacientes.kinesiologia.sin-orden.crear');
+
+    Route::livewire('/actividades-pacientes', 'actividades-pacientes.inicio')->name('actividades-pacientes.inicio');
+    Route::livewire('/actividades-pacientes/aplicar-orden', 'actividades-pacientes.aplicar-orden')->name('actividades-pacientes.aplicar-orden');
 
     Route::controller(ObraSocialController::class)->group(function () {
         Route::get('/buscar-obras-sociales', 'buscarPorNombre');
@@ -47,17 +49,17 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::get('/pacientes', 'inicio')->name('pacientes.inicio');
         Route::get('/buscar-pacientes', 'buscarPorNombre');
         Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
-        Route::get('/pacientes/{paciente}/editar', 'editar')->name('pacientes.editar');
         Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
     });
-    Route::view('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
+    Route::livewire('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
+    Route::livewire('/pacientes/{paciente}/editar', 'pacientes.editar')->name('pacientes.editar');
 
     Route::livewire('/pacientes-casuales', 'pacientes-casuales.inicio')->name('pacientes-casuales.inicio');
     Route::livewire('/pacientes-casuales/crear', 'pacientes-casuales.crear')->name('pacientes-casuales.crear');
     Route::livewire('/pacientes-casuales/{paciente}/editar', 'pacientes-casuales.editar')->name('pacientes-casuales.editar');
 
-    Route::view('/pacientes-fijos', 'pacientes-fijos.inicio')->name('pacientes-fijos.inicio');
-    Route::view('/pacientes-fijos/crear', 'pacientes-fijos.crear')->name('pacientes-fijos.crear');
+    Route::livewire('/pacientes-fijos', 'pacientes-fijos.inicio')->name('pacientes-fijos.inicio');
+    Route::livewire('/pacientes-fijos/crear', 'pacientes-fijos.crear')->name('pacientes-fijos.crear');
 
     Route::controller(PagoController::class)->group(function () {
         Route::get('/pagos/crear', 'crear')->name('pagos.crear');
@@ -75,21 +77,21 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::view('/turnos', 'turnos.inicio')->name('turnos.inicio');
     Route::view('/turnos/calendario', 'turnos.calendario')->name('turnos.calendario');
 
-    Route::view('/egresos/crear', 'egresos.crear')->name('egresos.crear');
-    Route::view('/movimientos', 'movimientos')->name('movimientos');
-    Route::view('/profesionales/horas-trabajadas/crear', 'profesionales.horas-trabajadas.crear')->name('horas-trabajadas.crear');
+    Route::livewire('/egresos/crear', 'egresos.crear')->name('egresos.crear');
+    Route::livewire('/movimientos', 'movimientos')->name('movimientos');
+    Route::livewire('/profesionales/horas-trabajadas/crear', 'profesionales.horas-trabajadas.crear')->name('horas-trabajadas.crear');
 
     Route::middleware(['verificar.acceso.admin'])->group(function () {
-        Route::view('/profesionales/crear', 'profesionales.crear')->name('profesionales.crear');
-        Route::view('/profesionales', 'profesionales.inicio')->name('profesionales.inicio');
-        Route::view('/profesionales/{profesional}/editar', 'profesionales.editar')->name('profesionales.editar');
-        Route::view('/profesionales/horas-trabajadas', 'profesionales.horas-trabajadas.inicio')->name('horas-trabajadas.inicio');
-        Route::view('/actividades-combos', 'actividades-combos.inicio')->name('actividades-combos.inicio');
+        Route::livewire('/profesionales/crear', 'profesionales.crear')->name('profesionales.crear');
+        Route::livewire('/profesionales', 'profesionales.inicio')->name('profesionales.inicio');
+        Route::livewire('/profesionales/{profesional}/editar', 'profesionales.editar')->name('profesionales.editar');
+        Route::livewire('/profesionales/horas-trabajadas', 'profesionales.horas-trabajadas.inicio')->name('horas-trabajadas.inicio');
+        Route::livewire('/actividades-combos', 'actividades-combos.inicio')->name('actividades-combos.inicio');
         Route::controller(PrecioController::class)->group(function () {
             Route::get('/precios/crear', 'crear')->name('precios.crear');
             Route::post('/precios', 'almacenar')->name('precios.almacenar');
         });
-        Route::view('/obras-sociales', 'obras-sociales.inicio')->name('obras-sociales.inicio');
+        Route::livewire('/obras-sociales', 'obras-sociales.inicio')->name('obras-sociales.inicio');
     });
 });
 
