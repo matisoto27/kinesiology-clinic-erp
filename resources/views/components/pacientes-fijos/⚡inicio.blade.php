@@ -66,7 +66,7 @@ new class extends Component
                 <tbody>
                     @forelse($this->pacientesFijos as $pacFijo)
                         <tr class="group tabla-listado__fila">
-                            <td>{{ $pacFijo->paciente->nombre_completo }}</td>
+                            <td>{{ $pacFijo->paciente->apellido_nombre }}</td>
                             <td>{{ $pacFijo->actividad->nombre }}</td>
                             <td>
                                 <div class="flex flex-wrap justify-center gap-2">

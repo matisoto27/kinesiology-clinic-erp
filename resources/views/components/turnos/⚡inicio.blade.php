@@ -221,7 +221,7 @@ new class extends Component
                             {{ $turno->actividadPaciente->actividad->nombre }} |
                         </span>
                         <span>
-                            {{ $turno->actividadPaciente->paciente->nombre_completo }} |
+                            {{ $turno->actividadPaciente->paciente->apellido_nombre }} |
                         </span>
                         <span>
                             T#{{ $turno->nro_turno }}
@@ -276,7 +276,7 @@ new class extends Component
                 <h2 class="modal-informativo__titulo text-center">Reasignar Turno</h2>
 
                 <div class="mb-6">
-                    <p class="text-emerald-400 text-lg font-semibold">{{ $turnoSeleccionado->actividadPaciente->paciente->nombre_completo }}</p>
+                    <p class="text-emerald-400 text-lg font-semibold">{{ $turnoSeleccionado->actividadPaciente->paciente->apellido_nombre }}</p>
                     <p class="text-gray-400 text-base">{{ $turnoSeleccionado->actividadPaciente->actividad->nombre }}</p>
                 </div>
 

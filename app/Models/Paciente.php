@@ -40,13 +40,13 @@ class Paciente extends Model
     ];
 
     protected $appends = [
-        'nombre_completo',
+        'apellido_nombre',
         'fecha_nacimiento',
         'edad',
         'fecha_ingreso'
     ];
 
-    protected function nombreCompleto(): Attribute
+    protected function apellidoNombre(): Attribute
     {
         return Attribute::make(
             get: fn () => "{$this->apellido}, {$this->nombre}"

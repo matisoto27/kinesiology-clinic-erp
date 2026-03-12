@@ -12,7 +12,7 @@ class PacienteResource extends JsonResource
         return [
             'id' => $this->id,
             'dni' => $this->dni,
-            'nombre_completo'  => $this->nombre_completo,
+            'apellido_nombre'  => $this->apellido_nombre,
             'fecha_nac' => $this->fecha_nacimiento,
             'edad' => $this->edad,
             'domicilio' => $this->domicilio,

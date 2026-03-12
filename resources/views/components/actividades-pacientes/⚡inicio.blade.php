@@ -123,7 +123,7 @@ new class extends Component
                 @endphp
 
                 <tr class="tabla-listado__fila">
-                    <td>{{ $actPac->paciente->nombre_completo }}</td>
+                    <td>{{ $actPac->paciente->apellido_nombre }}</td>
                     <td>{{ $actPac->actividad->nombre }}</td>
                     <td>{{ $actPac->fecha_comienzo->format('d/m/Y') }}</td>
                     <td>
@@ -200,7 +200,7 @@ new class extends Component
 
                 <h2 class="modal-informativo__titulo">
                     {{ $inscripcionSeleccionada->actividad->nombre }} -
-                    {{ $inscripcionSeleccionada->paciente->nombre_completo }}
+                    {{ $inscripcionSeleccionada->paciente->apellido_nombre }}
                     [{{ $inscripcionSeleccionada->fecha_comienzo->format('d/m/Y') }}]
                 </h2>
 

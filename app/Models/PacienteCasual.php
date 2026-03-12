@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,6 +22,17 @@ class PacienteCasual extends Model
         'apellido',
         'telefono'
     ];
+
+    protected $appends = [
+        'apellido_nombre'
+    ];
+
+    protected function apellidoNombre(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => "{$this->apellido}, {$this->nombre}"
+        );
+    }
 
     public function turnosDirectos(): HasMany
     {

@@ -34,7 +34,7 @@
                     @forelse($pacientes as $pac)
                         <tr class="tabla-listado__fila">
                             <td>{{ $pac['dni'] }}</td>
-                            <td>{{ $pac['nombre_completo'] }}</td>
+                            <td>{{ $pac['apellido_nombre'] }}</td>
                             <td>{{ $pac['fecha_nacimiento'] }}</td>
                             <td>{{ $pac['edad'] }}</td>
                             <td>{{ $pac['domicilio'] }}</td>
@@ -90,7 +90,7 @@
                         <x-iconos.cruz />
                     </button>
 
-                    <h2 class="modal-informativo__titulo" x-text="'Información de ' + datos.nombre_completo"></h2>
+                    <h2 class="modal-informativo__titulo" x-text="'Información de ' + datos.apellido_nombre"></h2>
 
                     <div class="space-y-3">
                         <div class="modal-informativo__seccion flex justify-between items-center">

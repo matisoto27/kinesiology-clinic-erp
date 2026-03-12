@@ -148,7 +148,7 @@ new class extends Component
             <select id="select-inscripcion" class="entrada" wire:model.live="inscripcionSeleccionada" required>
                 <option value="" disabled selected>Seleccione una inscripción</option>
                 @foreach ($this->inscripciones as $insc)
-                    <option value="{{ $insc->id }}">{{ $insc->paciente->nombre_completo }} - {{ $insc->actividad->nombre }} (Inicio: {{ $insc->fecha_comienzo->format('d-m-Y') }})</option>
+                    <option value="{{ $insc->id }}">{{ $insc->paciente->apellido_nombre }} - {{ $insc->actividad->nombre }} (Inicio: {{ $insc->fecha_comienzo->format('d-m-Y') }})</option>
                 @endforeach
             </select>
         </div>

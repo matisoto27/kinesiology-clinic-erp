@@ -150,7 +150,7 @@ new class extends Component
                             </small>
 
                             <span class="group-hover:text-emerald-900">
-                                {{ $mov->actividadPaciente->paciente->nombre_completo }}
+                                {{ $mov->actividadPaciente->paciente->apellido_nombre }}
                             </span>
                         @else
                             <span class="text-gray-300 italic group-hover:text-emerald-900">
