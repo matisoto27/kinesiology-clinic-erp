@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -32,11 +31,6 @@ class PacienteCasual extends Model
         return Attribute::make(
             get: fn () => "{$this->apellido}, {$this->nombre}"
         );
-    }
-
-    public function turnosDirectos(): HasMany
-    {
-        return $this->hasMany(TurnoDirecto::class, 'id_paciente_casual');
     }
 
     public function scopeBuscarPorApNom(Builder $consulta, $termino): Builder

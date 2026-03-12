@@ -17,7 +17,6 @@ class Pago extends Model
         'monto',
         'es_copago',
         'id_act_pac',
-        'id_turno_directo',
         'id_profesional'
     ];
 
@@ -30,11 +29,7 @@ class Pago extends Model
     protected static function booted()
     {
         static::creating(function ($pago) {
-            if ($pago->id_act_pac) {
-                $ultimoNro = static::where('id_act_pac', $pago->id_act_pac)->max('nro_pago') ?? 0;
-            } else {
-                $ultimoNro = static::where('id_turno_directo', $pago->id_turno_directo)->max('nro_pago') ?? 0;
-            }
+            $ultimoNro = static::where('id_act_pac', $pago->id_act_pac)->max('nro_pago') ?? 0;
             $pago->nro_pago = $ultimoNro + 1;
         });
     }
@@ -44,18 +39,8 @@ class Pago extends Model
         return $this->belongsTo(ActividadPaciente::class, 'id_act_pac');
     }
 
-    public function turnoDirecto(): BelongsTo
-    {
-        return $this->belongsTo(TurnoDirecto::class, 'id_turno_directo');
-    }
-
     public function profesional(): BelongsTo
     {
         return $this->belongsTo(Profesional::class, 'id_profesional');
-    }
-
-    public function esDePacienteCasual(): bool
-    {
-        return $this->id_turno_directo !== null;
     }
 }

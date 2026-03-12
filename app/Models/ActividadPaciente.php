@@ -16,18 +16,20 @@ class ActividadPaciente extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'id_actividad',
-        'id_paciente',
         'fecha_comienzo',
         'cant_sesiones',
         'es_fijo',
         'total_a_pagar',
         'fecha_emision_ord',
-        'pago_completado'
+        'pago_completado',
+        'id_actividad',
+        'id_paciente', // Puede ser null
+        'id_paciente_casual' // Puede ser null
     ];
 
     protected $casts = [
         'fecha_comienzo' => 'date',
+        'cant_sesiones' => 'integer',
         'es_fijo' => 'boolean',
         'total_a_pagar' => 'decimal:2',
         'fecha_emision_ord' => 'date',
@@ -41,14 +43,26 @@ class ActividadPaciente extends Model
         );
     }
 
+    protected function paciente(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => $this->pacienteRegular ?? $this->pacienteCasual
+        );
+    }
+
     public function actividad(): BelongsTo
     {
         return $this->belongsTo(Actividad::class, 'id_actividad');
     }
 
-    public function paciente(): BelongsTo
+    public function pacienteRegular(): BelongsTo
     {
         return $this->belongsTo(Paciente::class, 'id_paciente');
+    }
+
+    public function pacienteCasual(): BelongsTo
+    {
+        return $this->belongsTo(PacienteCasual::class, 'id_paciente_casual');
     }
 
     public function turnos(): HasMany

@@ -22,11 +22,13 @@ return new class extends Migration
             $table->boolean('pago_completado')->default(false);
 
             $table->foreignId('id_actividad')->constrained(table: 'actividades');
-            $table->foreignId('id_paciente')->constrained(table: 'pacientes');
+            $table->foreignId('id_paciente')->nullable()->constrained(table: 'pacientes');
+            $table->foreignId('id_paciente_casual')->nullable()->constrained(table: 'pacientes_casuales');
 
             $table->timestamps();
 
             $table->unique(['id_actividad', 'id_paciente', 'fecha_comienzo'], 'act_pac_fecha_unique');
+            $table->unique(['id_actividad', 'id_paciente_casual', 'fecha_comienzo'], 'act_casual_fecha_unique');
         });
     }
 
