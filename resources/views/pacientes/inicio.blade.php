@@ -59,7 +59,7 @@
                             </td>
                             <td colspan="2" class="py-3">
                                 <div class="flex justify-center items-center gap-25">
-                                    <a href="{{ route('pacientes.editar', ['paciente' => $pac['id']]) }}">
+                                    <a href="{{ route('pacientes.editar', ['paciente' => $pac['id']]) }}" class="accion-editar">
                                         <x-iconos.lapiz />
                                     </a>
                                     <form action="{{ route('pacientes.eliminar', ['paciente' => $pac['id']]) }}" method="POST" onsubmit="return confirm('¿Desea eliminar a este paciente?')">

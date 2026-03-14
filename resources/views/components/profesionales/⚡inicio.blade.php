@@ -105,7 +105,7 @@ new class extends Component
                     </td>
                     <td>
                         <div class="flex justify-center items-center space-x-4">
-                            <a href="{{ route('profesionales.editar', ['profesional' => $prof['id']]) }}" class="text-white hover:text-blue-400 transition-colors">
+                            <a href="{{ route('profesionales.editar', ['profesional' => $prof['id']]) }}" class="accion-editar">
                                 <x-iconos.lapiz />
                             </a>
                             <button

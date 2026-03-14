@@ -100,7 +100,7 @@ new class extends Component
                         <div class="centrado-total space-x-4">
                             <button
                                 type="button"
-                                class="text-white hover:text-blue-400 transition-colors"
+                                class="accion-editar"
                                 wire:click="alternarEstado({{ $actCom->id }}, {{ $actCom->activo ? 1 : 0 }})"
                                 wire:confirm="¿Estás seguro de que deseas cambiar el estado de este combo?"
                                 wire:loading.attr="disabled">

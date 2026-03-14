@@ -89,7 +89,7 @@ new class extends Component
                     <td>{{ $pac->created_at->format('d/m/Y') }}</td>
                     <td>
                         <div class="centrado-total space-x-4">
-                            <a href="{{ route('pacientes-casuales.editar', ['paciente' => $pac->id]) }}" class="text-white hover:text-blue-400 transition-colors">
+                            <a href="{{ route('pacientes-casuales.editar', ['paciente' => $pac->id]) }}" class="accion-editar">
                                 <x-iconos.lapiz />
                             </a>
                             <button

@@ -203,4 +203,8 @@
     .badge-turno {
         @apply px-2 py-1 text-white text-sm font-semibold rounded uppercase;
     }
+
+    .accion-editar {
+        @apply text-white hover:text-blue-400 transition-colors;
+    }
 }
