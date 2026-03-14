@@ -82,7 +82,7 @@ new class extends Component
 ?>
 
 <div class="contenedor-listado max-w-screen-3xl">
-    <h2 class="titulo-formulario">Inscripciones Mensuales / Registro de Sesiones</h2>
+    <h2 class="titulo-formulario">Inscripciones Mensuales / Registros de Sesiones</h2>
 
     <div class="fila-formulario">
         <div class="columna-campo">
