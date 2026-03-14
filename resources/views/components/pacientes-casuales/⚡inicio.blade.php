@@ -54,7 +54,7 @@ new class extends Component
 ?>
 
 <div class="contenedor-listado">
-    <h2 class="titulo-formulario">LISTA de Pacientes Casuales</h2>
+    <h2 class="titulo-formulario">Listado de Pacientes Casuales</h2>
 
     <x-alerta tipo="exito" />
     <x-alerta tipo="error" />

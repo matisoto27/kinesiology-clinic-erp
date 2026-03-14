@@ -80,7 +80,7 @@ new class extends Component
         <tbody>
             @forelse($this->registrosFiltrados as $actCom)
                 <tr class="tabla-listado__fila">
-                    <td>{{ $actCom->actividad->nombre }}</td>
+                    <td>{{ $actCom->nombre_actividad }}</td>
                     <td>{{ $actCom->combo->nombre }}</td>
                     <td>{{ $actCom->combo->cantidad_sesiones }}</td>
                     <td>{{ $actCom->combo->es_mensual ? 'Sí' : 'No' }}</td>

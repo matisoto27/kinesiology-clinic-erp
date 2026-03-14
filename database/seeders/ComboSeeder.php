@@ -21,7 +21,8 @@ class ComboSeeder extends Seeder
             ['id' => 6, 'nombre' => 'Sesion individual', 'cantidad_sesiones' => 1, 'es_mensual' => false],
             ['id' => 7, 'nombre' => 'Combo x3 sesiones', 'cantidad_sesiones' => 3, 'es_mensual' => false],
             ['id' => 8, 'nombre' => 'Combo x5 sesiones', 'cantidad_sesiones' => 5, 'es_mensual' => false],
-            ['id' => 9, 'nombre' => 'Combo x10 sesiones', 'cantidad_sesiones' => 10, 'es_mensual' => false]
+            ['id' => 9, 'nombre' => 'Combo x10 sesiones', 'cantidad_sesiones' => 10, 'es_mensual' => false],
+            ['id' => 10, 'nombre' => 'Clase de prueba', 'cantidad_sesiones' => 1, 'es_mensual' => false]
         ];
 
         foreach ($combos as $combo) {

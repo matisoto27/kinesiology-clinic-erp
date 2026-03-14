@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         View::composer(['actividades.turnos-disponibles', 'turnos.inicio'], function ($vista) {
-            $vista->with('actividades', Cache::remember('todas_las_actividades', now()->addHours(12), fn () => Actividad::all()));
+            $vista->with('actividades', Cache::remember('todas_las_actividades', now()->addHours(12), fn() => Actividad::all()));
         });
 
         View::composer(['actividades-pacientes.crear'], function ($view) {

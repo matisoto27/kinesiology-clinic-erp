@@ -36,12 +36,19 @@ class Turno extends Model
 
         return Attribute::make(
             get: function (string $valor) {
-                if ($valor === 'Presente' && $this->id_turno_original !== null) {
+                if ($valor === 'Presente' && $this->esReprogramado()) {
                     return 'Presente recupera';
                 }
 
                 return $valor;
             }
+        );
+    }
+
+    protected function apNomPaciente(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->actividadPaciente->ap_nom_paciente
         );
     }
 
@@ -65,6 +72,11 @@ class Turno extends Model
         return $this->hasOne(Turno::class, 'id_turno_original');
     }
 
+    public function esReprogramado(): bool
+    {
+        return $this->id_turno_original !== null;
+    }
+
     public function puedeSerReprogramado(): bool
     {
         if ($this->turnoOriginal || $this->turnoRecuperacion) return false; // Esto aplica solamente para actividades de tipo general
@@ -82,9 +94,11 @@ class Turno extends Model
         return $consulta->where('actividades_pacientes.id_actividad', $idActividad);
     }
 
-    public function scopeDelPaciente(Builder $consulta, int $idPaciente): Builder
+    public function scopeDelPaciente(Builder $consulta, int $idPaciente, bool $esRegular): Builder
     {
-        return $consulta->where('actividades_pacientes.id_paciente', $idPaciente);
+        return $esRegular
+            ? $consulta->where('actividades_pacientes.id_paciente', $idPaciente)
+            : $consulta->where('actividades_pacientes.id_paciente_casual', $idPaciente);
     }
 
     public function scopeConActividad(Builder $consulta): Builder
@@ -107,10 +121,10 @@ class Turno extends Model
         return $consulta->havingRaw('COUNT(*) >= ?', [$cantidad]);
     }
 
-    public static function pacienteEntreFechas(int $idPaciente, string $limiteInferior, string $limiteSuperior): SupportCollection
+    public static function pacienteEntreFechas(int $idPaciente, bool $esRegular, string $limiteInferior, string $limiteSuperior): SupportCollection
     {
         return self::conActPac()
-            ->delPaciente($idPaciente)
+            ->delPaciente($idPaciente, $esRegular)
             ->entreFechas($limiteInferior, $limiteSuperior)
             ->pluck('fecha_hora');
     }

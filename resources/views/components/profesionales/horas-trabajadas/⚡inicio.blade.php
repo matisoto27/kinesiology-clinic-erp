@@ -110,7 +110,7 @@ new class extends Component
         <tbody>
             @forelse($this->registros as $reg)
                 <tr class="tabla-listado__fila">
-                    <td class="text-gray-400 font-bold">
+                    <td>
                         {{ $reg->fecha_trabajada->format('d/m/Y') }}
                     </td>
                     <td>

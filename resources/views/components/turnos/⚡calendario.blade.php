@@ -29,13 +29,27 @@ new class extends Component
     public bool $mostrarModalAgregar = false;
     public string $contenidoNuevaNota = '';
 
-    protected $horariosMaestros = [
+    protected array $horariosMaestros = [
         '1_1' => ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'],
         '1_2' => ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00'],
         '2_1' => ['08:00', '09:00', '10:00', '11:00'],
         '2_2' => ['16:00', '17:00', '18:00', '19:00'],
         '3_1' => ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30'],
         '3_2' => ['16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30']
+    ];
+
+    private const COLORES_ACTIVIDADES = [
+        1 => 'bg-emerald-600', // Gimnasio
+        2 => 'bg-purple-600' // Pilates
+    ];
+
+    private const COLORES_PACIENTES = [
+        'bg-red-400',
+        'bg-red-500',
+        'bg-red-600',
+        'bg-red-700',
+        'bg-red-800',
+        'bg-red-900'
     ];
 
     public function cambiarSemana($valor) { $this->cantidadSemanas += $valor; }
@@ -118,7 +132,7 @@ new class extends Component
         $diaInicio = $this->diaInicio; // Lunes
         $diaFin = $diaInicio->copy()->addDays(4); // Viernes
 
-        $consulta = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])
+        $consulta = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.pacienteRegular', 'actividadPaciente.pacienteCasual'])
             ->whereBetween('fecha_hora', [$diaInicio->startOfDay(), $diaFin->endOfDay()]);
 
         if ($this->idTipoActividad > 0) {
@@ -157,6 +171,16 @@ new class extends Component
         return $this->idTurnoSeleccionado
             ? Turno::with('notas')->find($this->idTurnoSeleccionado)
             : null;
+    }
+
+    public function obtenerColorTurno($turno, $indice): string
+    {
+        if ($this->idActividad === 0) {
+            return self::COLORES_ACTIVIDADES[$turno->actividadPaciente->id_actividad] ?? 'bg-yellow-500'; // Color personalizado para Kinesiología
+        }
+
+        $colores = self::COLORES_PACIENTES;
+        return $colores[$indice % count($colores)];
     }
 
     public function obtenerNotasDelTurno($idTurno)
@@ -272,22 +296,21 @@ new class extends Component
 
                 <div class="min-h-[176px] p-2 flex flex-col justify-center gap-1 bg-gray-50">
                     @foreach($turnos as $turno)
-                        @php
-                            $coloresActividades = [1 => 'bg-indigo-600', 2 => 'bg-teal-500'];
-                            $coloresPacientes = ['bg-[#FCA5A5]', 'bg-[#F87171]', 'bg-[#EF4444]', 'bg-[#DC2626]', 'bg-[#B91C1C]', 'bg-[#991B1B]', 'bg-[#7F1D1D]'];
-
-                            $color = ($idActividad === 0)
-                                ? $coloresPacientes[$loop->index % count($coloresPacientes)]
-                                : ($coloresActividades[$turno->actividadPaciente->id_actividad] ?? 'bg-amber-500');
-                        @endphp
-
                         <button
-                            class="{{ $color }} p-2 w-full flex flex-col items-start text-white text-xs leading-tight rounded shadow-sm hover:brightness-110 transition-all"
-                            wire:click="obtenerNotasDelTurno({{ $turno->id }})">
-                            <span class="font-bold uppercase">
-                                {{ $turno->actividadPaciente->paciente->apellido }},
-                                {{ $turno->actividadPaciente->paciente->nombre }}
-                            </span>
+                            class="{{ $this->obtenerColorTurno($turno, $loop->index) }} p-2 w-full flex flex-col items-start text-white text-xs leading-tight rounded shadow-sm hover:brightness-110 transition-all"
+                            wire:click="obtenerNotasDelTurno({{ $turno->id }})"
+                        >
+                            <div class="flex items-center gap-1">
+                                <span class="font-bold uppercase">
+                                    {{ $turno->ap_nom_paciente }}
+                                </span>
+                                @if ($turno->actividadPaciente->esGympass())
+                                    <span class="badge-turno bg-white text-emerald-600">Gympass</span>
+                                @endif
+                                @if ($turno->actividadPaciente->esPruebaPilates())
+                                    <span class="badge-turno bg-white text-purple-600">Prueba</span>
+                                @endif
+                            </div>
 
                             @if ($turno->notas->count() > 0)
                                 <div class="px-1.5 py-0.5 flex items-center gap-1 self-end bg-black/20 rounded">

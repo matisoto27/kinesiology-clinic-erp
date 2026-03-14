@@ -36,6 +36,27 @@ class ActividadPaciente extends Model
         'pago_completado' => 'boolean'
     ];
 
+    protected function fechaMostrar(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->es_fijo ? $this->created_at : $this->fecha_comienzo
+        );
+    }
+
+    protected function nombreActividad(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->actividad->nombre
+        );
+    }
+
+    protected function apNomPaciente(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->paciente?->apellido_nombre
+        );
+    }
+
     protected function deuda(): Attribute
     {
         return Attribute::make(
@@ -46,7 +67,7 @@ class ActividadPaciente extends Model
     protected function paciente(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->pacienteRegular ?? $this->pacienteCasual
+            get: fn() => $this->pacienteRegular ?? $this->pacienteCasual
         );
     }
 
@@ -86,6 +107,31 @@ class ActividadPaciente extends Model
         return $this->hasMany(Pago::class, 'id_act_pac');
     }
 
+    public function esRegular(): bool
+    {
+        return $this->id_paciente !== null;
+    }
+
+    public function esCasual(): bool
+    {
+        return $this->id_paciente_casual !== null;
+    }
+
+    public function esGympass(): bool
+    {
+        return $this->esCasual() && $this->id_actividad === Actividad::GIMNASIO;
+    }
+
+    public function esPruebaPilates(): bool
+    {
+        return $this->esCasual() && $this->id_actividad === Actividad::PILATES;
+    }
+
+    public function scopeTienePacienteRegular(Builder $consulta): Builder
+    {
+        return $consulta->whereNull('actividades_pacientes.id_paciente_casual');
+    }
+
     public function scopeNoFijos(Builder $consulta): Builder
     {
         return $consulta->whereDoesntHave('pacienteFijo');
@@ -104,6 +150,14 @@ class ActividadPaciente extends Model
     public function scopeDeTipo(Builder $consulta, int $idTipoActividad): Builder
     {
         return $consulta->where('actividades.id_tipo_actividad', $idTipoActividad);
+    }
+
+    public function scopeBuscarPaciente(Builder $consulta, string $termino): Builder
+    {
+        return $consulta->where(function ($subconsulta) use ($termino) {
+            $subconsulta->whereHas('pacienteRegular', fn($sc) => $sc->buscarPorApNom($termino))
+                ->orWhereHas('pacienteCasual', fn($sc) => $sc->buscarPorApNom($termino));
+        });
     }
 
     public function calcularDeuda(): float

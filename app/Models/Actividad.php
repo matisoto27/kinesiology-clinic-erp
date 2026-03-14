@@ -13,8 +13,10 @@ use Illuminate\Support\Collection;
 
 class Actividad extends Model
 {
-    const TIPO_GENERAL = 1;
-    const TIPO_KINESIOLOGIA = 2;
+    public const TIPO_GENERAL = 1;
+    public const TIPO_KINESIOLOGIA = 2;
+    public const GIMNASIO = 1;
+    public const PILATES = 2;
 
     protected $table = 'actividades';
 
@@ -94,7 +96,7 @@ class Actividad extends Model
         $periodo = CarbonPeriod::create($comienzo, $fin);
         $horasInicio = $this->obtenerHorasDeInicio();
 
-        $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, $comienzo, $fin)
+        $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, true, $comienzo, $fin)
             ->map(fn ($t) => [
                 'inicio' => $t->timestamp,
                 'fin'    => $t->timestamp + 3600
@@ -135,7 +137,7 @@ class Actividad extends Model
         return $turnosDisponibles;
     }
 
-    public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin): array
+    public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin, bool $esPacienteRegular = true): array
     {
         if ($this->esActividadGeneral()) {
             $maximoTurnos = config('app.max_turnos_generales');
@@ -172,7 +174,7 @@ class Actividad extends Model
 
         $rangosOcupados = [];
         if ($idPaciente) {
-            $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, $comienzo, $fin)
+            $rangosOcupados = Turno::pacienteEntreFechas($idPaciente, $esPacienteRegular, $comienzo, $fin)
                 ->map(fn ($t) => [
                     'inicio' => $t->timestamp,
                     'fin'    => $t->timestamp + 3600

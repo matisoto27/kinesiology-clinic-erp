@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class Combo extends Model
 {
+    public const CLASE_PRUEBA = 10;
+
     protected $table = 'combos';
 
     public $timestamps = false;

@@ -16,7 +16,7 @@ class PagoController extends Controller
     public function crear($id = null)
     {
         try {
-            $pendientesDePago = ActividadPaciente::with(['actividad', 'paciente'])
+            $pendientesDePago = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual'])
                 ->withSum('pagos', 'monto')
                 ->sinPagar()
                 ->get();

@@ -44,8 +44,7 @@ new class extends Component
             ]);
             DB::commit();
 
-            session()->flash('exito', '¡Profesional registrado con éxito!');
-            return redirect()->route('profesionales.inicio');
+            return redirect()->route('profesionales.inicio')->with('exito', '¡Profesional registrado con éxito!');
 
         } catch (\Throwable $ex) {
             DB::rollBack();

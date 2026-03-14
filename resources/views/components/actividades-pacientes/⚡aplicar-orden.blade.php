@@ -47,12 +47,16 @@ new class extends Component
         }
 
         return ActividadPaciente::select('actividades_pacientes.*')
-            ->with(['actividad:id,nombre', 'paciente:id,nombre,apellido'])
+            ->with([
+                'actividad:id,nombre',
+                'pacienteRegular:id,nombre,apellido'
+            ])
+            ->tienePacienteRegular()
             ->conActividad()
             ->deTipo(2)
             ->whereNull('actividades_pacientes.fecha_emision_ord')
             ->where('cant_sesiones', $this->cantidad_sesiones)
-            ->whereHas('paciente', function($consulta) {
+            ->whereHas('pacienteRegular', function($consulta) {
                 $consulta->tieneObraSocial();
             })
             ->doesntHave('pagos')
@@ -123,7 +127,7 @@ new class extends Component
                 @error('cantidad_sesiones') <span class="text-red-500 italic text-sm">{{ $message }}</span> @enderror
             </div>
             <div class="columna-campo flex-1">
-                <h3 class="etiqueta-formulario">Fecha emisión orden médica</h3>
+                <h3 class="etiqueta-formulario">Fecha de emisión de la orden médica</h3>
                 <div class="flex gap-2">
                     <select id="dia-select" class="entrada flex-1" wire:model.live="dia" required>
                         @foreach($this->diasDelMes as $dia)
@@ -149,8 +153,8 @@ new class extends Component
 
         <div class="fila-formulario">
             <div class="columna-campo">
-                <label for="act-pac-select" class="etiqueta-formulario">Inscripción del paciente</label>
-                <p class="mb-1 text-gray-300 italic">Solo se muestran inscripciones sin pagos registrados.</p>
+                <label for="act-pac-select" class="etiqueta-formulario">Sesiones del paciente</label>
+                <p class="mb-1 text-gray-300 italic">Solo se muestran sesiones sin pagos registrados.</p>
                 <select
                     id="act-pac-select"
                     class="entrada @error('id_act_pac') border-red-500 @enderror"
@@ -164,14 +168,13 @@ new class extends Component
                         @elseif($this->inscripcionesFiltradas->isEmpty())
                             No hay inscripciones de {{ $this->cantidad_sesiones }} sesiones
                         @else
-                            Seleccione una inscripción
+                            Seleccione un registro de sesiones
                         @endif
                     </option>
                     @foreach($this->inscripcionesFiltradas as $insc)
                         <option value="{{ $insc->id }}">
-                            [{{ $insc->actividad->nombre }}]
-                            {{ $insc->paciente->apellido }}, {{ $insc->paciente->nombre }}
-                            ({{ $insc->fecha_comienzo->format('d/m/Y') }})
+                            [{{ $insc->fecha_comienzo->format('d/m/Y') }}]
+                            {{ $insc->nombre_actividad }} - {{ $insc->ap_nom_paciente }}
                         </option>
                     @endforeach
                 </select>

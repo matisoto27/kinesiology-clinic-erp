@@ -100,7 +100,7 @@ class GenerarTurnosMensuales extends Command
                         ->first();
 
                     if (!$combo) {
-                        throw new Exception("No existe un combo configurado para {$cantidadSesiones} sesiones mensuales en la actividad: " . $actPac->actividad->nombre);
+                        throw new Exception("No existe un combo configurado para {$cantidadSesiones} sesiones mensuales en la actividad: " . $actPac->nombre_actividad);
                     }
 
                     $actCombo = $actPac->actividad->actividadCombos
@@ -108,7 +108,7 @@ class GenerarTurnosMensuales extends Command
                         ->first();
 
                     if (!$actCombo || !$actCombo->precioVigente) {
-                        throw new Exception("El combo de {$cantidadSesiones} sesiones mensuales de la actividad " . $actPac->actividad->nombre . " no tiene un precio vigente definido.");
+                        throw new Exception("El combo de {$cantidadSesiones} sesiones mensuales de la actividad " . $actPac->nombre_actividad . " no tiene un precio vigente definido.");
                     }
 
                     $nuevoActPac = ActividadPaciente::create([

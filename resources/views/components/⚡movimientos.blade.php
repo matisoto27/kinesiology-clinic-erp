@@ -49,7 +49,7 @@ new class extends Component
         $egresos = collect();
 
         if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'ingreso') {
-            $ingresos = Pago::with(['profesional', 'actividadPaciente.actividad', 'actividadPaciente.paciente'])
+            $ingresos = Pago::with(['actividadPaciente.actividad', 'actividadPaciente.pacienteRegular', 'actividadPaciente.pacienteCasual', 'profesional'])
                 ->latest()
                 ->take(500)
                 ->get()
@@ -132,16 +132,18 @@ new class extends Component
                     <td>
                         @if($mov->tipo === 'ingreso')
                             @php
-                                $actPac = $mov->actividadPaciente;
-                                $nombreActividad = $actPac->actividad->nombre;
-                                $cantidadSesiones = (int) $actPac->cant_sesiones;
+                                $cantidad = (int) $mov->actividadPaciente->cant_sesiones;
                             @endphp
 
                             <small class="block text-emerald-400 group-hover:text-emerald-900 font-bold tracking-wide uppercase">
-                                @if($actPac->actividad->esActividadGeneral())
-                                    {{ $nombreActividad }} ({{ (int)($cantidadSesiones / 4) }} {{ (int)($cantidadSesiones / 4) === 1 ? 'vez' : 'veces' }} por semana)
+                                @if($mov->actividadPaciente->actividad->esActividadGeneral())
+                                    @if ($mov->actividadPaciente->esRegular())
+                                        {{ $mov->actividadPaciente->nombre_actividad }} ({{ (int)($cantidad / 4) }} {{ (int)($cantidad / 4) === 1 ? 'vez' : 'veces' }} por semana)
+                                    @else
+                                        Prueba de Pilates
+                                    @endif
                                 @else
-                                    {{ $nombreActividad }} ({{ $cantidadSesiones }} {{ $cantidadSesiones === 1 ? 'sesión' : 'sesiones' }})
+                                    {{ $mov->actividadPaciente->nombre_actividad }} ({{ $cantidad }} {{ $cantidad === 1 ? 'sesión' : 'sesiones' }})
                                 @endif
                             </small>
 
@@ -150,7 +152,7 @@ new class extends Component
                             </small>
 
                             <span class="group-hover:text-emerald-900">
-                                {{ $mov->actividadPaciente->paciente->apellido_nombre }}
+                                {{ $mov->actividadPaciente->ap_nom_paciente }}
                             </span>
                         @else
                             <span class="text-gray-300 italic group-hover:text-emerald-900">

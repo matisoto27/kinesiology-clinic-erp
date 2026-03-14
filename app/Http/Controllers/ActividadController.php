@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Actividad;
+use App\Models\Combo;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -30,10 +31,10 @@ class ActividadController extends Controller
     {
         try {
             $actividad = Actividad::with(['actividadCombos' => function ($consulta) {
-                $consulta->activo()->with(['combo', 'precioVigente']);
-                if (request()->boolean('con_precio')) {
-                    $consulta->whereHas('precios');
-                }
+                $consulta->with(['combo', 'precioVigente'])
+                    ->where('id_combo', '!=', Combo::CLASE_PRUEBA)
+                    ->when(request()->boolean('con_precio'), fn($sc) => $sc->whereHas('precios'))
+                    ->activo();
             }])->findOrFail($id);
 
             $combos = $actividad->actividadCombos->map(function ($actividadCombo) {

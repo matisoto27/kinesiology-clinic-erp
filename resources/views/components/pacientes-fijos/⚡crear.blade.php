@@ -29,16 +29,17 @@ new class extends Component
     public function inscripciones()
     {
         return ActividadPaciente::select('id', 'id_actividad', 'id_paciente', 'fecha_comienzo', 'cant_sesiones')
-            ->whereHas('actividad', function ($consulta) {
-                $consulta->where('id_tipo_actividad', Actividad::TIPO_GENERAL);
-            })
             ->with([
                 'actividad' => function ($consulta) {
                     $consulta->select('id', 'nombre')->with('horarios:id,hora_inicio');
                 },
-                'paciente:id,nombre,apellido',
+                'pacienteRegular:id,nombre,apellido',
                 'ultimoTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora'
             ])
+            ->whereHas('actividad', function ($consulta) {
+                $consulta->where('id_tipo_actividad', Actividad::TIPO_GENERAL);
+            })
+            ->tienePacienteRegular()
             ->noFijos()
             ->get();
     }
@@ -123,10 +124,10 @@ new class extends Component
                 '--id_paciente_fijo' => $idPacienteFijo
             ]);
 
-            return redirect()->route('inicio')->with('exito', 'El paciente ha sido marcado como paciente recurrente. A partir de ahora, los turnos mensuales se generarán automáticamente.');
+            return redirect()->route('inicio')->with('exito', 'El paciente ha sido marcado como paciente fijo. A partir de ahora, los turnos mensuales se generarán automáticamente.');
 
         } catch (\Throwable $ex) {
-            Log::error('[(ComponenteLivewire)PacienteFijo@almacenar] Error al marcar el paciente como paciente recurrente.', ['excepcion' => $ex->getMessage()]);
+            Log::error('[(ComponenteLivewire)PacienteFijo@almacenar] Error al marcar el paciente como paciente fijo.', ['excepcion' => $ex->getMessage()]);
             if (isset($idPacienteFijo)) {
                 PacienteFijo::find($idPacienteFijo)->delete();
             }
@@ -148,7 +149,7 @@ new class extends Component
             <select id="select-inscripcion" class="entrada" wire:model.live="inscripcionSeleccionada" required>
                 <option value="" disabled selected>Seleccione una inscripción</option>
                 @foreach ($this->inscripciones as $insc)
-                    <option value="{{ $insc->id }}">{{ $insc->paciente->apellido_nombre }} - {{ $insc->actividad->nombre }} (Inicio: {{ $insc->fecha_comienzo->format('d-m-Y') }})</option>
+                    <option value="{{ $insc->id }}">{{ $insc->ap_nom_paciente }} - {{ $insc->nombre_actividad }} (Inicio: {{ $insc->fecha_comienzo->format('d-m-Y') }})</option>
                 @endforeach
             </select>
         </div>

@@ -44,7 +44,8 @@ new class extends Component
         return Turno::query()
             ->with([
                 'actividadPaciente.actividad',
-                'actividadPaciente.paciente',
+                'actividadPaciente.pacienteRegular',
+                'actividadPaciente.pacienteCasual',
                 'turnoOriginal',
                 'turnoRecuperacion'
             ])
@@ -52,7 +53,7 @@ new class extends Component
                 $consulta->whereHas('actividadPaciente', fn($sc) => $sc->where('id_actividad', $this->idActividad));
             })
             ->when(!empty($this->consultaPaciente), function($consulta) {
-                $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
+                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->buscarPaciente($this->consultaPaciente));
             })
             ->orderByDesc('fecha_hora')
             ->paginate(10);
@@ -73,7 +74,7 @@ new class extends Component
 
     public function abrirModal(int $id)
     {
-        $this->turnoSeleccionado = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.paciente'])->findOrFail($id);
+        $this->turnoSeleccionado = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.pacienteRegular', 'actividadPaciente.pacienteCasual'])->findOrFail($id);
         $fechaHora = $this->turnoSeleccionado->fecha_hora;
 
         $actividad = $this->turnoSeleccionado->actividadPaciente->actividad;
@@ -206,7 +207,7 @@ new class extends Component
     <table class="tabla-listado">
         <thead>
             <tr class="tabla-listado__cabecera">
-                <th>Actividad | Paciente | Nro.Turno</th>
+                <th>Descripción</th>
                 <th>Fecha y Hora</th>
                 <th>Estado</th>
                 <th>Acciones</th>
@@ -217,17 +218,22 @@ new class extends Component
             @forelse($this->turnos as $turno)
                 <tr class="tabla-listado__fila">
                     <td>
-                        <span>
-                            {{ $turno->actividadPaciente->actividad->nombre }} |
-                        </span>
-                        <span>
-                            {{ $turno->actividadPaciente->paciente->apellido_nombre }} |
-                        </span>
-                        <span>
-                            T#{{ $turno->nro_turno }}
-                        </span>
-                        @if($turno->id_turno_original)
-                            <span class="px-2 py-1 bg-blue-500 text-white text-sm font-semibold rounded uppercase">Reprogramado</span>
+                        @if ($turno->actividadPaciente->esRegular())
+                            {{ $turno->actividadPaciente->nombre_actividad }} |
+                            {{ $turno->ap_nom_paciente }} |
+                            Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                        @elseif ($turno->actividadPaciente->esGympass())
+                            <span class="badge-turno bg-emerald-600">Paciente Gympass</span>
+                            {{ $turno->ap_nom_paciente }} |
+                            Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                        @else
+                            <span class="badge-turno bg-purple-600">Prueba de Pilates</span>
+                            {{ $turno->ap_nom_paciente }}
+                        @endif
+                        @if($turno->esReprogramado())
+                            <div class="mt-2">
+                                <span class="badge-turno bg-blue-600">Turno Reprogramado</span>
+                            </div>
                         @endif
                     </td>
                     <td>{{ $turno->fecha_hora->format('d/m/Y H:i') }} hs</td>
@@ -276,8 +282,8 @@ new class extends Component
                 <h2 class="modal-informativo__titulo text-center">Reasignar Turno</h2>
 
                 <div class="mb-6">
-                    <p class="text-emerald-400 text-lg font-semibold">{{ $turnoSeleccionado->actividadPaciente->paciente->apellido_nombre }}</p>
-                    <p class="text-gray-400 text-base">{{ $turnoSeleccionado->actividadPaciente->actividad->nombre }}</p>
+                    <p class="text-emerald-400 text-lg font-semibold">{{ $turnoSeleccionado->ap_nom_paciente }}</p>
+                    <p class="text-gray-400 text-base">{{ $turnoSeleccionado->actividadPaciente->nombre_actividad }}</p>
                 </div>
 
                 <div class="mb-8 space-y-3">

@@ -39,7 +39,7 @@ new class extends Component
                 ->delete();
             });
 
-            session()->flash('exito', 'El paciente ha sido eliminado de la lista de pacientes recurrentes. No se generarán más turnos de forma automática.');
+            session()->flash('exito', 'El paciente ha sido eliminado de la lista de pacientes fijos. No se generarán más turnos de forma automática.');
         } catch (\Throwable $ex) {
             Log::error('[(Livewire) pacientes-fijos.inicio@eliminar] Error al eliminar el paciente fijo.', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Ocurrió un error al intentar eliminar el paciente fijo de los registros.');

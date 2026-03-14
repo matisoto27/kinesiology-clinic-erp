@@ -29,7 +29,7 @@ class PacienteCasual extends Model
     protected function apellidoNombre(): Attribute
     {
         return Attribute::make(
-            get: fn () => "{$this->apellido}, {$this->nombre}"
+            get: fn() => "{$this->apellido}, {$this->nombre}"
         );
     }
 

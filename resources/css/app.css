@@ -60,7 +60,7 @@
     }
 
     .etiqueta-formulario {
-        @apply font-medium text-lg text-white;
+        @apply text-white text-lg font-medium;
     }
 
     .entrada {
@@ -129,7 +129,7 @@
     }
 
     .modal-informativo__ventana {
-        @apply p-6 relative bg-white rounded-2xl shadow-lg max-w-lg w-full;
+        @apply p-6 relative bg-white rounded-2xl shadow-lg max-w-xl w-full;
     }
 
     .modal-informativo__cerrar {
@@ -198,5 +198,9 @@
 
     .menu-desplegable ul li:last-child a {
         @apply border-b-0;
+    }
+
+    .badge-turno {
+        @apply px-2 py-1 text-white text-sm font-semibold rounded uppercase;
     }
 }

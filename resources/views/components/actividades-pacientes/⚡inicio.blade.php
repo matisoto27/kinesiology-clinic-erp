@@ -28,7 +28,7 @@ new class extends Component
 
     protected function cargarDatos()
     {
-        $consulta = ActividadPaciente::with(['actividad', 'paciente', 'pagos', 'turnos'])
+        $consulta = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'pagos', 'turnos'])
             ->withSum('pagos', 'monto');
 
         if ($this->filtroPago === 'completado') {
@@ -42,7 +42,7 @@ new class extends Component
 
     public function verDetalles(int $id)
     {
-        $this->inscripcionSeleccionada = ActividadPaciente::with(['actividad', 'paciente', 'turnos'])->find($id);
+        $this->inscripcionSeleccionada = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'turnos'])->find($id);
         $this->mostrarModal = true;
     }
 
@@ -82,7 +82,7 @@ new class extends Component
 ?>
 
 <div class="contenedor-listado max-w-screen-3xl">
-    <h2 class="titulo-formulario">Historial de Inscripciones</h2>
+    <h2 class="titulo-formulario">Inscripciones Mensuales / Registro de Sesiones</h2>
 
     <div class="fila-formulario">
         <div class="columna-campo">
@@ -101,10 +101,9 @@ new class extends Component
     <table class="tabla-listado">
         <thead>
             <tr class="tabla-listado__cabecera">
-                <th>Paciente</th>
-                <th>Actividad</th>
-                <th>Fecha Comienzo</th>
-                <th>Cantidad de Turnos</th>
+                <th colspan="2">Descripción</th>
+                <th>Fecha de Registro</th>
+                <th>Cantidad</th>
                 <th>Total a Pagar</th>
                 <th>Cubierta por OS</th>
                 <th>Estado Pago</th>
@@ -117,27 +116,46 @@ new class extends Component
         <tbody>
             @forelse($inscripciones as $actPac)
                 @php
-                    $cantidadSesiones = (int) $actPac->cant_sesiones;
+                    $cantidad = (int) $actPac->cant_sesiones;
                     $esGeneral = $actPac->actividad->esActividadGeneral();
                     $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
                 @endphp
 
                 <tr class="tabla-listado__fila">
-                    <td>{{ $actPac->paciente->apellido_nombre }}</td>
-                    <td>{{ $actPac->actividad->nombre }}</td>
-                    <td>{{ $actPac->fecha_comienzo->format('d/m/Y') }}</td>
+                    <td colspan="2">
+                        @if ($actPac->esRegular())
+                            {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
+                        @elseif ($actPac->esGympass())
+                            <span class="badge-turno bg-emerald-600">Paciente Gympass</span>
+                            {{ $actPac->ap_nom_paciente }}
+                        @else
+                            <span class="badge-turno bg-purple-600">Prueba de Pilates</span>
+                            {{ $actPac->ap_nom_paciente }}
+                        @endif
+                    </td>
+                    <td>{{ $actPac->fecha_mostrar->format('d/m/Y') }}</td>
                     <td>
                         @if ($esGeneral)
-                            <div class="font-bold">{{ $cantidadSesiones }}</div>
-                            <small>
-                                ({{ (int) ($cantidadSesiones / 4) }} {{ (int) ($cantidadSesiones / 4) === 1 ? 'vez' : 'veces' }} por semana)
-                            </small>
+                            <span class="block font-bold">
+                                {{ $cantidad }} {{ $cantidad === 1 ? 'turno' : 'turnos' }}
+                            </span>
+                            @if ($actPac->esRegular())
+                                <small>
+                                    ({{ (int) ($cantidad / 4) }} {{ (int) ($cantidad / 4) === 1 ? 'vez' : 'veces' }} por semana)
+                                </small>
+                            @endif
                         @else
-                            {{ $cantidadSesiones }}
+                            <span class="block font-bold">
+                                {{ $cantidad }} {{ $cantidad === 1 ? 'sesión' : 'sesiones' }}
+                            </span>
                         @endif
                     </td>
                     <td>
-                        ${{ number_format($actPac->total_a_pagar, 2, ',', '.') }}
+                        @if ($actPac->esRegular() || $actPac->esPruebaPilates())
+                            ${{ number_format($actPac->total_a_pagar, 2, ',', '.') }}
+                        @else
+                            <span class="text-gray-400 italic">N/A</span>
+                        @endif
                     </td>
                     <td>
                         @if ($esGeneral)
@@ -199,33 +217,36 @@ new class extends Component
                 </button>
 
                 <h2 class="modal-informativo__titulo">
-                    {{ $inscripcionSeleccionada->actividad->nombre }} -
-                    {{ $inscripcionSeleccionada->paciente->apellido_nombre }}
-                    [{{ $inscripcionSeleccionada->fecha_comienzo->format('d/m/Y') }}]
+                    [{{ $inscripcionSeleccionada->fecha_mostrar->format('d/m/Y') }}]
+                    <div>
+                        {{ $inscripcionSeleccionada->nombre_actividad }} - {{ $inscripcionSeleccionada->ap_nom_paciente }}
+                    </div>
                 </h2>
 
                 <div class="space-y-3">
-                    <div class="modal-informativo__seccion">
-                        <p class="modal-informativo__etiqueta">Autogenerado</p>
-                        <p class="modal-informativo__valor">{{ $inscripcionSeleccionada->es_fijo ? 'Si' : 'No' }}</p>
-                    </div>
+                    @if ($inscripcionSeleccionada->actividad->esActividadGeneral() && $inscripcionSeleccionada->esRegular())
+                        <div class="modal-informativo__seccion">
+                            <p class="modal-informativo__etiqueta">Autogenerado</p>
+                            <p class="modal-informativo__valor">{{ $inscripcionSeleccionada->es_fijo ? 'Si' : 'No' }}</p>
+                        </div>
+                    @endif
 
-                    <div class="modal-informativo__seccion">
-                        <p class="modal-informativo__etiqueta">Orden Médica</p>
-                        @if($inscripcionSeleccionada->actividad->esActividadGeneral())
-                            <p class="modal-informativo__sin-valor">N/A</p>
-                        @elseif(!$inscripcionSeleccionada->fecha_emision_ord)
-                            <p class="modal-informativo__sin-valor">No se ha aplicado una orden médica.</p>
-                        @else
-                            <p class="modal-informativo__valor">
-                                Emitida el {{ $inscripcionSeleccionada->fecha_emision_ord->format('d/m/Y') }}
-                                <br>
-                                <span class="text-blue-500 text-xs font-bold uppercase">
-                                    Cobertura total ({{ $inscripcionSeleccionada->cant_sesiones }} sesiones)
-                                </span>
-                            </p>
-                        @endif
-                    </div>
+                    @if (!$inscripcionSeleccionada->actividad->esActividadGeneral())
+                        <div class="modal-informativo__seccion">
+                            <p class="modal-informativo__etiqueta">Orden Médica</p>
+                            @if(!$inscripcionSeleccionada->fecha_emision_ord)
+                                <p class="modal-informativo__sin-valor">No se ha aplicado una orden médica.</p>
+                            @else
+                                <p class="modal-informativo__valor">
+                                    Emitida el {{ $inscripcionSeleccionada->fecha_emision_ord->format('d/m/Y') }}
+                                    <br>
+                                    <span class="text-blue-500 text-xs font-bold uppercase">
+                                        Cobertura total ({{ $inscripcionSeleccionada->cant_sesiones }} sesiones)
+                                    </span>
+                                </p>
+                            @endif
+                        </div>
+                    @endif
 
                     <div class="modal-informativo__seccion">
                         <p class="mb-2 modal-informativo__etiqueta">Turnos asociados</p>
@@ -256,7 +277,7 @@ new class extends Component
                             <div class="mt-2 flex justify-center">
                                 <a href="{{ route('turnos.inicio', [
                                         'actividad' => $inscripcionSeleccionada->id_actividad,
-                                        'paciente' => $inscripcionSeleccionada->paciente->nombre . ' ' . $inscripcionSeleccionada->paciente->apellido
+                                        'paciente' => $inscripcionSeleccionada->ap_nom_paciente
                                     ]) }}"
                                     class="text-blue-500 hover:text-blue-700 text-sm font-semibold underline transition-colors">
                                     Editar turnos
@@ -267,7 +288,7 @@ new class extends Component
                 </div>
 
                 <div class="mt-8">
-                    <button class="modal-informativo__accion bg-gray-100 hover:bg-gray-200 text-gray-700 w-full" wire:click="cerrarModal">Cerrar</button>
+                    <button class="modal-informativo__accion bg-gray-200 hover:bg-gray-400 text-gray-700 w-full" wire:click="cerrarModal">Cerrar</button>
                 </div>
             </div>
         </div>

@@ -69,7 +69,8 @@ new class extends Component
         return Turno::query()
             ->with([
                 'actividadPaciente.actividad',
-                'actividadPaciente.paciente:id,nombre,apellido'
+                'actividadPaciente.pacienteRegular:id,nombre,apellido',
+                'actividadPaciente.pacienteCasual:id,nombre,apellido'
             ])
             ->whereBetween('fecha_hora', [$limInferior, $limSuperior])
             ->when($this->idTipoActividad > 0, function($consulta) {
@@ -79,7 +80,7 @@ new class extends Component
                 $consulta->whereHas('actividadPaciente', fn($sc) => $sc->where('id_actividad', $this->idActividad));
             })
             ->when(!empty($this->consultaPaciente), function($consulta) {
-                $consulta->whereHas('actividadPaciente.paciente', fn($sc) => $sc->buscarPorApNom($this->consultaPaciente));
+                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->buscarPaciente($this->consultaPaciente));
             })
             ->orderBy('fecha_hora')
             ->paginate(10);
@@ -202,10 +203,9 @@ new class extends Component
     <table class="my-5 w-full overflow-hidden rounded-xl">
         <thead class="bg-[#014745] text-white">
             <tr>
-                <th class="py-3 w-2/13 text-center">Hora de ingreso</th>
-                <th class="py-3 w-3/13 text-center">Paciente</th>
-                <th class="py-3 w-3/13 text-center">Actividad</th>
-                <th class="py-3 w-5/13 text-center">Acciones / Estado</th>
+                <th class="py-3 text-center">Hora de ingreso</th>
+                <th colspan="2" class="py-3 text-center">Descripción</th>
+                <th colspan="2" class="py-3 text-center">Acciones / Estado</th>
             </tr>
         </thead>
 
@@ -213,10 +213,27 @@ new class extends Component
             @if($this->turnos->count())
                 @foreach($this->turnos as $turno)
                     <tr class="h-24 border-b last:border-b-0" wire:key="turno-{{ $turno->id }}">
-                        <td class="w-2/13 text-center">{{ $turno->fecha_hora->format('H:i') }}</td>
-                        <td class="w-3/13 text-center">{{ $turno->actividadPaciente->paciente->apellido . ' ' . $turno->actividadPaciente->paciente->nombre }}</td>
-                        <td class="w-3/13 text-center">{{ $turno->actividadPaciente->actividad->nombre }}</td>
-                        <td class="w-5/13 text-center">
+                        <td class="text-center">{{ $turno->fecha_hora->format('H:i') }}</td>
+                        <td colspan="2" class="text-center">
+                            @if ($turno->actividadPaciente->esRegular())
+                                {{ $turno->actividadPaciente->nombre_actividad }} |
+                                {{ $turno->ap_nom_paciente }} |
+                                Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                            @elseif ($turno->actividadPaciente->esGympass())
+                                <span class="badge-turno bg-emerald-600">Paciente Gympass</span>
+                                {{ $turno->ap_nom_paciente }} |
+                                Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                            @else
+                                <span class="badge-turno bg-purple-600">Prueba de Pilates</span>
+                                {{ $turno->ap_nom_paciente }}
+                            @endif
+                            @if($turno->esReprogramado())
+                                <div class="mt-2">
+                                    <span class="badge-turno bg-blue-600">Turno Reprogramado</span>
+                                </div>
+                            @endif
+                        </td>
+                        <td colspan="2" class="text-center">
                             <div class="w-fit mx-auto grid grid-cols-2 gap-2">
                                 @if ($turno->id_turno_original === null)
                                     @if ($turno->actividadPaciente->actividad->esActividadGeneral())

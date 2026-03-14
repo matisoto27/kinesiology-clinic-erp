@@ -49,28 +49,28 @@ class Paciente extends Model
     protected function apellidoNombre(): Attribute
     {
         return Attribute::make(
-            get: fn () => "{$this->apellido}, {$this->nombre}"
+            get: fn() => "{$this->apellido}, {$this->nombre}"
         );
     }
 
     protected function fechaNacimiento(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->fecha_nac?->format('d-m-Y')
+            get: fn() => $this->fecha_nac?->format('d-m-Y')
         );
     }
 
     protected function edad(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->fecha_nac?->age
+            get: fn() => $this->fecha_nac?->age
         );
     }
 
     protected function fechaIngreso(): Attribute
     {
         return Attribute::make(
-            get: fn () => $this->created_at?->format('d-m-Y')
+            get: fn() => $this->created_at?->format('d-m-Y')
         );
     }
 

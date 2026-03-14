@@ -25,6 +25,7 @@ class ActividadComboSeeder extends Seeder
             ['id_actividad' => 2, 'id_combo' => 3],
             ['id_actividad' => 2, 'id_combo' => 4],
             ['id_actividad' => 2, 'id_combo' => 5],
+            ['id_actividad' => 2, 'id_combo' => 10],
             // Kinesiología convencional
             ['id_actividad' => 3, 'id_combo' => 6],
             ['id_actividad' => 3, 'id_combo' => 7],
