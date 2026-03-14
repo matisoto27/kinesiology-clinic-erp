@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -24,6 +25,13 @@ class ActividadCombo extends Model
     protected $casts = [
         'activo' => 'boolean'
     ];
+
+    protected function nombreActividad(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => $this->actividad->nombre
+        );
+    }
 
     function actividad(): BelongsTo
     {
