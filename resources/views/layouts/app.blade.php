@@ -57,6 +57,8 @@
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.sin-orden.crear') }}">Kinesiología (SIN orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.aplicar-orden') }}">Aplicar orden médica a una inscripción</a></li>
+                            <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'Gympass']) }}">Registrar turnos Gympass</a></li>
+                            <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'PruebaPilates']) }}">Registrar turno para clase de Prueba de Pilates</a></li>
                         </ul>
                     </li>
 
