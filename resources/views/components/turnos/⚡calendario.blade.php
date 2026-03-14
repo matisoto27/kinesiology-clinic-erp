@@ -305,10 +305,10 @@ new class extends Component
                                     {{ $turno->ap_nom_paciente }}
                                 </span>
                                 @if ($turno->actividadPaciente->esGympass())
-                                    <span class="badge-turno bg-white text-emerald-600">Gympass</span>
+                                    <span class="badge bg-white text-emerald-600">Gympass</span>
                                 @endif
                                 @if ($turno->actividadPaciente->esPruebaPilates())
-                                    <span class="badge-turno bg-white text-purple-600">Prueba</span>
+                                    <span class="badge bg-white text-purple-600">Prueba</span>
                                 @endif
                             </div>
 

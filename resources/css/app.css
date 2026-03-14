@@ -200,7 +200,7 @@
         @apply border-b-0;
     }
 
-    .badge-turno {
+    .badge {
         @apply px-2 py-1 text-white text-sm font-semibold rounded uppercase;
     }
 

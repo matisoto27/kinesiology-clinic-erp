@@ -126,10 +126,10 @@ new class extends Component
                         @if ($actPac->esRegular())
                             {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
                         @elseif ($actPac->esGympass())
-                            <span class="badge-turno bg-emerald-600">Paciente Gympass</span>
+                            <span class="badge bg-emerald-600">Paciente Gympass</span>
                             {{ $actPac->ap_nom_paciente }}
                         @else
-                            <span class="badge-turno bg-purple-600">Prueba de Pilates</span>
+                            <span class="badge bg-purple-600">Prueba de Pilates</span>
                             {{ $actPac->ap_nom_paciente }}
                         @endif
                     </td>

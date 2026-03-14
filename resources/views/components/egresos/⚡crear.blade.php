@@ -11,21 +11,18 @@ new class extends Component
 {
     public Collection $profesionales;
 
-    public $metodo = '';
     public $montoStr = '';
     public $monto;
     public $motivo;
     public $id_profesional;
 
     protected $rules = [
-        'metodo' => 'required|in:Efectivo,Transferencia',
         'monto' => 'required|numeric|gt:0',
         'motivo' => 'required|string|max:255',
         'id_profesional' => 'required|exists:profesionales,id'
     ];
 
     protected $messages = [
-        'metodo.required' => 'Por favor, seleccione un método de pago.',
         'monto.required' => 'El monto es obligatorio.',
         'monto.numeric' => 'El monto debe ser un valor numérico.',
         'motivo.required' => 'El motivo del egreso es obligatorio.',
@@ -48,7 +45,6 @@ new class extends Component
             $this->validate();
 
             Egreso::create([
-                'metodo' => $this->metodo,
                 'monto' => $this->monto,
                 'motivo' => $this->motivo,
                 'id_profesional' => $this->id_profesional
@@ -122,7 +118,7 @@ new class extends Component
         </div>
 
         <div class="fila-formulario">
-            <div class="columna-campo flex-1">
+            <div class="columna-campo">
                 <label for="monto" class="etiqueta-formulario">Monto del egreso</label>
                 <input
                     id="monto"
@@ -132,19 +128,6 @@ new class extends Component
                     wire:model="montoStr"
                     x-on:input="$wire.$js.transformarIngresoMonto($el)">
                 @error('monto') <span class="text-red-500 text-xs italic">{{ $message }}</span> @enderror
-            </div>
-
-            <div class="columna-campo flex-1">
-                <label for="metodo" class="etiqueta-formulario">Método de pago</label>
-                <select
-                    id="metodo"
-                    class="entrada @error('metodo') border-red-500 @enderror"
-                    wire:model="metodo">
-                    <option value="">Seleccione un método</option>
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Transferencia">Transferencia</option>
-                </select>
-                @error('metodo') <span class="text-red-500 text-xs italic">{{ $message }}</span> @enderror
             </div>
         </div>
 

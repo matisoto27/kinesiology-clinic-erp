@@ -10,7 +10,6 @@ class Egreso extends Model
     protected $table = 'egresos';
 
     protected $fillable = [
-        'metodo',
         'monto',
         'motivo',
         'id_profesional'

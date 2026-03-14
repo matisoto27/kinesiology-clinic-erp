@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('egresos', function (Blueprint $table) {
             $table->id();
 
-            $table->enum('metodo', ['Efectivo', 'Transferencia']);
             $table->decimal('monto', total: 10, places: 2);
             $table->string('motivo');
 

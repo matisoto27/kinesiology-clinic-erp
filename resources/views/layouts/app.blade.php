@@ -82,9 +82,9 @@
                             <x-iconos.flecha-abajo />
                         </button>
                         <ul>
-                            <li><a href="{{ route('movimientos') }}">Movimientos de caja</a></li>
-                            <li><a href="{{ route('pagos.crear') }}">Registrar pago</a></li>
-                            <li><a href="{{ route('egresos.crear') }}">Registrar egreso</a></li>
+                            <li><a href="{{ route('movimientos') }}">Historial de movimientos</a></li>
+                            <li><a href="{{ route('pagos.crear') }}">Registrar pago de un paciente</a></li>
+                            <li><a href="{{ route('egresos.crear') }}">Registrar egreso de caja</a></li>
                         </ul>
                     </li>
 

@@ -220,16 +220,16 @@ new class extends Component
                                 {{ $turno->ap_nom_paciente }} |
                                 Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
                             @elseif ($turno->actividadPaciente->esGympass())
-                                <span class="badge-turno bg-emerald-600">Paciente Gympass</span>
+                                <span class="badge bg-emerald-600">Paciente Gympass</span>
                                 {{ $turno->ap_nom_paciente }} |
                                 Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
                             @else
-                                <span class="badge-turno bg-purple-600">Prueba de Pilates</span>
+                                <span class="badge bg-purple-600">Prueba de Pilates</span>
                                 {{ $turno->ap_nom_paciente }}
                             @endif
                             @if($turno->esReprogramado())
                                 <div class="mt-2">
-                                    <span class="badge-turno bg-blue-600">Turno Reprogramado</span>
+                                    <span class="badge bg-blue-600">Turno Reprogramado</span>
                                 </div>
                             @endif
                         </td>
