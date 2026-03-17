@@ -123,8 +123,10 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
-    'max_turnos_generales' => env('MAX_TURNOS_GENERALES', 6),
-    'max_turnos_kinesiologia' => env('MAX_TURNOS_KINESIOLOGIA', 4),
+    'max_turnos_gimnasio' => env('MAX_TURNOS_GIMNASIO', 8),
+    'max_turnos_pilates' => env('MAX_TURNOS_PILATES', 6),
+    'max_turnos_convencional' => env('MAX_TURNOS_CONVENCIONAL', 4),
+    'max_turnos_atm' => env('MAX_TURNOS_ATM', 2),
     'codigo_acceso' => env('CODIGO_ACCESO_SISTEMA'),
     'codigo_admin' => env('CODIGO_ADMINISTRADOR')
 

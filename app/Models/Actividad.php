@@ -15,8 +15,15 @@ class Actividad extends Model
 {
     public const TIPO_GENERAL = 1;
     public const TIPO_KINESIOLOGIA = 2;
+
     public const GIMNASIO = 1;
     public const PILATES = 2;
+    public const KINESIOLOGIA_CONVENCIONAL = 3;
+    public const QUIROPRAXIA = 4;
+    public const RPG = 5;
+    public const ATM = 6;
+    public const DLM = 7;
+    public const MASAJES = 8;
 
     protected $table = 'actividades';
 
@@ -77,16 +84,20 @@ class Actividad extends Model
         // Este método solo sirve en actividades de tipo general (Gimnasio / Pilates)
         if (!$this->esActividadGeneral()) return collect();
 
+        $idActividad = (int) $this->id;
         $comienzo = $fechaUltimoTurno->copy()->startOfWeek()->addWeek()->startOfDay();
         $fin = $fechaUltimoTurno->copy()->startOfWeek()->addWeeks(4)->addDays(4)->endOfDay();
 
-        $maximoTurnos = config('app.max_turnos_generales');
+        $cantidadMaxima = $idActividad === self::GIMNASIO
+                ? config('app.max_turnos_gimnasio')
+                : config('app.max_turnos_pilates');
+
         $consulta = Turno::conActPac()
-            ->deLaActividad($this->id)
+            ->deLaActividad($idActividad)
             ->select('fecha_hora')
             ->entreFechas($comienzo, $fin)
             ->groupBy('fecha_hora')
-            ->cantidadMayorIgualQue($maximoTurnos);
+            ->cantidadMayorIgualQue($cantidadMaxima);
 
         $turnosSinCupo = $consulta->pluck('fecha_hora')
             ->map(fn($t) => $t->toDateTimeString())
@@ -139,26 +150,46 @@ class Actividad extends Model
 
     public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin, bool $esPacienteRegular = true): array
     {
+        $idActividad = (int) $this->id;
+
         if ($this->esActividadGeneral()) {
-            $maximoTurnos = config('app.max_turnos_generales');
+            $cantidadMaxima = $idActividad === self::GIMNASIO
+                ? config('app.max_turnos_gimnasio')
+                : config('app.max_turnos_pilates');
+
             $consulta = Turno::conActPac()
-                ->deLaActividad($this->id)
+                ->deLaActividad($idActividad)
                 ->select('fecha_hora')
                 ->entreFechas($comienzo, $fin)
                 ->groupBy('fecha_hora')
-                ->cantidadMayorIgualQue($maximoTurnos);
+                ->cantidadMayorIgualQue($cantidadMaxima);
 
         } else {
-            $maximoTurnos = config('app.max_turnos_kinesiologia');
             $consulta = Turno::conActPac()
-                ->conActividad()
-                ->deTipo(self::TIPO_KINESIOLOGIA)
+                ->whereIn('actividades_pacientes.id_actividad', [
+                    self::KINESIOLOGIA_CONVENCIONAL,
+                    self::QUIROPRAXIA,
+                    self::RPG,
+                    self::ATM,
+                    self::DLM,
+                    self::MASAJES
+                ])
                 ->select('fecha_hora')
                 ->entreFechas($comienzo, $fin)
                 ->groupBy('fecha_hora');
 
-            if ($this->nombre === 'Kinesiología') {
-                $consulta->havingRaw("SUM(CASE WHEN actividades.nombre != 'Kinesiología' THEN 1 ELSE 0 END) > 0 OR COUNT(*) >= ?", [$maximoTurnos]);
+            $cantidadMaxima = match ($idActividad) {
+                self::KINESIOLOGIA_CONVENCIONAL => config('app.max_turnos_convencional'),
+                self::ATM => config('app.max_turnos_atm'),
+                default => 1
+            };
+
+            if (in_array($idActividad, [self::KINESIOLOGIA_CONVENCIONAL, self::ATM])) {
+                $consulta->havingRaw("
+                    SUM(CASE WHEN actividades_pacientes.id_actividad != ? THEN 1 ELSE 0 END) > 0
+                    OR
+                    COUNT(CASE WHEN actividades_pacientes.id_actividad = ? THEN 1 END) >= ?
+                ", [$idActividad, $idActividad, $cantidadMaxima]);
             } else {
                 $consulta->cantidadMayorIgualQue(1);
             }

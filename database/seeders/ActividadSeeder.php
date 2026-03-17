@@ -13,14 +13,14 @@ class ActividadSeeder extends Seeder
     public function run(): void
     {
         $actividades = [
-            ['id' => 1, 'nombre' => 'Gimnasio', 'id_tipo_actividad' => 1],
-            ['id' => 2, 'nombre' => 'Pilates', 'id_tipo_actividad' => 1],
-            ['id' => 3, 'nombre' => 'Kinesiología convencional', 'id_tipo_actividad' => 2],
-            ['id' => 4, 'nombre' => 'Quiropraxia', 'id_tipo_actividad' => 2],
-            ['id' => 5, 'nombre' => 'RPG', 'id_tipo_actividad' => 2],
-            ['id' => 6, 'nombre' => 'ATM', 'id_tipo_actividad' => 2],
-            ['id' => 7, 'nombre' => 'DLM', 'id_tipo_actividad' => 2],
-            ['id' => 8, 'nombre' => 'Masajes', 'id_tipo_actividad' => 2]
+            ['id' => Actividad::GIMNASIO, 'nombre' => 'Gimnasio', 'id_tipo_actividad' => 1],
+            ['id' => Actividad::PILATES, 'nombre' => 'Pilates', 'id_tipo_actividad' => 1],
+            ['id' => Actividad::KINESIOLOGIA_CONVENCIONAL, 'nombre' => 'Kinesiología convencional', 'id_tipo_actividad' => 2],
+            ['id' => Actividad::QUIROPRAXIA, 'nombre' => 'Quiropraxia', 'id_tipo_actividad' => 2],
+            ['id' => Actividad::RPG, 'nombre' => 'RPG', 'id_tipo_actividad' => 2],
+            ['id' => Actividad::ATM, 'nombre' => 'ATM', 'id_tipo_actividad' => 2],
+            ['id' => Actividad::DLM, 'nombre' => 'DLM', 'id_tipo_actividad' => 2],
+            ['id' => Actividad::MASAJES, 'nombre' => 'Masajes', 'id_tipo_actividad' => 2]
         ];
 
         foreach ($actividades as $act) {
