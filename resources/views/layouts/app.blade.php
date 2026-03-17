@@ -84,6 +84,7 @@
                         <ul>
                             <li><a href="{{ route('movimientos') }}">Historial de movimientos</a></li>
                             <li><a href="{{ route('pagos.crear') }}">Registrar pago de un paciente</a></li>
+                            <li><a href="{{ route('copagos.crear') }}">Registrar copago de un paciente</a></li>
                             <li><a href="{{ route('egresos.crear') }}">Registrar egreso de caja</a></li>
                         </ul>
                     </li>

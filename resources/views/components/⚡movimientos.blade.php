@@ -204,7 +204,11 @@ new class extends Component
                             </small>
 
                             <small class="block text-gray-400 group-hover:text-emerald-900">
-                                Pago #{{ $mov->nro_pago }}
+                                @if ($mov->es_copago)
+                                    <span class="font-bold uppercase">Copago</span>
+                                @else
+                                    Pago #{{ $mov->nro_pago }}
+                                @endif
                             </small>
 
                             <span class="group-hover:text-emerald-900">

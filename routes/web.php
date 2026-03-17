@@ -67,6 +67,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::get('/actividades-pacientes/{id}/pagos/crear', 'crear')->name('actividades-pacientes.pagos.crear');
         Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
     });
+    Route::livewire('/pagos/copagos/crear', 'pagos.copagos.crear')->name('copagos.crear');
 
     Route::controller(NotaTurnoController::class)->group(function () {
         Route::get('/turnos/{id}/notas', 'obtenerNotasDesdeTurno');
