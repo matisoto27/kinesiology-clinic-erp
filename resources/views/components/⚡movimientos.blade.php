@@ -90,23 +90,37 @@ new class extends Component
     }
 
     #[Computed]
-    public function saldoActual()
+    public function saldoEfectivo()
     {
-        $caja = Caja::first();
-        return $caja->saldo_actual ?? 0;
+        return Caja::value('saldo_efectivo') ?? 0;
+    }
+
+    #[Computed]
+    public function saldoTransferencia()
+    {
+        return Caja::value('saldo_transferencia') ?? 0;
     }
 };
 ?>
 
 <div class="contenedor-listado max-w-screen-3xl">
-    <div class="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+    <div class="mb-6 flex justify-between items-center">
         <h2 class="titulo-formulario">Historial de Movimientos</h2>
 
-        <div class="p-4 flex flex-col items-end bg-gray-800 border border-gray-700 rounded-lg shadow-inner">
-            <span class="text-gray-400 text-xs font-bold uppercase tracking-wider">Saldo Total en Caja</span>
-            <span class="{{ $this->saldoActual >= 0 ? 'text-emerald-400' : 'text-red-400' }} text-3xl font-bold">
-                ${{ number_format($this->saldoActual, 2, ',', '.') }}
-            </span>
+        <div class="flex gap-3">
+            <div class="p-4 flex flex-col items-end bg-gray-800 border border-gray-700 rounded-lg shadow-inner">
+                <span class="text-gray-400 text-xs font-bold uppercase tracking-wider">Transferencias recibidas</span>
+                <span class="text-emerald-400 text-3xl font-bold">
+                    ${{ number_format($this->saldoTransferencia, 2, ',', '.') }}
+                </span>
+            </div>
+
+            <div class="p-4 flex flex-col items-end bg-gray-800 border border-gray-700 rounded-lg shadow-inner">
+                <span class="text-gray-400 text-xs font-bold uppercase tracking-wider">Saldo Total en Caja</span>
+                <span class="text-emerald-400 text-3xl font-bold">
+                    ${{ number_format($this->saldoEfectivo, 2, ',', '.') }}
+                </span>
+            </div>
         </div>
     </div>
 
@@ -208,7 +222,7 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="py-10 text-center text-gray-300 italic">No se encontraron movimientos.</td>
+                    <td colspan="5" class="py-10 text-center text-gray-300 italic">No se encontraron movimientos.</td>
                 </tr>
             @endforelse
         </tbody>

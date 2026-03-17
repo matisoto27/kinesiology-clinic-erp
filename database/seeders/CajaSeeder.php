@@ -14,7 +14,8 @@ class CajaSeeder extends Seeder
     {
         Caja::firstOrCreate(
             ['id' => 1],
-            ['saldo_actual' => 0]
+            ['saldo_efectivo' => 0],
+            ['saldo_transferencia' => 0]
         );
     }
 }

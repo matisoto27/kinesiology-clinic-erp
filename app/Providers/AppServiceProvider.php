@@ -3,14 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Actividad;
-use App\Models\Egreso;
-use App\Models\Pago;
-use App\Models\Patologia;
-use App\Models\Profesional;
 use App\Models\TipoActividad;
-use App\Models\TipoSintoma;
-use App\Observers\EgresoObserver;
-use App\Observers\PagoObserver;
 use Carbon\Carbon;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Cache;
@@ -32,9 +25,6 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Carbon::setLocale('es');
-
-        Egreso::observe(EgresoObserver::class);
-        Pago::observe(PagoObserver::class);
 
         View::composer(['principal', 'turnos.calendario'], function ($vista) {
             $vista->with('tiposActividad', Cache::remember('todos_tipos_actividad', now()->addHours(12), function () {

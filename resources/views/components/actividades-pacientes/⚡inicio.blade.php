@@ -277,7 +277,7 @@ new class extends Component
                             <div class="mt-2 flex justify-center">
                                 <a href="{{ route('turnos.inicio', [
                                         'actividad' => $inscripcionSeleccionada->id_actividad,
-                                        'paciente' => $inscripcionSeleccionada->ap_nom_paciente
+                                        'paciente' => $inscripcionSeleccionada->paciente->apellido . ' ' . $inscripcionSeleccionada->paciente->nombre
                                     ]) }}"
                                     class="text-blue-500 hover:text-blue-700 text-sm font-semibold underline transition-colors">
                                     Editar turnos

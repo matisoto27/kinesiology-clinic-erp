@@ -56,7 +56,7 @@
                             <li><a href="{{ route('turnos.inicio') }}">Listado de turnos</a></li>
                             <li><a href="{{ route('turnos.calendario') }}">Ver calendario</a></li>
                             <li><a href="{{ route('actividades.turnos-disponibles') }}">Consultar disponibilidad</a></li>
-                            <li><a href="{{ route('actividades-pacientes.general.crear') }}">Nueva inscripción Gym/Pilates</a></li>
+                            <li><a href="{{ route('actividades-pacientes.general.crear') }}">Nueva inscripción Gimnasio/Pilates</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.sin-orden.crear') }}">Kinesiología (SIN orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.aplicar-orden') }}">Aplicar orden médica a un registro de sesiones</a></li>

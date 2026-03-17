@@ -1,14 +1,18 @@
 <?php
 
+use App\Models\Caja;
 use App\Models\Egreso;
 use App\Models\Profesional;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component
 {
+    #[Locked]
     public Collection $profesionales;
 
     public $montoStr = '';
@@ -16,73 +20,103 @@ new class extends Component
     public $motivo;
     public $id_profesional;
 
-    protected $rules = [
-        'monto' => 'required|numeric|gt:0',
-        'motivo' => 'required|string|max:255',
-        'id_profesional' => 'required|exists:profesionales,id'
-    ];
+    protected function rules()
+    {
+        return [
+            'monto' => [
+                'required',
+                'numeric',
+                'gt:0',
+                'lte:' . $this->saldoEfectivo
+            ],
+            'motivo' => 'required|string|max:255',
+            'id_profesional' => 'required|exists:profesionales,id'
+        ];
+    }
 
-    protected $messages = [
-        'monto.required' => 'El monto es obligatorio.',
-        'monto.numeric' => 'El monto debe ser un valor numérico.',
-        'motivo.required' => 'El motivo del egreso es obligatorio.',
-        'id_profesional.required' => 'Por favor, seleccione un profesional.'
-    ];
+    protected function messages()
+    {
+        return [
+            'monto.lte' => 'El monto supera el saldo disponible en caja.'
+        ];
+    }
 
     public function mount()
     {
-        $this->profesionales = Profesional::where('activo', true)
+        $this->profesionales = Profesional::query()
+            ->where('activo', true)
             ->orderByDesc('nombre')
-            ->get();
+            ->get(['id', 'nombre', 'apellido']);
+    }
+
+    public function updatedMontoStr($value)
+    {
+        $this->monto = $this->obtenerMontoParaEnviar($value);
+        $this->validateOnly('monto');
+    }
+
+    #[Computed]
+    public function saldoEfectivo()
+    {
+        return Caja::first()?->saldo_efectivo ?? 0;
     }
 
     public function almacenar()
     {
-        DB::beginTransaction();
+        $this->validate();
 
         try {
-            $this->monto = $this->obtenerMontoParaEnviar($this->montoStr);
-            $this->validate();
+            DB::transaction(function () {
+                $caja = Caja::lockForUpdate()->firstOrFail();
 
-            Egreso::create([
-                'monto' => $this->monto,
-                'motivo' => $this->motivo,
-                'id_profesional' => $this->id_profesional
-            ]);
+                if ($this->monto > $caja->saldo_efectivo) {
+                    throw new \Exception('Saldo insuficiente en caja.', 1001);
+                }
+                $caja->decrement('saldo_efectivo', $this->monto);
 
-            DB::commit();
+                Egreso::create([
+                    'monto' => $this->monto,
+                    'motivo' => $this->motivo,
+                    'id_profesional' => $this->id_profesional
+                ]);
+            });
+
             return redirect()->route('movimientos')->with('exito', '¡Egreso registrado con éxito!');
 
-        } catch (\Throwable $ex) {
-            DB::rollBack();
-            Log::error('[(Livewire) egresos.crear@almacenar] Error al almacenar el egreso.', ['excepción' => $ex->getMessage()]);
+        } catch (\Throwable $th) {
+            $mensajeError = $th->getCode() === 1001
+                ? 'El saldo de la caja fue modificado. Verificá el nuevo monto disponible.'
+                : 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).';
 
-            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+            Log::error('[(Livewire) egresos.crear@almacenar] Error al almacenar el egreso.', ['excepción' => $th->getMessage()]);
+            session()->flash('error', $mensajeError);
         }
     }
 
-    public function obtenerMontoParaEnviar($montoStr)
+    protected function obtenerMontoParaEnviar($montoStr)
     {
         if (!is_string($montoStr) || trim($montoStr) === '') {
             return 0.0;
         }
 
         $limpio = str_replace(['.', ','], ['', '.'], $montoStr);
-        $transformado = (float) $limpio;
-
-        return is_nan($transformado) ? 0.0 : $transformado;
-    }
-
-    public function render()
-    {
-        return $this->view();
+        return (float) $limpio;
     }
 };
 ?>
 
 <div class="contenedor max-w-4xl">
     <form class="formulario" wire:submit.prevent="almacenar">
-        <h2 class="titulo-formulario">Registrar un nuevo Egreso</h2>
+        <div class="mb-6 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <h2 class="titulo-formulario">Registrar un nuevo Egreso</h2>
+    
+            <div class="p-4 flex flex-col items-end bg-gray-800 border border-gray-700 rounded-lg shadow-inner">
+                <span class="text-gray-400 text-xs font-bold uppercase tracking-wider">Saldo Total en Caja</span>
+                <span class="text-emerald-400 text-3xl font-bold">
+                    ${{ number_format($this->saldoEfectivo, 2, ',', '.') }}
+                </span>
+            </div>
+        </div>
 
         <x-alerta tipo="exito" />
         <x-alerta tipo="error" />
@@ -125,7 +159,7 @@ new class extends Component
                     type="text"
                     placeholder="Ejemplo: 75000,00"
                     class="entrada @error('monto') border-red-500 @enderror"
-                    wire:model="montoStr"
+                    wire:model.live="montoStr"
                     x-on:input="$wire.$js.transformarIngresoMonto($el)">
                 @error('monto') <span class="text-red-500 text-xs italic">{{ $message }}</span> @enderror
             </div>

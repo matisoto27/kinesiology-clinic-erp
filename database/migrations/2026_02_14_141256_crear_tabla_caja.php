@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('caja', function (Blueprint $table) {
             $table->id();
-            $table->decimal('saldo_actual', total: 10, places: 2)->default(0);
+            $table->decimal('saldo_efectivo', total: 10, places: 2)->default(0);
+            $table->decimal('saldo_transferencia', total: 10, places: 2)->default(0);
             $table->timestamps();
         });
     }

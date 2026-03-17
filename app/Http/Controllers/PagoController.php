@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActividadPaciente;
+use App\Models\Caja;
 use App\Models\Pago;
 use App\Models\Profesional;
 use Illuminate\Http\Request;
@@ -47,40 +48,44 @@ class PagoController extends Controller
             'monto' => 'monto'
         ]);
 
-        $inscripcion = ActividadPaciente::with('actividad')
-            ->withSum('pagos', 'monto')
-            ->find($validados['id_act_pac']);
-        $deudaActual = (float) $inscripcion->deuda;
-
-        if ($validados['monto'] > $deudaActual) {
-            throw ValidationException::withMessages([
-                'monto' => ["El monto ingresado ($" . number_format($validados['monto'], 2) . ") supera la deuda actual ($" . number_format($deudaActual, 2) . ")."]
-            ]);
-        }
-
-        DB::beginTransaction();
-
         try {
-            Pago::create($validados);
-            $inscripcion->loadSum('pagos', 'monto'); // Luego de crear el pago, la deuda va a disminuir
+            DB::transaction(function () use ($validados) {
+                $inscripcion = ActividadPaciente::lockForUpdate()
+                    ->with('actividad')
+                    ->withSum('pagos', 'monto')
+                    ->findOrFail($validados['id_act_pac']);
+                $deudaActual = (float) $inscripcion->deuda;
 
-            if ($inscripcion->deuda <= 0) {
-                $inscripcion->update(['pago_completado' => true]);
-            }
+                if ($validados['monto'] > $deudaActual) {
+                    throw ValidationException::withMessages([
+                        'monto' => ["El monto ingresado ($" . number_format($validados['monto'], 2) . ") supera la deuda actual ($" . number_format($deudaActual, 2) . ")."]
+                    ]);
+                }
 
-            DB::commit();
+                $columna = $validados['metodo'] === 'Efectivo' ? 'saldo_efectivo' : 'saldo_transferencia';
+                Caja::lockForUpdate()->firstOrFail()->increment($columna, $validados['monto']);
+
+                Pago::create($validados);
+                $inscripcion->loadSum('pagos', 'monto'); // Luego de crear el pago, la deuda va a disminuir
+
+                if ($inscripcion->deuda <= 0) {
+                    $inscripcion->update(['pago_completado' => true]);
+                }
+            });
+
             return redirect()->route('movimientos')->with('exito', '¡El pago ha sido registrado con éxito!');
 
-        } catch (Throwable $ex) {
-            $mensajeError = $ex->getMessage();
-
-            DB::rollBack();
+        } catch (ValidationException $ex) {
+            throw $ex;
+        } catch (Throwable $th) {
             Log::error('[PagoController@almacenar] Error al almacenar el pago', [
                 'id_act_pac' => $request->id_act_pac,
-                'excepción' => $mensajeError
+                'excepción' => $th->getMessage()
             ]);
 
-            return back()->withErrors(['error' => $mensajeError])->withInput();
+            return back()
+                ->withErrors(['error' => 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).'])
+                ->withInput();
         }
     }
 }
