@@ -121,7 +121,7 @@ new class extends Component
                     $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
                 @endphp
 
-                <tr class="tabla-listado__fila">
+                <tr class="tabla-listado__fila h-28">
                     <td colspan="2">
                         @if ($actPac->esRegular())
                             {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
@@ -152,7 +152,22 @@ new class extends Component
                     </td>
                     <td>
                         @if ($actPac->esRegular() || $actPac->esPruebaPilates())
-                            ${{ number_format($actPac->total_a_pagar, 2, ',', '.') }}
+                            <div class="flex flex-col">
+                                <span class="{{ $actPac->fecha_recargo ? 'text-gray-500 text-sm line-through' : 'font-bold' }}">
+                                    ${{ number_format($actPac->total_a_pagar, 2, ',', '.') }}
+                                </span>
+                                @if ($actPac->fecha_recargo)
+                                    <div class="flex flex-col text-red-600">
+                                        <span class="font-bold">
+                                            ${{ number_format($actPac->total_con_recargo, 2, ',', '.') }}
+                                        </span>
+                                        <div class="flex flex-col text-sm font-semibold">
+                                            <span>Recargo: ${{ number_format($actPac->monto_recargo, 2, ',', '.') }}</span>
+                                            <span>({{ number_format($actPac->porcentaje_recargo, 2, ',', '.') }}%)</span>
+                                        </div>
+                                    </div>
+                                @endif
+                            </div>
                         @else
                             <span class="text-gray-400 italic">N/A</span>
                         @endif

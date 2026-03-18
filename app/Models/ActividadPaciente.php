@@ -20,8 +20,11 @@ class ActividadPaciente extends Model
         'cant_sesiones',
         'es_fijo',
         'total_a_pagar',
-        'fecha_emision_ord',
         'pago_completado',
+        'fecha_emision_ord',
+        'fecha_recargo',
+        'porcentaje_recargo',
+        'monto_recargo',
         'id_actividad',
         'id_paciente', // Puede ser null
         'id_paciente_casual' // Puede ser null
@@ -32,14 +35,24 @@ class ActividadPaciente extends Model
         'cant_sesiones' => 'integer',
         'es_fijo' => 'boolean',
         'total_a_pagar' => 'decimal:2',
+        'pago_completado' => 'boolean',
         'fecha_emision_ord' => 'date',
-        'pago_completado' => 'boolean'
+        'fecha_recargo' => 'date',
+        'porcentaje_recargo' => 'decimal:2',
+        'monto_recargo' => 'decimal:2'
     ];
 
     protected function fechaMostrar(): Attribute
     {
         return Attribute::make(
             get: fn() => $this->es_fijo ? $this->created_at : $this->fecha_comienzo
+        );
+    }
+
+    protected function totalConRecargo(): Attribute
+    {
+        return Attribute::make(
+            get: fn() => (float) $this->total_a_pagar + (float) ($this->monto_recargo ?? 0)
         );
     }
 
@@ -93,7 +106,9 @@ class ActividadPaciente extends Model
 
     public function ultimoTurno(): HasOne
     {
-        return $this->hasOne(Turno::class, 'id_act_pac')->latestOfMany('nro_turno');
+        return $this->hasOne(Turno::class, 'id_act_pac')
+            ->whereNull('id_turno_original')
+            ->latestOfMany('nro_turno');
     }
 
     public function pacienteFijo(): HasOne
@@ -166,9 +181,9 @@ class ActividadPaciente extends Model
             return 0.0;
         }
 
-        $totalAPagar = (float) $this->total_a_pagar;
+        $totalFinal = (float) $this->total_con_recargo;
         $totalPagado = $this->pagos_sum_monto ?? $this->pagos->sum('monto');
 
-        return max(0, (float) ($totalAPagar - $totalPagado));
+        return max(0, (float) ($totalFinal - $totalPagado));
     }
 }

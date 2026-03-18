@@ -127,6 +127,7 @@ return [
     'max_turnos_pilates' => env('MAX_TURNOS_PILATES', 6),
     'max_turnos_convencional' => env('MAX_TURNOS_CONVENCIONAL', 4),
     'max_turnos_atm' => env('MAX_TURNOS_ATM', 2),
+    'recargo_mora' => env('RECARGO_MORA', 0.15),
     'codigo_acceso' => env('CODIGO_ACCESO_SISTEMA'),
     'codigo_admin' => env('CODIGO_ADMINISTRADOR')
 

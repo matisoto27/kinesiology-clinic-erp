@@ -18,8 +18,11 @@ return new class extends Migration
             $table->unsignedTinyInteger('cant_sesiones');
             $table->boolean('es_fijo');
             $table->decimal('total_a_pagar', total: 10, places: 2);
-            $table->date('fecha_emision_ord')->nullable();
             $table->boolean('pago_completado')->default(false);
+            $table->date('fecha_emision_ord')->nullable();
+            $table->date('fecha_recargo')->nullable()->index();
+            $table->decimal('porcentaje_recargo', total: 5, places: 2)->nullable();
+            $table->decimal('monto_recargo', total: 10, places: 2)->nullable();
 
             $table->foreignId('id_actividad')->constrained(table: 'actividades');
             $table->foreignId('id_paciente')->nullable()->constrained(table: 'pacientes');
