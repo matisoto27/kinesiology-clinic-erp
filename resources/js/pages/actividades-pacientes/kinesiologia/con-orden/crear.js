@@ -437,12 +437,16 @@ sugerenciasPaciente.addEventListener('click', function(e) {
     actualizarPagina();
 });
 
-try {
-    const actividades = await apiFetch('/actividades?id_tipo_actividad=2');
-    actividades.forEach(actividad => {
-        agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
-    });
-} catch (error) {
-    console.error(error);
-    mostrarAlerta('error', 'Error al cargar los tratamientos', error.message);
+async function cargarActividades() {
+    try {
+        const actividades = await apiFetch('/actividades?id_tipo_actividad=2');
+        actividades.forEach(actividad => {
+            agregarOpcion(actividadSelect, actividad.id, actividad.nombre);
+        });
+    } catch (error) {
+        console.error(error);
+        mostrarAlerta('error', 'Error al cargar los tratamientos', error.message);
+    }
 }
+
+cargarActividades();
