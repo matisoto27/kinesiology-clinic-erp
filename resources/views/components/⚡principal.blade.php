@@ -91,7 +91,7 @@ new class extends Component
         try {
             DB::transaction(function () use ($id) {
                 $turno = Turno::lockForUpdate()->findOrFail($id);
-                if ($turno->estado === 'Ausente avisó') {
+                if ($turno->esAusenteAviso()) {
                     throw new \Exception('No es posible confirmar la asistencia de un turno con aviso de ausencia previo.');
                 }
                 if (str_contains($turno->estado, 'Presente')) {
@@ -237,7 +237,7 @@ new class extends Component
                             <div class="w-fit mx-auto grid grid-cols-2 gap-2">
                                 @if ($turno->id_turno_original === null)
                                     @if ($turno->actividadPaciente->actividad->esActividadGeneral())
-                                        @if ($turno->estado === 'Ausente avisó')
+                                        @if ($turno->esAusenteAviso())
                                             <div class="col-span-2 flex justify-center">
                                                 <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
                                                     Ausente avisó (AA)
@@ -258,7 +258,7 @@ new class extends Component
                                                 Confirmar asistencia
                                             </button>
                                             <button
-                                                class="px-4 py-2 bg-orange-400 hover:bg-red-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                                class="px-4 py-2 bg-orange-400 hover:bg-red-600 text-white text-lg font-medium rounded-md transition-all duration-100 active:scale-95 hover:scale-110"
                                                 wire:click="marcarAusenteAviso({{ $turno->id }})"
                                                 wire:confirm="¿Estás seguro de que deseas actualizar el estado del turno a 'Ausente avisó'?"
                                                 wire:loading.attr="disabled">

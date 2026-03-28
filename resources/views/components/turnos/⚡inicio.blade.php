@@ -137,7 +137,7 @@ new class extends Component
                 $nuevaFechaHora = $this->fechaSeleccionada . ' ' . $this->horaSeleccionada;
 
                 if ($this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral()) {
-                    if ($this->turnoSeleccionado->estado !== 'Ausente avisó') {
+                    if (!$this->turnoSeleccionado->esAusenteAviso()) {
                         $this->turnoSeleccionado->update(['estado' => 'Ausente avisó']);
                     }
 

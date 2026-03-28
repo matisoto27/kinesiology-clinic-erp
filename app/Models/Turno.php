@@ -72,6 +72,11 @@ class Turno extends Model
         return $this->hasOne(Turno::class, 'id_turno_original');
     }
 
+    public function esAusenteAviso(): bool
+    {
+        return $this->estado === 'Ausente avisó';
+    }
+
     public function esReprogramado(): bool
     {
         return $this->id_turno_original !== null;
@@ -81,7 +86,7 @@ class Turno extends Model
     {
         if ($this->turnoOriginal || $this->turnoRecuperacion) return false; // Esto aplica solamente para actividades de tipo general
         if ($this->estado === 'Presente') return false;
-        return $this->estado === 'Ausente avisó' || $this->fecha_hora->isFuture();
+        return $this->esAusenteAviso() || $this->fecha_hora->isFuture();
     }
 
     public function scopeConActPac(Builder $consulta): Builder

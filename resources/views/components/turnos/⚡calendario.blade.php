@@ -297,20 +297,38 @@ new class extends Component
                 <div class="min-h-[176px] p-2 flex flex-col justify-center gap-1 bg-gray-50">
                     @foreach($turnos as $turno)
                         <button
-                            class="{{ $this->obtenerColorTurno($turno, $loop->index) }} p-2 w-full flex flex-col items-start text-white text-xs leading-tight rounded shadow-sm hover:brightness-110 transition-all"
+                            @class([
+                                'p-2 w-full flex flex-col items-start text-white text-xs leading-tight rounded shadow-sm',
+                                'bg-red-700 cursor-not-allowed' => $turno->esAusenteAviso(),
+                                'hover:brightness-110 transition-all' => !$turno->esAusenteAviso(),
+                                $this->obtenerColorTurno($turno, $loop->index) => !$turno->esAusenteAviso()
+                            ])
                             wire:click="obtenerNotasDelTurno({{ $turno->id }})"
                         >
                             <div class="flex items-center gap-1">
                                 <span class="font-bold uppercase">
                                     {{ $turno->ap_nom_paciente }}
                                 </span>
+
                                 @if ($turno->actividadPaciente->esGympass())
                                     <span class="badge bg-white text-emerald-600">Gympass</span>
-                                @endif
-                                @if ($turno->actividadPaciente->esPruebaPilates())
+                                @elseif ($turno->actividadPaciente->esPruebaPilates())
                                     <span class="badge bg-white text-purple-600">Prueba</span>
                                 @endif
+
+                                @if ($turno->esAusenteAviso())
+                                    <span class="badge bg-white text-red-600">Aus. Avisó</span>
+                                @endif
+                                @if ($turno->esReprogramado())
+                                    <span class="badge bg-white text-blue-600">Recupera</span>
+                                @endif
                             </div>
+
+                            @if ($turno->esReprogramado())
+                                <span class="w-full flex items-center text-white text-xs">
+                                    Turno original: {{ $turno->turnoOriginal->fecha_hora->format('d/m/Y H:i') }}
+                                </span>
+                            @endif
 
                             @if ($turno->notas->count() > 0)
                                 <div class="px-1.5 py-0.5 flex items-center gap-1 self-end bg-black/20 rounded">
