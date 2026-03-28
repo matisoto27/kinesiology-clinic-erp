@@ -108,7 +108,7 @@ class ActividadPaciente extends Model
     {
         return $this->hasOne(Turno::class, 'id_act_pac')
             ->whereNull('id_turno_original')
-            ->latestOfMany('nro_turno');
+            ->orderByDesc('nro_turno');
     }
 
     public function pacienteFijo(): HasOne
