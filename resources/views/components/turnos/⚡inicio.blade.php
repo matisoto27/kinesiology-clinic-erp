@@ -108,6 +108,37 @@ new class extends Component
         $this->mostrarModal = true;
     }
 
+    public function marcarAusenteAviso($id)
+    {
+        try {
+            DB::transaction(function () use ($id) {
+                $turno = Turno::lockForUpdate()->findOrFail($id);
+
+                if (!$turno->actividadPaciente->actividad->esActividadGeneral()) {
+                    throw new \Exception("Los turnos de tipo kinesiología solo admiten estados 'Ausente' o 'Presente'.");
+                } else if (str_contains($turno->estado, 'Presente')) {
+                    throw new \Exception("No puede marcarse como 'Ausente avisó' un turno cuya asistencia ya fue confirmada.");
+                }
+
+                $turno->update(['estado' => 'Ausente avisó']);
+            });
+
+            $this->cerrarModal();
+            session()->flash('exito', "El turno ha sido marcado como 'Ausente avisó'. Luego podrás reprogramarlo eligiendo una nueva fecha y hora.");
+
+        } catch (\Throwable $th) {
+            Log::error('[(Livewire) principal@marcarAusenteAviso] Error al actualizar estado del turno.', [
+                'id' => $id,
+                'excepción' => $th->getMessage()
+            ]);
+
+            $this->cerrarModal();
+            session()->flash('error', $th instanceof \Exception
+                ? $th->getMessage()
+                : 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+        }
+    }
+
     public function updatedFechaSeleccionada($valor)
     {
         $this->obtenerHorasParaFecha($valor);
@@ -281,9 +312,25 @@ new class extends Component
 
                 <h2 class="modal-informativo__titulo text-center">Reasignar Turno</h2>
 
-                <div class="mb-6">
-                    <p class="text-emerald-400 text-lg font-semibold">{{ $turnoSeleccionado->ap_nom_paciente }}</p>
-                    <p class="text-gray-400 text-base">{{ $turnoSeleccionado->actividadPaciente->nombre_actividad }}</p>
+                <div class="mb-6 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <p class="text-emerald-400 text-lg font-semibold">{{ $turnoSeleccionado->ap_nom_paciente }}</p>
+                        <p class="text-gray-400">{{ $turnoSeleccionado->actividadPaciente->nombre_actividad }}</p>
+                    </div>
+
+                    @if ($turnoSeleccionado->esAusenteAviso())
+                        <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
+                            Ausente avisó (AA)
+                        </span>
+                    @else
+                        <button
+                            class="px-4 py-2 bg-orange-400 hover:bg-red-600 text-white text-lg font-medium rounded-md transition-all duration-100 active:scale-95 hover:scale-110"
+                            wire:click="marcarAusenteAviso({{ $turnoSeleccionado->id }})"
+                            wire:confirm="¿Estás seguro de que deseas actualizar el estado del turno a 'Ausente avisó'?"
+                            wire:loading.attr="disabled">
+                            No viene pero avisó
+                        </button>
+                    @endif
                 </div>
 
                 <div class="mb-8 space-y-3">
