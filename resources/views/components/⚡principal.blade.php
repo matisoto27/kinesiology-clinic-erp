@@ -61,10 +61,10 @@ new class extends Component
     #[Computed]
     public function turnos()
     {
-        $ahora = Carbon::now();
+        $hoy = Carbon::today();
 
-        $limInferior = $ahora->copy()->startOfHour()->subHour();
-        $limSuperior = $ahora->copy()->startOfHour()->addHours(2);
+        $inicioDia = $hoy;
+        $finDia = $hoy->copy()->endOfDay();
 
         return Turno::query()
             ->with([
@@ -72,7 +72,7 @@ new class extends Component
                 'actividadPaciente.pacienteRegular:id,nombre,apellido',
                 'actividadPaciente.pacienteCasual:id,nombre,apellido'
             ])
-            ->whereBetween('fecha_hora', [$limInferior, $limSuperior])
+            ->whereBetween('fecha_hora', [$inicioDia, $finDia])
             ->when($this->idTipoActividad > 0, function($consulta) {
                 $consulta->whereHas('actividadPaciente.actividad', fn($sc) => $sc->where('id_tipo_actividad', $this->idTipoActividad));
             })
