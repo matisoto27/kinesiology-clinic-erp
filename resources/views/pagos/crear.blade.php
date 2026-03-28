@@ -15,10 +15,11 @@
                         <option value="" disabled @selected(old('id_act_pac') === null)>Seleccione una opción</option>
                         @foreach($pendientesDePago as $actPac)
                             <option data-deuda="{{ $actPac->deuda }}" value="{{ $actPac->id }}" @selected($actPac->id == old('id_act_pac', $id))>
-                                [{{ $actPac->fecha_mostrar->format('d/m/Y') }}]
                                 @if ($actPac->esPruebaPilates())
+                                    [Turno: {{ $actPac->primerTurno->fecha_hora->format('d/m/Y') }}]
                                     Prueba de Pilates
                                 @else
+                                    [1er Turno: {{ $actPac->primerTurno->fecha_hora->format('d/m/Y') }}]
                                     {{ $actPac->nombre_actividad }}
                                 @endif
                                 - {{ $actPac->ap_nom_paciente }}

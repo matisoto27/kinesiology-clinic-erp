@@ -17,10 +17,11 @@ class PagoController extends Controller
     public function crear($id = null)
     {
         try {
-            $pendientesDePago = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual'])
+            $pendientesDePago = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'primerTurno'])
                 ->withSum('pagos', 'monto')
                 ->sinPagar()
-                ->get();
+                ->get()
+                ->sortBy(fn($ap) => $ap->primerTurno?->fecha_hora ?? now()->addYears(100));
 
             $profesionales = Profesional::activo()
                 ->orderBy('apellido')

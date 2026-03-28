@@ -104,6 +104,13 @@ class ActividadPaciente extends Model
         return $this->hasMany(Turno::class, 'id_act_pac');
     }
 
+    public function primerTurno(): HasOne
+    {
+        return $this->hasOne(Turno::class, 'id_act_pac')
+            ->whereNull('id_turno_original')
+            ->orderBy('nro_turno');
+    }
+
     public function ultimoTurno(): HasOne
     {
         return $this->hasOne(Turno::class, 'id_act_pac')
