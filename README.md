@@ -1,61 +1,324 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Kinesiology Clinic ERP
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A fullstack ERP/web application developed to digitize and centralize the daily operations of a kinesiology clinic.
 
-## About Laravel
+The project was created to replace fragmented Excel-based workflows that were causing operational friction, accidental data loss, scheduling inconsistencies, and inefficient administrative processes.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+The system centralizes patient management, appointment scheduling, healthcare activity administration, payments, attendance tracking, and operational workflows into a single platform designed for real-world clinic usage.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+This project was fully designed and developed by a single developer, covering backend architecture, database modeling, business logic, administrative workflows, and frontend implementation.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+---
 
-## Learning Laravel
+# Features
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Patient Management
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+* Patient registration and profile management
+* Contact and emergency information handling
+* Medical and administrative data organization
+* Searchable patient records
+* Historical activity tracking
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Appointment & Scheduling System
 
-## Laravel Sponsors
+* Appointment creation and management
+* Professional schedule administration
+* Attendance tracking workflows
+* Flexible appointment rescheduling logic
+* Monthly appointment generation automation
+* Calendar-oriented operational management
+* Validation mechanisms to reduce scheduling inconsistencies
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Healthcare Activity Management
 
-### Premium Partners
+* Management of healthcare activities and treatment workflows
+* Assignment of patients to activities and professionals
+* Subscription and recurring scheduling support
+* Configurable operational rules for activities and appointments
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+## Administrative & Financial Features
 
-## Contributing
+* Payment registration and tracking
+* Cash flow and operational movement management
+* Administrative dashboards and operational tools
+* Healthcare provider / insurance administration
+* Expense and income tracking
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Authentication & Authorization
 
-## Code of Conduct
+* User authentication system
+* Role-based access control
+* Protected administrative routes
+* Permission-based workflow separation
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## User Experience & Productivity
 
-## Security Vulnerabilities
+* Reactive and dynamic administrative interfaces
+* Fast server-driven interactions using Livewire
+* Search and filtering workflows for operational efficiency
+* Reusable form and validation systems
+* Optimized workflows for daily clinic operations
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+# Tech Stack
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Backend
+
+* PHP
+* Laravel
+* Eloquent ORM
+* Laravel Middleware
+* MVC Architecture
+
+## Frontend
+
+* Laravel Blade
+* Laravel Livewire
+* JavaScript
+* HTML/CSS
+* Tailwind CSS
+* Alpine.js
+
+## Database
+
+* Relational Database Modeling
+* MySQL / MariaDB-compatible architecture
+
+## Development Tools
+
+* Composer
+* Artisan CLI
+* Git
+
+---
+
+# Architecture & Design
+
+The project follows a server-driven fullstack architecture using Laravel and Livewire, prioritizing maintainability, clear separation of responsibilities, and operational reliability.
+
+## Project Organization
+
+The application is structured around:
+
+* Controllers for request handling
+* Eloquent Models for domain representation
+* Blade and Livewire components for UI rendering
+* Middleware for authentication and authorization
+* Validation layers for data integrity
+* Route grouping and modular organization
+
+## Separation of Responsibilities
+
+The system separates:
+
+* Business logic
+* Presentation logic
+* Persistence concerns
+* Authentication and access control
+* Administrative workflows
+
+This approach improves maintainability and allows domain logic to evolve without tightly coupling it to the interface layer.
+
+## Reactive UI with Livewire
+
+The frontend uses Laravel Livewire to provide reactive interfaces without requiring a separate SPA architecture.
+
+This enables:
+
+* Dynamic forms
+* Real-time-like interactions
+* Efficient administrative workflows
+* Reduced frontend complexity
+* Faster iteration for business-oriented features
+
+## Authentication & Access Control
+
+The application includes:
+
+* Authentication workflows
+* Session-based access management
+* Middleware-protected routes
+* Role-based administrative separation
+
+This allows different operational areas of the system to remain isolated and secure.
+
+## Database Design
+
+The relational database structure models real operational workflows including:
+
+* Patients
+* Professionals
+* Appointments
+* Activities
+* Payments
+* Attendance
+* Financial movements
+* Administrative entities
+
+The data model was designed to maintain consistency across interconnected operational processes.
+
+---
+
+# Technical Challenges Solved
+
+## Replacing Fragile Spreadsheet-Based Workflows
+
+One of the main challenges was centralizing operational data that was previously managed across multiple spreadsheets.
+
+The system was designed to reduce:
+
+* Accidental data modification
+* Loss of operational information
+* Scheduling inconsistencies
+* Manual duplication of work
+* Fragmented administrative processes
+
+## Appointment Automation
+
+The project includes automation mechanisms for recurring appointment generation and operational scheduling workflows.
+
+This reduced repetitive administrative tasks while maintaining flexibility for manual adjustments and validation.
+
+## Data Consistency & Validation
+
+The application implements multiple validation layers to ensure operational consistency across scheduling, attendance, payments, and administrative workflows.
+
+Examples include:
+
+* Validation of scheduling conflicts
+* State-aware workflow handling
+* Form validation and sanitization
+* Relationship integrity between operational entities
+
+## Managing Complex Business Relationships
+
+The platform models interconnected workflows between:
+
+* Patients
+* Professionals
+* Activities
+* Financial operations
+* Scheduling systems
+* Administrative processes
+
+Maintaining consistency across these relationships required careful relational modeling and workflow organization.
+
+## Balancing Complexity & Usability
+
+A key challenge was building administrative tools capable of handling real operational complexity while remaining practical for non-technical clinic staff.
+
+This influenced:
+
+* UI design decisions
+* Search workflows
+* Form organization
+* Navigation structure
+* Operational dashboard design
+
+## Server-Driven Reactive Interfaces
+
+Using Livewire introduced the challenge of creating responsive interfaces while keeping frontend complexity manageable.
+
+The project balances:
+
+* Dynamic interactions
+* Simpler deployment architecture
+* Faster backend-driven iteration
+* Reduced frontend state-management overhead
+
+---
+
+# Screenshots
+
+## Patient Administration
+
+![Patients Screenshot](./screenshots/patients.png)
+
+## Appointment Management
+
+![Appointments Screenshot](./screenshots/appointments.png)
+
+## Financial Management
+
+![Finance Screenshot](./screenshots/cash_flow.png)
+
+---
+
+# Getting Started
+
+## Requirements
+
+* PHP 8+
+* Composer
+* MySQL
+* Node.js & NPM (if frontend assets need compilation)
+
+## Installation
+
+```bash
+# Clone repository
+git clone https://github.com/matisoto27/kinesiology-clinic-erp.git
+
+# Enter project directory
+cd kinesiology-clinic-erp
+
+# Install PHP dependencies
+composer install
+
+# Copy environment configuration
+cp .env.example .env
+
+# Generate application key
+php artisan key:generate
+```
+
+## Database Setup
+
+Configure database credentials inside `.env`, then run:
+
+```bash
+php artisan migrate:fresh --seed
+```
+
+## Running the Application
+
+```bash
+php artisan serve
+```
+
+If frontend assets are required:
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
+# What I Learned
+
+This project provided hands-on experience designing and maintaining a real-world business management system used to solve operational problems in a healthcare environment.
+
+Key areas of growth included:
+
+* Backend architecture with Laravel
+* Relational database design
+* Operational workflow modeling
+* Building maintainable administrative systems
+* Reactive fullstack development with Livewire
+* Validation and data consistency strategies
+* Translating real business requirements into scalable software workflows
+* Balancing technical complexity with usability for non-technical users
+
+The project also reinforced the importance of designing software around reliability, maintainability, and operational clarity rather than only feature delivery.
+
+---
+
+# Notes
+
+* This repository is intended to showcase technical architecture, engineering decisions, and practical problem-solving in a real-world business environment.
+* Some business-specific rules and operational details have been intentionally generalized or omitted.
+* The system was developed as a real solution for daily clinic operations rather than as a tutorial or academic project.
+* The project was fully developed by a single developer, including architecture, backend implementation, database design, and frontend integration.
