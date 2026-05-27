@@ -6,6 +6,8 @@ use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\Paciente;
+use App\Support\Registros\DeteccionRegistroDuplicado;
+use App\Support\Registros\ModalidadRegistro;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\QueryException;
@@ -23,7 +25,7 @@ class ActividadPacienteService
     {
         try {
             return DB::transaction(function () use ($validados) {
-                $esConOrden = $this->esConOrden($validados);
+                $esConOrden = ModalidadRegistro::esConOrden($validados);
                 $ahora = Carbon::now();
 
                 if ($esConOrden) {
@@ -58,35 +60,12 @@ class ActividadPacienteService
                 'excepción' => $th->getMessage(),
             ]);
 
-            if ($th instanceof QueryException && $this->esInscripcionDuplicada($th)) {
-                throw new Exception('El paciente ya ha realizado una inscripción a esta actividad en la fecha de hoy.', previous: $th);
+            if ($th instanceof QueryException && DeteccionRegistroDuplicado::esDuplicado($th)) {
+                throw new Exception(DeteccionRegistroDuplicado::MENSAJE, previous: $th);
             }
 
             throw $th;
         }
-    }
-
-    private function esInscripcionDuplicada(QueryException $th): bool
-    {
-        if (($th->errorInfo[1] ?? null) === 1062) {
-            return true;
-        }
-
-        $mensaje = $th->getMessage();
-
-        return str_contains($mensaje, 'act_pac_fecha_unique')
-            || (
-                ($th->errorInfo[0] ?? null) === '23000'
-                && str_contains($mensaje, 'actividades_pacientes')
-                && str_contains($mensaje, 'fecha_comienzo')
-            );
-    }
-
-    private function esConOrden(array $validados): bool
-    {
-        return array_key_exists('sesiones_cubiertas', $validados)
-            || array_key_exists('mes', $validados)
-            || array_key_exists('dia', $validados);
     }
 
     private function enriquecerDatosConOrden(array $validados, Carbon $ahora): array
@@ -105,7 +84,7 @@ class ActividadPacienteService
 
     private function determinarTotal(array $validados): array
     {
-        if (!$this->esConOrden($validados) && array_key_exists('id_actividad_combo', $validados)) {
+        if (ModalidadRegistro::debeUsarPrecioMensual($validados)) {
             $validados['total_a_pagar'] = ActividadCombo::obtenerPrecioMensual(
                 (int) $validados['id_actividad_combo']
             );
@@ -113,7 +92,7 @@ class ActividadPacienteService
             $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar(
                 (int) $validados['id_actividad'],
                 (int) $validados['cant_sesiones'],
-                exigirComboExacto: $this->esConOrden($validados)
+                exigirComboExacto: ModalidadRegistro::esConOrden($validados)
             );
         }
 

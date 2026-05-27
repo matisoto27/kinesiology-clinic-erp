@@ -246,7 +246,7 @@ class ActividadPacienteServiceTest extends TestCase
             $this->fail('Se esperaba una excepción por inscripción duplicada el mismo día.');
         } catch (Exception $e) {
             $this->assertSame(
-                'El paciente ya ha realizado una inscripción a esta actividad en la fecha de hoy.',
+                'El paciente ya ha realizado un registro para esta actividad en la fecha de hoy.',
                 $e->getMessage()
             );
         }
