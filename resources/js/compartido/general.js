@@ -40,7 +40,7 @@ export async function apiFetch(url, opciones = {}) {
                 .map(e => `- ${e}`)
                 .join('\n');
         } else {
-            mensaje = datos?.error || `Error al procesar la solicitud (Estado: ${respuesta.status}).`
+            mensaje = datos?.error || datos?.message || `Error al procesar la solicitud (Estado: ${respuesta.status}).`
         }
 
         throw new Error(mensaje);

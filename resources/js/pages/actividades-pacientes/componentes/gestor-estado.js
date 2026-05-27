@@ -10,9 +10,6 @@ export const actualizarDesdeActual = (valor) => desdeActual = valor;
 export const obtenerPrimeraFechaFueSeleccionada = () => primeraFechaFueSeleccionada;
 export const actualizarPrimeraFechaFueSeleccionada = (valor) => primeraFechaFueSeleccionada = valor;
 
-export const obtenerTotalAPagar = () => totalAPagar;
-export const actualizarTotalAPagar = (valor) => totalAPagar = valor;
-
 export const obtenerUltimaActividadValida = () => ultimaActividadValida;
 export const actualizarUltimaActividadValida = (valor) => ultimaActividadValida = valor;
 

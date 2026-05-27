@@ -17,8 +17,6 @@ import {
     actualizarDesdeActual,
     obtenerPrimeraFechaFueSeleccionada,
     actualizarPrimeraFechaFueSeleccionada,
-    obtenerTotalAPagar,
-    actualizarTotalAPagar,
     obtenerUltimaActividadValida,
     actualizarUltimaActividadValida
 } from '../componentes/gestor-estado.js';
@@ -68,7 +66,6 @@ function alternarEstadoCarga(estaCargando) {
 async function gestionarCambiosDeCantidad() {
     actualizarDesdeActual(false);
     actualizarPrimeraFechaFueSeleccionada(false);
-    actualizarTotalAPagar(0);
 
     try {
         const idPaciente = obtenerValor(idPacienteSeleccionado);
@@ -83,7 +80,6 @@ async function gestionarCambiosDeCantidad() {
         if (!idActividadCombo) return;
 
         const precio = await apiFetch(`/actividades-combos/${idActividadCombo}/precio-vigente`);
-        actualizarTotalAPagar(precio);
         precioInput.value = '$' + precio;
         limpiarTurnos(contenedorTurnos);
 
@@ -339,6 +335,11 @@ formulario.addEventListener('submit', async (e) => {
 
         const turnosAutogenerados = turnosCheckbox.checked;
         const frecuenciaSemanal = cantidadSelect.value;
+        const idActividadCombo = obtenerValor(cantidadSelect.options[cantidadSelect.selectedIndex].dataset.id);
+
+        if (idActividadCombo === null) {
+            throw new Error('Por favor, seleccione una frecuencia semanal.');
+        }
 
         const cantidadTurnos = turnosAutogenerados
             ? frecuenciaSemanal
@@ -411,8 +412,8 @@ formulario.addEventListener('submit', async (e) => {
             body: JSON.stringify({
                 id_actividad: idActividad,
                 id_paciente: idPaciente,
+                id_actividad_combo: idActividadCombo,
                 cant_sesiones: cantSesiones,
-                total_a_pagar: obtenerTotalAPagar(),
                 autogenerados: turnosAutogenerados,
                 desde_actual: obtenerDesdeActual(),
                 turnos,
@@ -421,7 +422,7 @@ formulario.addEventListener('submit', async (e) => {
         };
 
         const respuesta = await apiFetch(url, options);
-        const idActPac = respuesta.id_act_pac;
+        const idActPac = respuesta.id;
 
         await mostrarAlerta(
             'success', 

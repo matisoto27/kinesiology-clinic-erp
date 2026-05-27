@@ -148,7 +148,7 @@ new class extends Component
                 $idActividad = (int) $this->actividadActual->id;
                 $esGympass = $idActividad === 1;
 
-                $totalAPagar = $esGympass ? 0 : ActividadCombo::calcularTotalAPagar($idActividad, 1, 'Pilates');
+                $totalAPagar = $esGympass ? 0 : ActividadCombo::obtenerPrecioPruebaPilates();
 
                 $turnosOrdenados = collect($this->turnosSeleccionados)
                     ->sortBy([

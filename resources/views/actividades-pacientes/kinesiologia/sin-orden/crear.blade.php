@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="contenedor max-w-3xl">
-        <form data-url="{{ route('actividades-pacientes.almacenar') }}" data-url-pago="{{ route('actividades-pacientes.pagos.crear', ['id' => '__ID__']) }}" method="POST" class="formulario" id="formulario">
+        <form data-url="{{ route('actividades-pacientes.store') }}" data-url-pago="{{ route('actividades-pacientes.pagos.crear', ['id' => '__ID__']) }}" method="POST" class="formulario" id="formulario">
             @csrf
 
             <h2 class="titulo-formulario">Turnos kinesiología sin orden médica</h2>

@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Actividad;
+use App\Models\Combo;
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -9,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 
 class ActividadCombo extends Model
 {
@@ -55,9 +58,14 @@ class ActividadCombo extends Model
             ->latest('fecha_desde');
     }
 
-    public function scopeDeLaActividad(Builder $consulta, int $idActividad): Builder
+    public function scopeWhereActividad(Builder $consulta, int $idActividad): Builder
     {
         return $consulta->where('actividades_combos.id_actividad', $idActividad);
+    }
+
+    public function scopeWhereCombo(Builder $consulta, int $idCombo): Builder
+    {
+        return $consulta->where('actividades_combos.id_combo', $idCombo);
     }
 
     public function scopeActivo(Builder $consulta): Builder
@@ -65,42 +73,93 @@ class ActividadCombo extends Model
         return $consulta->where('actividades_combos.activo', true);
     }
 
-    public function scopeConCombo(Builder $consulta): Builder
+    public static function obtenerPrecioPruebaPilates(): float
     {
-        return $consulta->join('combos', 'actividades_combos.id_combo', '=', 'combos.id');
+        $vinculo = self::query()
+            ->whereActividad(Actividad::PILATES)
+            ->whereCombo(Combo::CLASE_PRUEBA)
+            ->with(['precioVigente'])
+            ->firstOrFail();
+
+        if (!$vinculo->precioVigente) {
+            throw new Exception('La clase de prueba de Pilates no tiene un precio determinado actualmente.');
+        }
+
+        if (!$vinculo->activo) {
+            throw new Exception('La clase de prueba de Pilates no se encuentra habilitada en este momento.');
+        }
+
+        return (float) $vinculo->precioVigente->valor;
     }
 
-    public static function calcularTotalAPagar(int $idActividad, int $cantidadSesiones, ?string $nombreActividad = null): float
+    public static function obtenerPrecioMensual(int $idActividadCombo): float
     {
+        $vinculo = self::query()
+            ->with(['precioVigente', 'combo'])
+            ->findOrFail($idActividadCombo);
+
+        if (!$vinculo->combo->es_mensual) {
+            throw new Exception('El combo seleccionado no corresponde a un abono mensual.');
+        }
+
+        if (!$vinculo->precioVigente) {
+            throw new Exception('El combo seleccionado no tiene un precio determinado actualmente.');
+        }
+
+        if (!$vinculo->activo) {
+            throw new Exception('El combo seleccionado no se encuentra disponible en este momento.');
+        }
+
+        return (float) $vinculo->precioVigente->valor;
+    }
+
+    public static function calcularTotalAPagar(int $idActividad, int $cantidadSesiones, bool $exigirComboExacto = false): float
+    {
+        $mensajeSesionIndividual = 'La actividad no tiene un precio determinado para su sesión individual.';
+
         $vinculos = self::activo()
-            ->deLaActividad($idActividad)
-            ->conCombo()
-            ->where('combos.es_mensual', false)
+            ->whereActividad($idActividad)
+            ->whereHas('combo', fn ($q) => $q->where('es_mensual', false))
             ->whereHas('precioVigente')
-            ->with('precioVigente')
-            ->select('actividades_combos.id', 'actividades_combos.id_actividad', 'combos.cantidad_sesiones as cantidad')
+            ->with(['precioVigente', 'combo'])
             ->get()
-            ->sortByDesc('cantidad');
+            ->keyBy(fn (self $vinculo) => $vinculo->combo->cantidad_sesiones);
 
-        $tieneSesionIndividual = $vinculos->contains('cantidad', 1);
-        if (!$tieneSesionIndividual) {
-            $identificador = $nombreActividad ?? "con ID: $idActividad";
-            throw new Exception('La actividad ' . $identificador . ' no tiene un precio definido para su sesión individual.');
+        if ($exigirComboExacto) {
+            return self::precioDelCombo($vinculos, $cantidadSesiones);
         }
 
-        $total = 0;
-        $restante = $cantidadSesiones;
-
-        foreach ($vinculos as $vinculo) {
-            if ($restante >= $vinculo->cantidad) {
-                $cantidadCombos = (int) floor($restante / $vinculo->cantidad);
-                $total += $cantidadCombos * (float) $vinculo->precioVigente->valor;
-                $restante -= $cantidadCombos * $vinculo->cantidad;
-            }
-
-            if ($restante === 0) break;
+        if (!$vinculos->has(1)) {
+            throw new Exception($mensajeSesionIndividual);
         }
 
-        return $total;
+        $vinculoIndividual = $vinculos->get(1);
+
+        if (!$vinculoIndividual->precioVigente) {
+            throw new Exception($mensajeSesionIndividual);
+        }
+
+        $precioIndividual = (float) $vinculoIndividual->precioVigente->valor;
+
+        if ($vinculos->count() === 1) {
+            return $precioIndividual * $cantidadSesiones;
+        }
+
+        if ($vinculos->has($cantidadSesiones)) {
+            return self::precioDelCombo($vinculos, $cantidadSesiones);
+        }
+
+        return $precioIndividual * $cantidadSesiones;
+    }
+
+    private static function precioDelCombo(Collection $vinculos, int $cantidadSesiones): float
+    {
+        $vinculoCombo = $vinculos->get($cantidadSesiones);
+
+        if (!$vinculos->has($cantidadSesiones) || !$vinculoCombo->precioVigente) {
+            throw new Exception("La actividad no tiene un precio determinado para el combo de {$cantidadSesiones} sesiones.");
+        }
+
+        return (float) $vinculoCombo->precioVigente->valor;
     }
 }

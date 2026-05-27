@@ -17,8 +17,6 @@ import {
     actualizarDesdeActual,
     obtenerPrimeraFechaFueSeleccionada,
     actualizarPrimeraFechaFueSeleccionada,
-    obtenerTotalAPagar,
-    actualizarTotalAPagar,
     obtenerUltimaActividadValida,
     actualizarUltimaActividadValida,
     obtenerUltimaFrecuenciaValida,
@@ -389,7 +387,6 @@ cantidadSelect.addEventListener('change', function() {
     frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
     habilitarElemento(frecuenciaSelect, false);
     restablecerMoneda(precioInput);
-    actualizarTotalAPagar(0);
     limpiarTurnos(contenedorTurnos);
 
     const idActividad = obtenerValor(actividadSelect);
@@ -425,7 +422,6 @@ cantidadSelect.addEventListener('change', function() {
     }
 
     precioInput.value = `$${precioCombo}`;
-    actualizarTotalAPagar(precioCombo);
     intentarActualizarPagina();
 });
 
@@ -516,7 +512,6 @@ formulario.addEventListener('submit', async (e) => {
                 id_actividad: datos.idActividad,
                 id_paciente: datos.idPaciente,
                 cant_sesiones: cantidadSesiones,
-                total_a_pagar: obtenerTotalAPagar(),
                 autogenerados: turnosAutogenerados,
                 desde_actual: obtenerDesdeActual(),
                 turnos,
@@ -525,7 +520,7 @@ formulario.addEventListener('submit', async (e) => {
         };
 
         const respuesta = await apiFetch(url, options);
-        const idActPac = respuesta.id_act_pac;
+        const idActPac = respuesta.id;
 
         await mostrarAlerta(
             'success', 
