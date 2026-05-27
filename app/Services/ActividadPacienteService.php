@@ -58,12 +58,28 @@ class ActividadPacienteService
                 'excepción' => $th->getMessage(),
             ]);
 
-            if ($th instanceof QueryException && ($th->errorInfo[1] ?? null) == 1062) {
+            if ($th instanceof QueryException && $this->esInscripcionDuplicada($th)) {
                 throw new Exception('El paciente ya ha realizado una inscripción a esta actividad en la fecha de hoy.', previous: $th);
             }
 
             throw $th;
         }
+    }
+
+    private function esInscripcionDuplicada(QueryException $th): bool
+    {
+        if (($th->errorInfo[1] ?? null) === 1062) {
+            return true;
+        }
+
+        $mensaje = $th->getMessage();
+
+        return str_contains($mensaje, 'act_pac_fecha_unique')
+            || (
+                ($th->errorInfo[0] ?? null) === '23000'
+                && str_contains($mensaje, 'actividades_pacientes')
+                && str_contains($mensaje, 'fecha_comienzo')
+            );
     }
 
     private function esConOrden(array $validados): bool
