@@ -1,324 +1,365 @@
 # Kinesiology Clinic ERP
 
-A fullstack ERP/web application developed to digitize and centralize the daily operations of a kinesiology clinic.
+> Fullstack ERP built for the daily operations of a real kinesiology clinic — replacing fragmented spreadsheet workflows with a single, centralized system.
 
-The project was created to replace fragmented Excel-based workflows that were causing operational friction, accidental data loss, scheduling inconsistencies, and inefficient administrative processes.
-
-The system centralizes patient management, appointment scheduling, healthcare activity administration, payments, attendance tracking, and operational workflows into a single platform designed for real-world clinic usage.
-
-This project was fully designed and developed by a single developer, covering backend architecture, database modeling, business logic, administrative workflows, and frontend implementation.
+Designed and implemented end-to-end using **PHP 8.2**, **Laravel 12**, **Livewire 4**, **MySQL**, **Docker**, and **Tailwind CSS**.
 
 ---
 
-# Features
+## TL;DR
 
-## Patient Management
-
-* Patient registration and profile management
-* Contact and emergency information handling
-* Medical and administrative data organization
-* Searchable patient records
-* Historical activity tracking
-
-## Appointment & Scheduling System
-
-* Appointment creation and management
-* Professional schedule administration
-* Attendance tracking workflows
-* Flexible appointment rescheduling logic
-* Monthly appointment generation automation
-* Calendar-oriented operational management
-* Validation mechanisms to reduce scheduling inconsistencies
-
-## Healthcare Activity Management
-
-* Management of healthcare activities and treatment workflows
-* Assignment of patients to activities and professionals
-* Subscription and recurring scheduling support
-* Configurable operational rules for activities and appointments
-
-## Administrative & Financial Features
-
-* Payment registration and tracking
-* Cash flow and operational movement management
-* Administrative dashboards and operational tools
-* Healthcare provider / insurance administration
-* Expense and income tracking
-
-## Authentication & Authorization
-
-* User authentication system
-* Role-based access control
-* Protected administrative routes
-* Permission-based workflow separation
-
-## User Experience & Productivity
-
-* Reactive and dynamic administrative interfaces
-* Fast server-driven interactions using Livewire
-* Search and filtering workflows for operational efficiency
-* Reusable form and validation systems
-* Optimized workflows for daily clinic operations
+- Centralizes patient management, scheduling, payments, attendance, and cash-flow operations in one application.
+- Server-driven UI with Livewire — no SPA overhead for an admin-heavy, form-driven product.
+- Critical enrollment and pricing workflows are covered by automated tests.
+- Designed for non-technical clinic staff: operational complexity is handled in the backend, not in the UI.
+- **Quick start:** `docker compose up --build` → [localhost:8000](http://localhost:8000) → access code `code123`
 
 ---
 
-# Tech Stack
+## The Problem
 
-## Backend
+The clinic previously relied on multiple Excel spreadsheets and manual administrative processes, which led to:
 
-* PHP
-* Laravel
-* Eloquent ORM
-* Laravel Middleware
-* MVC Architecture
+- Scheduling conflicts
+- Duplicated patient data
+- Human errors in billing and enrollment
+- Lost operational information
+- Inefficient patient tracking
 
-## Frontend
-
-* Laravel Blade
-* Laravel Livewire
-* JavaScript
-* HTML/CSS
-* Tailwind CSS
-* Alpine.js
-
-## Database
-
-* Relational Database Modeling
-* MySQL / MariaDB-compatible architecture
-
-## Development Tools
-
-* Composer
-* Artisan CLI
-* Git
+This ERP consolidates those workflows into a single system used for real daily operations.
 
 ---
 
-# Architecture & Design
+## Screenshots
 
-The project follows a server-driven fullstack architecture using Laravel and Livewire, prioritizing maintainability, clear separation of responsibilities, and operational reliability.
+### Patient Administration
+![Patient administration](./screenshots/patients.png)
 
-## Project Organization
+### Appointment Management
+![Appointment management](./screenshots/appointments.png)
 
-The application is structured around:
-
-* Controllers for request handling
-* Eloquent Models for domain representation
-* Blade and Livewire components for UI rendering
-* Middleware for authentication and authorization
-* Validation layers for data integrity
-* Route grouping and modular organization
-
-## Separation of Responsibilities
-
-The system separates:
-
-* Business logic
-* Presentation logic
-* Persistence concerns
-* Authentication and access control
-* Administrative workflows
-
-This approach improves maintainability and allows domain logic to evolve without tightly coupling it to the interface layer.
-
-## Reactive UI with Livewire
-
-The frontend uses Laravel Livewire to provide reactive interfaces without requiring a separate SPA architecture.
-
-This enables:
-
-* Dynamic forms
-* Real-time-like interactions
-* Efficient administrative workflows
-* Reduced frontend complexity
-* Faster iteration for business-oriented features
-
-## Authentication & Access Control
-
-The application includes:
-
-* Authentication workflows
-* Session-based access management
-* Middleware-protected routes
-* Role-based administrative separation
-
-This allows different operational areas of the system to remain isolated and secure.
-
-## Database Design
-
-The relational database structure models real operational workflows including:
-
-* Patients
-* Professionals
-* Appointments
-* Activities
-* Payments
-* Attendance
-* Financial movements
-* Administrative entities
-
-The data model was designed to maintain consistency across interconnected operational processes.
+### Financial Operations
+![Financial operations and cash flow](./screenshots/cash_flow.png)
 
 ---
 
-# Technical Challenges Solved
+## Tech Stack
 
-## Replacing Fragile Spreadsheet-Based Workflows
-
-One of the main challenges was centralizing operational data that was previously managed across multiple spreadsheets.
-
-The system was designed to reduce:
-
-* Accidental data modification
-* Loss of operational information
-* Scheduling inconsistencies
-* Manual duplication of work
-* Fragmented administrative processes
-
-## Appointment Automation
-
-The project includes automation mechanisms for recurring appointment generation and operational scheduling workflows.
-
-This reduced repetitive administrative tasks while maintaining flexibility for manual adjustments and validation.
-
-## Data Consistency & Validation
-
-The application implements multiple validation layers to ensure operational consistency across scheduling, attendance, payments, and administrative workflows.
-
-Examples include:
-
-* Validation of scheduling conflicts
-* State-aware workflow handling
-* Form validation and sanitization
-* Relationship integrity between operational entities
-
-## Managing Complex Business Relationships
-
-The platform models interconnected workflows between:
-
-* Patients
-* Professionals
-* Activities
-* Financial operations
-* Scheduling systems
-* Administrative processes
-
-Maintaining consistency across these relationships required careful relational modeling and workflow organization.
-
-## Balancing Complexity & Usability
-
-A key challenge was building administrative tools capable of handling real operational complexity while remaining practical for non-technical clinic staff.
-
-This influenced:
-
-* UI design decisions
-* Search workflows
-* Form organization
-* Navigation structure
-* Operational dashboard design
-
-## Server-Driven Reactive Interfaces
-
-Using Livewire introduced the challenge of creating responsive interfaces while keeping frontend complexity manageable.
-
-The project balances:
-
-* Dynamic interactions
-* Simpler deployment architecture
-* Faster backend-driven iteration
-* Reduced frontend state-management overhead
+| Layer | Technologies |
+|---|---|
+| Backend | PHP 8.2, Laravel 12, Eloquent ORM |
+| Frontend | Livewire 4, Blade, Alpine.js, Tailwind CSS |
+| Database | MySQL 8 |
+| Infrastructure | Docker, Docker Compose, Git |
+| Testing | PHPUnit 11 |
 
 ---
 
-# Screenshots
+## Core Modules
 
-## Patient Administration
-
-![Patients Screenshot](./screenshots/patients.png)
-
-## Appointment Management
-
-![Appointments Screenshot](./screenshots/appointments.png)
-
-## Financial Management
-
-![Finance Screenshot](./screenshots/cash_flow.png)
+| Module | What it covers |
+|---|---|
+| **Patients** | CRUD, emergency contacts, health insurance affiliations, pathology and symptom tracking |
+| **Patient types** | Regular patients, walk-in (*casual*) patients, and fixed-schedule (*fijo*) subscriptions |
+| **Activities & enrollment** | Kinesiology (with/without medical order) and general activities, combo pricing, session packages |
+| **Appointments** | Manual and auto-generated schedules, calendar views, rescheduling, attendance notes |
+| **Payments** | Session payments, copayments, debt tracking |
+| **Cash flow** | Income/expense movements, professional worked-hours registration |
+| **Administration** | Professionals, pricing, health insurance providers, activity combos |
 
 ---
 
-# Getting Started
+## Key Technical Decisions
 
-## Requirements
+### Why Livewire instead of a SPA?
 
-* PHP 8+
-* Composer
-* MySQL
-* Node.js & NPM (if frontend assets need compilation)
+The application is primarily administrative and form-driven. A SPA would have added frontend complexity, deployment overhead, and slower iteration without meaningful UX gains for this use case.
 
-## Installation
+Livewire was chosen because it enables:
+
+- Faster iteration on operational workflows
+- Reduced frontend complexity
+- Simpler deployment
+- Server-driven state and validation
+
+### Transaction safety in financial workflows
+
+Enrollment, payments, and cash operations use database transactions with rollback protection to prevent inconsistent state — for example, an activity registration is not persisted if appointment creation fails.
+
+### Recurring appointment generation
+
+A scheduled Artisan command generates monthly appointments for fixed-schedule patients, with conflict validation, professional availability checks, and state-aware rescheduling logic when slots are unavailable.
+
+---
+
+## Architecture
+
+The application follows a server-driven fullstack architecture. Business-critical workflows are orchestrated through a combination of Livewire components, controllers, and dedicated service classes.
+
+```mermaid
+flowchart TD
+    UI["Livewire Components / Blade UI"]
+    CTRL["Controllers"]
+    SERVICE["Service Layer<br/>(enrollment, scheduling)"]
+    SUPPORT["Support Classes<br/>(domain rules)"]
+    MODEL["Eloquent Models"]
+    DB["MySQL Database"]
+
+    UI --> CTRL
+    UI --> SERVICE
+    CTRL --> SERVICE
+    SERVICE --> SUPPORT
+    SERVICE --> MODEL
+    MODEL --> DB
+```
+
+**Principles applied:**
+
+- Separation of concerns between UI, orchestration, and persistence
+- Service-layer encapsulation for the most critical enrollment workflows
+- Domain rules extracted into support classes where they are reused or tested in isolation
+- Validation-driven consistency across scheduling, attendance, and payments
+
+> **Note:** Not every workflow goes through a service class. Simpler CRUD flows are handled directly in Livewire components with transactional boundaries where needed. The service layer is reserved for the most complex, multi-step business operations.
+
+---
+
+## Domain Model
+
+The relational schema (~27 Eloquent models) reflects real clinic operations:
+
+- Patients, professionals, and health insurance affiliations
+- Activities, combos, and time-based pricing
+- Patient enrollments and medical orders
+- Appointments, attendance, and session notes
+- Payments, copayments, and cash movements
+
+Special attention was given to consistency across interconnected entities — for example, linking enrollment pricing to combo rules, insurance validity, and appointment generation.
+
+---
+
+## Access Control
+
+The system uses **session-based area isolation**, not a full role/permission framework:
+
+| Area | Mechanism |
+|---|---|
+| **Operational access** | Shared access code verified against `CODIGO_ACCESO_SISTEMA`; stored in session as `autorizado` |
+| **Administration** | Separate admin code (`CODIGO_ADMINISTRADOR`); unlocks pricing, professionals, and insurance management routes |
+| **Route protection** | Custom middleware (`verificar.acceso`, `verificar.acceso.admin`) on protected route groups |
+
+This approach fits an internal clinic tool with a small, trusted staff. It is intentionally simple — not Laravel Auth with user accounts and policies.
+
+---
+
+## Testing
+
+Automated tests focus on protecting critical business workflows rather than chasing coverage percentages.
 
 ```bash
-# Clone repository
-git clone https://github.com/matisoto27/kinesiology-clinic-erp.git
+composer test
+# or
+php artisan test
+```
 
-# Enter project directory
-cd kinesiology-clinic-erp
+**What is covered (25 tests, 47 assertions):**
 
-# Install PHP dependencies
+| Area | Tests |
+|---|---|
+| **Enrollment service** | Combo pricing (x5, x10), individual session pricing, monthly pricing, insurance validation, duplicate registration protection, transaction rollback on failure, auto-generated appointments |
+| **Domain rules** | Registration modality detection (with/without medical order), pricing strategy selection, SQL duplicate-entry detection across MySQL and SQLite |
+
+Tests run against an in-memory SQLite database (configured in `phpunit.xml`).
+
+---
+
+## Running the Project
+
+### Prerequisites
+
+**Docker (recommended for reviewers):**
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose v2)
+
+**Local development:**
+
+- PHP 8.2+, Composer, Node.js
+- MySQL 8
+
+### Local setup
+
+```bash
+# Install dependencies
 composer install
+npm install
 
-# Copy environment configuration
-cp .env.example .env
-
-# Generate application key
+# Environment — create a .env file with at least:
 php artisan key:generate
-```
 
-## Database Setup
+# Configure at minimum:
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=erp
+# DB_USERNAME=...
+# DB_PASSWORD=...
+# CODIGO_ACCESO_SISTEMA=your-access-code
+# CODIGO_ADMINISTRADOR=your-admin-code
 
-Configure database credentials inside `.env`, then run:
-
-```bash
+# Database
 php artisan migrate:fresh --seed
-```
 
-## Running the Application
-
-```bash
+# Run application
 php artisan serve
 ```
 
-If frontend assets are required:
+In a separate terminal:
 
 ```bash
-npm install
 npm run dev
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) and enter the operational access code.
+
+For local development with all services (server, queue, logs, Vite):
+
+```bash
+composer dev
+```
+
+### Docker setup
+
+The fastest way to run and review the project. No local PHP, Composer, Node, or `.env` file is required — environment variables are defined in `docker-compose.yml`, and the container entrypoint handles database setup automatically.
+
+**Requirements:** Docker Desktop (or Docker Engine + Compose v2).
+
+```bash
+docker compose up --build
+```
+
+On first start, the app container will:
+
+1. Wait until MySQL is ready
+2. Run migrations and seeders
+3. Cache configuration, routes, and views
+4. Start the application on port `8000`
+
+The first build may take a few minutes (Vite asset compilation + Composer dependencies). Subsequent starts are faster.
+
+**Application URL:** [http://localhost:8000](http://localhost:8000)
+
+**Demo access codes** (preconfigured in `docker-compose.yml`):
+
+| Purpose | Code |
+|---|---|
+| Operational access (main app) | `code123` |
+| Administration area | `admin` |
+
+After opening the URL, enter the operational access code. Use the admin code when prompted for administration routes (pricing, professionals, health insurance providers).
+
+**What runs:**
+
+| Service | Container | Host port |
+|---|---|---|
+| Laravel app (PHP 8.2 + pre-built Vite assets) | `erp_app` | `8000` |
+| MySQL 8 | `erp_db` | `3307` |
+
+MySQL credentials (demo only): user `root`, password `root`, database `erp`.
+
+**Reset demo data** (clean database and start fresh):
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+**Stop the stack:**
+
+```bash
+docker compose down
+```
+
+**Optional — view app logs:**
+
+```bash
+docker compose logs -f app
+```
+
+> **Note:** Docker runs the application in demo mode with precompiled frontend assets. For active frontend development with hot reload, use the [local setup](#local-setup) above and run `npm run dev` in a separate terminal.
+
+---
+
+## Complex Problems Solved
+
+### Recurring appointment generation
+
+Fixed-schedule patients require monthly appointment batches. The system:
+
+1. Reads each patient's weekly schedule slots
+2. Validates availability against existing appointments
+3. Attempts replacement slots when conflicts arise
+4. Persists results inside a transaction
+
+Implemented via `app:generar-turnos-mensuales` (Artisan command) and `TurnoService`.
+
+### Enrollment pricing with multiple modalities
+
+Kinesiology enrollments behave differently depending on context:
+
+- **With medical order** — combo pricing tied to covered sessions; payment marked complete on registration
+- **Without order** — combo or per-session pricing based on quantity
+- **General activities** — monthly subscription pricing via activity combos
+
+All of this is orchestrated in `ActividadPacienteService` with explicit validation and transactional persistence.
+
+### Duplicate registration protection
+
+Same-day duplicate enrollments are blocked at both the application layer (pre-check) and the database layer (unique constraint), with error detection that works across MySQL and SQLite.
+
+---
+
+## Product & Usability
+
+A major challenge was balancing operational complexity with usability for non-technical clinic staff. This influenced:
+
+- Workflow design (separate flows for kinesiology with/without medical order)
+- Form organization and progressive disclosure
+- Navigation structure aligned with daily reception tasks
+- Dashboard layout for attendance and payment status at a glance
+
+---
+
+## Lessons Learned
+
+Building a system for real daily operations reinforced the importance of:
+
+- **Transactional consistency** — especially when enrollment, appointments, and payments are created in a single operation
+- **Defensive validation** — business rules enforced at multiple layers, not only in the UI
+- **Honest abstractions** — service classes where complexity warrants them, not everywhere by default
+- **UX simplicity over architectural purity** — clinic staff need clarity, not cleverness
+
+---
+
+## Project Structure (high level)
+
+```
+app/
+├── Console/Commands/     # Scheduled jobs (e.g. monthly appointment generation)
+├── Http/
+│   ├── Controllers/      # Request handling for non-Livewire flows
+│   └── Middleware/       # Session-based access control
+├── Models/               # ~27 Eloquent models
+├── Services/             # Critical workflow orchestration
+└── Support/              # Reusable domain rules
+
+resources/views/components/   # Livewire Volt components (⚡)
+tests/
+├── Feature/              # Service-layer integration tests
+└── Unit/                 # Domain rule unit tests
 ```
 
 ---
 
-# What I Learned
+## License
 
-This project provided hands-on experience designing and maintaining a real-world business management system used to solve operational problems in a healthcare environment.
-
-Key areas of growth included:
-
-* Backend architecture with Laravel
-* Relational database design
-* Operational workflow modeling
-* Building maintainable administrative systems
-* Reactive fullstack development with Livewire
-* Validation and data consistency strategies
-* Translating real business requirements into scalable software workflows
-* Balancing technical complexity with usability for non-technical users
-
-The project also reinforced the importance of designing software around reliability, maintainability, and operational clarity rather than only feature delivery.
-
----
-
-# Notes
-
-* This repository is intended to showcase technical architecture, engineering decisions, and practical problem-solving in a real-world business environment.
-* Some business-specific rules and operational details have been intentionally generalized or omitted.
-* The system was developed as a real solution for daily clinic operations rather than as a tutorial or academic project.
-* The project was fully developed by a single developer, including architecture, backend implementation, database design, and frontend integration.
+Private project — all rights reserved.
