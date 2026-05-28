@@ -9,10 +9,12 @@ class Caja extends Model
     protected $table = 'caja';
 
     protected $fillable = [
-        'saldo_actual'
+        'saldo_efectivo',
+        'saldo_transferencia',
     ];
 
     protected $casts = [
-        'saldo_actual' => 'decimal:2'
+        'saldo_efectivo' => 'decimal:2',
+        'saldo_transferencia' => 'decimal:2',
     ];
 }
