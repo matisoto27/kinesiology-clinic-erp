@@ -41,6 +41,7 @@ new class extends Component
             })
             ->tienePacienteRegular()
             ->noFijos()
+            ->conUltimoTurnoVigente()
             ->get();
     }
 
@@ -105,6 +106,11 @@ new class extends Component
         $inscripcion = $this->inscripciones->firstWhere('id', $this->inscripcionSeleccionada);
         if (!$inscripcion) {
             session()->flash('error', 'La inscripción seleccionada ya no está disponible o no es válida.');
+            return;
+        }
+
+        if (!$inscripcion->ultimoTurno || $inscripcion->ultimoTurno->fecha_hora->lte(now())) {
+            session()->flash('error', 'Esta inscripción no cuenta con turnos vigentes porque las fechas ya pasaron.');
             return;
         }
 

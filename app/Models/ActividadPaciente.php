@@ -159,6 +159,11 @@ class ActividadPaciente extends Model
         return $consulta->whereDoesntHave('pacienteFijo');
     }
 
+    public function scopeConUltimoTurnoVigente(Builder $consulta): Builder
+    {
+        return $consulta->whereHas('ultimoTurno', fn (Builder $q) => $q->where('fecha_hora', '>', now()));
+    }
+
     public function scopeSinPagar(Builder $consulta): Builder
     {
         return $consulta->where('pago_completado', false);
