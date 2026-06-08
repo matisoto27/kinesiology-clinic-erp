@@ -146,6 +146,7 @@ The system uses **session-based area isolation**, not a full role/permission fra
 |---|---|
 | **Operational access** | Shared access code verified against `CODIGO_ACCESO_SISTEMA`; stored in session as `autorizado` |
 | **Administration** | Separate admin code (`CODIGO_ADMINISTRADOR`); unlocks pricing, professionals, and insurance management routes |
+| **Configuration** | Both codes are set in `.env` (see `.env.example` for local defaults: `code123` / `admin`) |
 | **Route protection** | Custom middleware (`verificar.acceso`, `verificar.acceso.admin`) on protected route groups |
 
 This approach fits an internal clinic tool with a small, trusted staff. It is intentionally simple — not Laravel Auth with user accounts and policies.
@@ -193,18 +194,9 @@ Tests run against an in-memory SQLite database (configured in `phpunit.xml`).
 composer install
 npm install
 
-# Environment — create a .env file with at least:
+# Environment — copy the template and generate an app key
+cp .env.example .env
 php artisan key:generate
-
-# Configure at minimum:
-# DB_CONNECTION=mysql
-# DB_HOST=127.0.0.1
-# DB_PORT=3306
-# DB_DATABASE=erp
-# DB_USERNAME=...
-# DB_PASSWORD=...
-# CODIGO_ACCESO_SISTEMA=your-access-code
-# CODIGO_ADMINISTRADOR=your-admin-code
 
 # Database
 php artisan migrate:fresh --seed
@@ -219,7 +211,9 @@ In a separate terminal:
 npm run dev
 ```
 
-Open [http://127.0.0.1:8000](http://127.0.0.1:8000) and enter the operational access code.
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) and enter the operational access code (`code123` by default — see `.env.example`).
+
+**Environment file:** `.env.example` ships with demo defaults for local development (MySQL connection, session/cache drivers, and access codes). After copying it to `.env`, update `DB_USERNAME` and `DB_PASSWORD` to match your local MySQL setup if they differ from the template.
 
 For local development with all services (server, queue, logs, Vite):
 
