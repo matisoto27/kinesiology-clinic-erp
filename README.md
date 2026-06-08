@@ -1,5 +1,7 @@
 # Kinesiology Clinic ERP
 
+[![Tests](https://github.com/matisoto27/kinesiology-clinic-erp/actions/workflows/tests.yml/badge.svg)](https://github.com/matisoto27/kinesiology-clinic-erp/actions/workflows/tests.yml)
+
 > Fullstack ERP built for the daily operations of a real kinesiology clinic — replacing fragmented spreadsheet workflows with a single, centralized system.
 
 Designed and implemented end-to-end using **PHP 8.2**, **Laravel 12**, **Livewire 4**, **MySQL**, **Docker**, and **Tailwind CSS**.
