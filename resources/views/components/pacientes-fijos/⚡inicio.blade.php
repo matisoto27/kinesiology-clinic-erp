@@ -34,7 +34,7 @@ new class extends Component
                 ])
                 ->where('fecha_comienzo', '>', now())
                 ->whereDoesntHave('turnos', function ($consulta) {
-                    $consulta->where('asiste', true);
+                    $consulta->where('estado', 'Presente');
                 })
                 ->delete();
             });
