@@ -47,6 +47,7 @@ export function ocultarSemanasButtons() {
     inicioContainer.classList.add('hidden');
     radioButtons.forEach(radio => {
         radio.checked = false;
+        radio.disabled = false;
     });
 
     if (primerTurnoSelect) {

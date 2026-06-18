@@ -50,7 +50,7 @@
                 <label for="turnos-checkbox" class="etiqueta-formulario">Generar turnos automáticamente</label>
             </div>
 
-            <div class="mb-4 flex justify-around items-center border hidden" id="dias-container">
+            <div class="dias-container hidden" id="dias-container">
                 <label>
                     <input type="checkbox" value="Lunes" disabled>
                     Lunes
@@ -77,7 +77,7 @@
                 </label>
             </div>
 
-            <div class="mb-4 flex items-center border hidden" id="inicio-container">
+            <div class="semanas-container hidden" id="inicio-container">
                 <div class="columna-campo flex-1">
                     <p class="text-lg font-medium">¿Arranca esta semana o la que viene?</p>
 
@@ -94,7 +94,7 @@
 
                 <div class="columna-campo flex-1">
                     <label class="etiqueta-formulario">Primera clase</label>
-                    <select class="entrada" id="primer-turno-select" disabled required>
+                    <select class="primer-fecha-select" id="primer-turno-select" disabled required>
                         <option value="" disabled selected>Seleccione una fecha</option>
                     </select>
                 </div>

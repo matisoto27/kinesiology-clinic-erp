@@ -39,7 +39,8 @@
         @apply mb-4 block font-semibold text-2xl text-center text-white;
     }
 
-    .checkbox-formulario {
+    .checkbox-formulario,
+    .dias-container input[type="checkbox"] {
         @apply accent-[#F5D500] h-4 w-4 cursor-pointer;
 
         &:disabled {
@@ -206,5 +207,25 @@
 
     .accion-editar {
         @apply text-white hover:text-blue-400 transition-colors;
+    }
+
+    .dias-container {
+        @apply mb-4 h-30 flex justify-around items-center bg-[#3A8F8E] border border-[#F5D500] rounded-lg text-white;
+    }
+
+    .semanas-container {
+        @apply mb-4 px-3 h-40 flex items-center bg-[#3A8F8E] border border-[#F5D500] rounded-lg text-white;
+    }
+
+    .primer-fecha-select {
+        @apply bg-[#006E6B] border-2 border-gray-200 outline-none p-2 rounded-xl text-xl text-white;
+
+        &:disabled {
+            @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
+        }
+
+        &:focus {
+            @apply border-[#F5D500];
+        }
     }
 }

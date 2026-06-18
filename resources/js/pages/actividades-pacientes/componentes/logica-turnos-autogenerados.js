@@ -122,14 +122,14 @@ function renderizarHorarios(diasSeleccionados, turnosPorDia, fechasEsperadas) {
 
     const sesionesPorDia = contarSesionesEsperadasPorDia(fechasEsperadas);
 
-    let html = '<div class="fila-formulario">';
+    let html = '';
 
     diasSeleccionados.forEach(dia => {
 
         const horarios = turnosPorDia[dia] ?? {};
 
         html += `
-            <div class="columna-campo">
+            <div class="mb-4 columna-campo">
                 <label class="etiqueta-formulario">
                     ${dia}
                 </label>
@@ -158,8 +158,6 @@ function renderizarHorarios(diasSeleccionados, turnosPorDia, fechasEsperadas) {
             </div>
         `;
     });
-
-    html += '</div>';
 
     turnosContainer.innerHTML = html;
 }
