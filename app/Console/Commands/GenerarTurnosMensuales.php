@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
 use App\Services\TurnoService;
+use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
@@ -26,12 +27,9 @@ class GenerarTurnosMensuales extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Genera turnos mensuales para pacientes fijos cuando faltan menos de 30 días de cobertura.';
 
-    /**
-     * Execute the console command.
-     */
-    public function handle(TurnoService $turnoService)
+    public function handle(TurnoService $turnoService, ExpansorTurnosPatron $expansorTurnosPatron): void
     {
         $consulta = PacienteFijo::select('id', 'id_actividad', 'id_paciente')
             ->with('horarios:id_paciente_fijo,dia_semana,hora_inicio');
@@ -58,11 +56,15 @@ class GenerarTurnosMensuales extends Command
                 ->latest('id')
                 ->first();
 
+            if (!$actPac) {
+                continue;
+            }
+
             $ahora = Carbon::now();
             $fechaAnticipacion = $ahora->copy()->addDays(30);
             $fechaObjetivo = $ahora->copy()->addDays(60);
 
-            $fechaReferencia = ($actPac && $actPac->ultimoTurno)
+            $fechaReferencia = $actPac->ultimoTurno
                 ? $actPac->ultimoTurno->fecha_hora->copy()
                 : $ahora->copy();
 
@@ -70,29 +72,42 @@ class GenerarTurnosMensuales extends Command
                 continue;
             }
 
+            $horariosPaciente = $pacFijo->horarios
+                ->map(fn ($horario) => [
+                    'dia_semana' => $horario->dia_semana,
+                    'hora_inicio' => $horario->hora_inicio,
+                ])
+                ->all();
+
             while ($fechaReferencia->lessThan($fechaObjetivo)) {
                 DB::beginTransaction();
 
                 try {
                     $cantidadSesiones = $actPac->cant_sesiones;
-                    $horariosPaciente = $pacFijo->horarios;
+                    $frecuenciaSemanal = count($horariosPaciente);
 
-                    $turnos = [];
-                    for ($i = 0; $i < 4; $i++) {
-                        $fechaReferencia->addWeek();
+                    $turnosExistentesOriginales = $actPac->turnos()
+                        ->whereNull('id_turno_original')
+                        ->pluck('fecha_hora')
+                        ->all();
 
-                        foreach ($horariosPaciente as $hor) {
-                            $turnos[] = $fechaReferencia->copy()
-                                ->startOfWeek($hor->dia_semana)
-                                ->setTimeFromTimeString($hor->hora_inicio);
-                        }
+                    $expansion = $expansorTurnosPatron->continuarDesdeUltimoOriginal(
+                        $fechaReferencia,
+                        $horariosPaciente,
+                        $cantidadSesiones,
+                        $frecuenciaSemanal,
+                        $turnosExistentesOriginales
+                    );
+
+                    if ($expansion['turnos'] === []) {
+                        throw new Exception('No se pudieron calcular turnos para continuar el patrón del paciente fijo.');
                     }
 
                     $turnosValidados = $turnoService->prepararFechas(
                         $actPac->actividad,
                         $idPaciente,
-                        $turnos,
-                        4
+                        $expansion['turnos'],
+                        $expansion['semanas']
                     );
 
                     $combo = $actPac->actividad->combos

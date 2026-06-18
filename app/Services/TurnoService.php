@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Actividad;
+use Carbon\Carbon;
 use Exception;
 
 class TurnoService
@@ -10,9 +11,10 @@ class TurnoService
     public function prepararFechas(Actividad $actividad, int $idPaciente, array $turnosSolicitados, int $semanasNecesarias): array
     {
         $primerTurno = $turnosSolicitados[0];
+        $ultimoTurno = $turnosSolicitados[array_key_last($turnosSolicitados)];
 
-        $comienzo = $primerTurno->copy()->startOfWeek()->startOfDay();
-        $fin = $primerTurno->copy()->addWeeks($semanasNecesarias - 1)->addDays(4)->endOfDay();
+        $comienzo = $primerTurno->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $fin = $ultimoTurno->copy()->endOfWeek(Carbon::FRIDAY)->endOfDay();
 
         $fechasDisponibles = array_flip($actividad->turnosDisponibles($idPaciente, $comienzo, $fin));
 

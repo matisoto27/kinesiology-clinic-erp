@@ -188,4 +188,19 @@ export function mostrarElemento(elemento, confirma) {
     elemento.classList.toggle('hidden', !confirma);
 }
 
+export function formatearFechaLocalISO(fecha) {
+    const yyyy = fecha.getFullYear();
+    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+    const dd = String(fecha.getDate()).padStart(2, '0');
+
+    return `${yyyy}-${mm}-${dd}`;
+}
+
 export const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+export const OFFSET_DIAS = {
+    'Lunes': 1,
+    'Martes': 2,
+    'Miércoles': 3,
+    'Jueves': 4,
+    'Viernes': 5
+};

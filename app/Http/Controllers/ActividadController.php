@@ -74,31 +74,18 @@ class ActividadController extends Controller
 
     public function obtenerTurnosDisponibles(int $id, Request $request)
     {
-        $actividad = Actividad::find($id);
-        $ahora = Carbon::now();
-
-        // REGLA DE NEGOCIO: Mínimo 1 hora antes del último turno para incluir la semana actual.
-        $limite = $ahora->copy()->startOfWeek()->addDays(4);
-        $actividad->esActividadGeneral() ? $limite->setTime(18, 00, 0) : $limite->setTime(18, 30, 0);
-        $incluirSemanaActual = $ahora->lessThanOrEqualTo($limite);
+        $request->merge(['id_actividad' => $id]);
 
         $validados = $request->validate([
+            'id_actividad' => ['required', 'integer', 'exists:actividades,id'],
             'id_paciente' => ['required', 'integer', 'exists:pacientes,id'],
-            'cantidad_semanas' => ['required', 'integer', 'min:1']
+            'fecha_comienzo' => ['required', 'date'],
+            'fecha_fin' => ['required', 'date']
         ]);
 
         try {
-            $cantidadSemanas = (int) $validados['cantidad_semanas'];
-
-            $fechaComienzo = $incluirSemanaActual
-                ? $ahora->copy()->startOfWeek()
-                : $ahora->copy()->next(Carbon::MONDAY);
-
-            $semanasAdicionales = $incluirSemanaActual
-                ? $cantidadSemanas
-                : $cantidadSemanas - 1;
-
-            $fechaFin = $fechaComienzo->copy()->addWeeks($semanasAdicionales)->endOfWeek(Carbon::FRIDAY);
+            $fechaComienzo = Carbon::parse($validados['fecha_comienzo']);
+            $fechaFin = Carbon::parse($validados['fecha_fin']);
 
             $turnosDisponibles = Actividad::findOrFail($id)->turnosDisponibles($validados['id_paciente'], $fechaComienzo, $fechaFin);
 

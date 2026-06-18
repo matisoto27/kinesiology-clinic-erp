@@ -8,6 +8,7 @@ use App\Models\ActividadPaciente;
 use App\Models\Paciente;
 use App\Support\Registros\DeteccionRegistroDuplicado;
 use App\Support\Registros\ModalidadRegistro;
+use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Database\QueryException;
@@ -18,7 +19,8 @@ use Throwable;
 class ActividadPacienteService
 {
     public function __construct(
-        private TurnoService $turnoService
+        private TurnoService $turnoService,
+        private ExpansorTurnosPatron $expansorTurnosPatron
     ) {}
 
     public function registrar(array $validados): ActividadPaciente
@@ -48,7 +50,7 @@ class ActividadPacienteService
                 $actividadPaciente = ActividadPaciente::create($datosInscripcion);
 
                 $turnosParaInsertar = $validados['autogenerados']
-                    ? $this->prepararTurnosAutomaticos($ahora, $validados)
+                    ? $this->prepararTurnosAutomaticos($validados)
                     : $this->turnoService->prepararTurnosManuales($validados['turnos']);
 
                 $actividadPaciente->turnos()->createMany($turnosParaInsertar);
@@ -99,54 +101,24 @@ class ActividadPacienteService
         return $validados;
     }
 
-    private function prepararTurnosAutomaticos(Carbon $ahora, array $validados): array
+    private function prepararTurnosAutomaticos(array $validados): array
     {
-        $dias = [
-            'Lunes'     => 1,
-            'Martes'    => 2,
-            'Miércoles' => 3,
-            'Jueves'    => 4,
-            'Viernes'   => 5,
-            'Sábado'    => 6,
-            'Domingo'   => 7
-        ];
-
         $cantidadSesiones = (int) ($validados['sesiones_cubiertas'] ?? $validados['cant_sesiones']);
         $frecuenciaSemanal = (int) $validados['frecuencia_semanal'];
-        $semanasNecesarias = (int) ceil($cantidadSesiones / $frecuenciaSemanal);
+        $fechaAncla = Carbon::parse($validados['fecha_ancla'])->startOfDay();
 
-        $fechaBase = $validados['desde_actual']
-            ? $ahora->copy()->startOfWeek() // Lunes de la semana actual
-            : $ahora->copy()->addWeek()->startOfWeek(); // Lunes de la semana siguiente
-
-        $turnosSolicitados = [];
-
-        $turnosPreparados = collect($validados['turnos'])->map(function ($turno) use ($dias) {
-            return [
-                'dia' => $dias[$turno['dia_semana']],
-                'hora' => str_replace('hs', '', $turno['hora_inicio'])
-            ];
-        });
-
-        for ($semana = 0; $semana < $semanasNecesarias; $semana++) {
-            $fechaSemana = $fechaBase->copy()->addWeeks($semana);
-
-            foreach ($turnosPreparados as $turno) {
-                if (count($turnosSolicitados) >= $cantidadSesiones) {
-                    break 2;
-                }
-
-                $turnosSolicitados[] = $fechaSemana->copy()
-                    ->dayOfWeek($turno['dia'])
-                    ->setTimeFromTimeString($turno['hora']);
-            }
-        }
+        $expansion = $this->expansorTurnosPatron->expandir(
+            $fechaAncla,
+            $validados['turnos'],
+            $cantidadSesiones,
+            $frecuenciaSemanal
+        );
 
         return $this->turnoService->prepararFechas(
             Actividad::findOrFail($validados['id_actividad']),
             $validados['id_paciente'],
-            $turnosSolicitados,
-            $semanasNecesarias
+            $expansion['turnos'],
+            $expansion['semanas']
         );
     }
 }

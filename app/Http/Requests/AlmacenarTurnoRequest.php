@@ -32,7 +32,12 @@ class AlmacenarTurnoRequest extends FormRequest
             'id_actividad' => 'required|integer|exists:actividades,id',
             'id_paciente' => 'required|integer|exists:pacientes,id',
             'autogenerados' => 'required|boolean',
-            'desde_actual' => 'required|boolean',
+            'fecha_ancla' => [
+                Rule::requiredIf($turnosAutogenerados),
+                Rule::prohibitedIf(!$turnosAutogenerados),
+                'nullable',
+                'date_format:Y-m-d',
+            ],
             'frecuencia_semanal' => 'required|integer|min:1|max:5',
 
             'sesiones_cubiertas' => [Rule::requiredIf($esConOrden), 'integer', 'in:5,10'],

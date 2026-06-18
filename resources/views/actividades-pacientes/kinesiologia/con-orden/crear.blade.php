@@ -85,7 +85,57 @@
                 <label for="turnos-checkbox" class="etiqueta-formulario">Generar turnos automáticamente</label>
             </div>
 
-            <div id="contenedor-turnos"></div>
+            <div class="mb-4 flex justify-around items-center border hidden" id="dias-container">
+                <label>
+                    <input type="checkbox" value="Lunes" disabled>
+                    Lunes
+                </label>
+
+                <label>
+                    <input type="checkbox" value="Martes" disabled>
+                    Martes
+                </label>
+
+                <label>
+                    <input type="checkbox" value="Miércoles" disabled>
+                    Miércoles
+                </label>
+
+                <label>
+                    <input type="checkbox" value="Jueves" disabled>
+                    Jueves
+                </label>
+
+                <label>
+                    <input type="checkbox" value="Viernes" disabled>
+                    Viernes
+                </label>
+            </div>
+
+            <div class="mb-4 flex items-center border hidden" id="inicio-container">
+                <div class="columna-campo flex-1">
+                    <p class="text-lg font-medium">¿Arranca esta semana o la que viene?</p>
+
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="inicio" value="actual">
+                        Semana actual
+                    </label>
+
+                    <label class="flex items-center gap-2">
+                        <input type="radio" name="inicio" value="siguiente">
+                        Semana que viene
+                    </label>
+                </div>
+
+                <div class="columna-campo flex-1">
+                    <label class="etiqueta-formulario">Primera clase</label>
+                    <select class="entrada" id="primer-turno-select" disabled required>
+                        <option value="" disabled selected>Seleccione una fecha</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="turnos-container"></div>
 
             <button type="submit" class="boton-registrar">Registrar</button>
 

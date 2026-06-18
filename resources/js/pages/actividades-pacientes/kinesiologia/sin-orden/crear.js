@@ -1,42 +1,42 @@
 import { configurarBuscador, limpiarSugerencias } from '@compartido/buscador.js';
-
 import {
     agregarOpcion,
     apiFetch,
     crearOpcionPorDefecto,
-    convertirFechaParaMostrar,
-    DIAS_SEMANA,
     habilitarElemento,
     mostrarAlerta,
-    obtenerValor,
-    transformarFecha
+    obtenerValor
 } from '@compartido/general.js';
-
+import { estado, resetearEstado } from '../../componentes/estado-formulario.js';
+import { manejarTurnosAutogenerados } from '../../componentes/logica-turnos-autogenerados.js';
 import {
-    obtenerDesdeActual,
-    actualizarDesdeActual,
-    obtenerPrimeraFechaFueSeleccionada,
-    actualizarPrimeraFechaFueSeleccionada,
-    obtenerUltimaActividadValida,
-    actualizarUltimaActividadValida,
-    obtenerUltimaFrecuenciaValida,
-    actualizarUltimaFrecuenciaValida
-} from '../../componentes/gestor-estado.js';
-
+    manejarCambioSemanaManual,
+    manejarPrimerTurnoManual,
+    manejarTurnosManuales
+} from '../../componentes/logica-turnos-manuales.js';
 import {
-    actualizarDiasDeshabilitados,
-    cargarHorarios,
-    consolidarTurnosPorDia,
-    deshabilitarHoraSeleccionada,
-    determinarTurnosPorSemana,
-    mostrarErrorTurnosInsuficientes,
-    limpiarTurnos,
-    obtenerTurnosSemanasCriticas,
-    obtenerTurnosSemana,
-    renderizarTurnosFijos,
-    restablecerMoneda,
-    semanaCubreFrecuencia
-} from '../../componentes/logica-turnos.js';
+    manejarCambioDiaTurnos,
+    manejarCambioSemanaTurnos,
+    mostrarConfiguracionAutomatica
+} from '../../componentes/orquestacion-turnos-ui.js';
+import {
+    construirPayloadKineSinOrden,
+    recolectarPatronSemanal,
+    recolectarTurnosManuales
+} from '../../componentes/payload-registro.js';
+import { limpiarConfiguracionTurnos } from '../../componentes/ui-turnos.js';
+import {
+    actividadSelect,
+    cantidadSelect,
+    checkboxes,
+    formulario,
+    frecuenciaSelect,
+    precioInput,
+    primerTurnoSelect,
+    radioButtons,
+    turnosCheckbox,
+    turnosContainer
+} from '../../componentes/dom-turnos.js';
 
 function crearLiPaciente(paciente, esUltimo) {
     const li = document.createElement('li');
@@ -44,267 +44,59 @@ function crearLiPaciente(paciente, esUltimo) {
     const apellidoNombre = `${paciente.apellido} ${paciente.nombre}`;
 
     li.classList.add('p-2', 'cursor-pointer', 'text-left', 'bg-white', 'hover:bg-[#F5D500]', 'text-black');
-    if (esUltimo) li.classList.add('rounded-b-md'); // Último paciente se redondean los bordes inferiores
+    if (esUltimo) li.classList.add('rounded-b-md');
     li.textContent = apellidoNombre;
     li.dataset.idPaciente = idPaciente;
 
     return li;
 }
 
-async function intentarActualizarPagina() {
-    const datos = obtenerDatosFormulario();
-    if (datos === null) return;
+function faltanDatosFormulario() {
+    return [
+        estado.idPaciente,
+        estado.idActividad,
+        estado.cantidadSesiones,
+        estado.frecuenciaSemanal
+    ].some(valor => valor === null || valor === undefined);
+}
 
-    if (controladorAbortar) controladorAbortar.abort();
-    controladorAbortar = new AbortController();
+function limpiarSeleccionKineSinOrden() {
+    combosActividad = null;
+    cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una cantidad');
+    habilitarElemento(cantidadSelect, false);
+    frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
+    habilitarElemento(frecuenciaSelect, false);
+    precioInput.value = '$0,00';
+    limpiarConfiguracionTurnos();
+}
 
-    try {
-        await actualizarPagina(datos, controladorAbortar.signal);
-    } catch (error) {
-        if (error.name === 'AbortError') return;
-        console.error('Error al intentar actualizar la página', error.message);
+async function actualizarConfiguracionTurnos() {
+    if (faltanDatosFormulario()) {
+        limpiarConfiguracionTurnos();
+        return;
+    }
+
+    limpiarConfiguracionTurnos();
+
+    if (estado.turnosAutogenerados) {
+        mostrarConfiguracionAutomatica();
+    } else {
+        await manejarTurnosManuales();
     }
 }
 
-function obtenerDatosFormulario() {
-    const datos = {
-        idPaciente: obtenerValor(idPacienteSeleccionado),
-        idActividad: obtenerValor(actividadSelect),
-        cantidadSesiones: obtenerValor(cantidadSelect),
-        frecuenciaSemanal: obtenerValor(frecuenciaSelect)
-    };
+function manejarCambioTurnosAutogenerados() {
+    estado.turnosAutogenerados = turnosCheckbox.checked;
 
-    const todosNumerosValidos = Object.values(datos).every(v => v !== null);
-    const cantidadValida = datos.cantidadSesiones <= 10;
-
-    return (todosNumerosValidos && cantidadValida) ? datos : null;
-}
-
-async function actualizarPagina(datos, signal) {
-    actualizarDesdeActual(false);
-    actualizarPrimeraFechaFueSeleccionada(false);
-
-    try {
-        const cantidadSesiones = datos.cantidadSesiones;
-        const frecuenciaSemanal = datos.frecuenciaSemanal;
-
-        const cantidadSemanas = Math.ceil(cantidadSesiones / frecuenciaSemanal);
-        const tieneMasDeUnaSemana = cantidadSemanas > 1;
-
-        const turnos = await apiFetch(`/actividades/${datos.idActividad}/turnos-disponibles?id_paciente=${datos.idPaciente}&cantidad_semanas=${cantidadSemanas}`, { signal });
-
-        let turnosSemanasCriticas = [];
-
-        if (tieneMasDeUnaSemana) {
-            turnosSemanasCriticas = obtenerTurnosSemanasCriticas(turnos, cantidadSemanas);
-
-            const insuficiente = turnosSemanasCriticas.some(semana => {
-                return !semanaCubreFrecuencia(semana, frecuenciaSemanal);
-            });
-
-            if (insuficiente) {
-                await mostrarErrorTurnosInsuficientes();
-                frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
-                return;
-            }
-        }
-
-        const turnosSemanaActual = obtenerTurnosSemana(turnos, 0);
-        const turnosUltimaSemana = obtenerTurnosSemana(turnos, cantidadSemanas);
-
-        const semanaActualCubre = semanaCubreFrecuencia(turnosSemanaActual, frecuenciaSemanal);
-        const ultimaSemanaCubre = semanaCubreFrecuencia(turnosUltimaSemana, frecuenciaSemanal);
-
-        if (!semanaActualCubre && !ultimaSemanaCubre) {
-            await mostrarErrorTurnosInsuficientes();
-            frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
-            return;
-        }
-
-        let turnosPorSemana;
-        let turnoHTML = '';
-
-        if (turnosCheckbox.checked) {
-            const resultado = await determinarTurnosPorSemana(semanaActualCubre, ultimaSemanaCubre, turnosSemanaActual, turnosSemanasCriticas, turnosUltimaSemana);
-
-            if (resultado.accion === 'dismissed') {
-                frecuenciaSelect.value = obtenerUltimaFrecuenciaValida();
-                return;
-            }
-
-            turnosPorSemana = resultado.turnosPorSemana;
-            if (resultado.accion === 'confirmed') {
-                actualizarDesdeActual(true);
-            }
-
-            const turnosPorDia = consolidarTurnosPorDia(turnosPorSemana);
-
-            const diasConTurnos = Object.keys(turnosPorDia).sort((diaA, diaB) => {
-                return DIAS_SEMANA.indexOf(diaA) - DIAS_SEMANA.indexOf(diaB);
-            });
-
-            renderizarTurnosFijos(frecuenciaSemanal, diasConTurnos, contenedorTurnos);
-
-            const diaSelects = contenedorTurnos.querySelectorAll('.dia-select');
-
-            diaSelects.forEach(select => {
-                select.addEventListener('change', function() {
-                    actualizarDiasDeshabilitados(diaSelects);
-                    cargarHorarios(this, turnosPorDia, cantidadSemanas);
-                });
-            });
-
-        } else {
-
-            const turnosPrimeraSemana =  tieneMasDeUnaSemana
-                ? turnosSemanasCriticas[0]
-                : turnosUltimaSemana;
-
-            const fechasSemanaActual = Object.keys(turnosSemanaActual);
-            const fechasSemanaUno = Object.keys(turnosPrimeraSemana);
-
-            const opcionesPrimeraSemana = semanaActualCubre
-                ? [...fechasSemanaActual, ...fechasSemanaUno]
-                : fechasSemanaUno;
-
-            let turnosGenerados = 0;
-
-            for (let i = 1; i <= cantidadSemanas; i++) {
-                turnoHTML += `<h3 class="mb-4 border-t font-medium text-xl text-[#F5D500]">Semana ${i}</h3>`;
-
-                for (let j = 1; j <= frecuenciaSemanal; j++) {
-
-                    if (turnosGenerados >= cantidadSesiones) break;
-
-                    turnosGenerados++;
-
-                    turnoHTML += `
-                        <div class="mb-4 flex gap-5 turno" data-semana="${i}">
-
-                            <label class="etiqueta-formulario">Turno ${j}</label>
-
-                            <div class="columna-campo">
-                                <label class="etiqueta-formulario">Fecha</label>
-                                <select class="entrada fecha-select" disabled required>
-                                    <option value="" disabled selected>Seleccione una fecha</option>
-                                    ${opcionesPrimeraSemana.map(fecha => {
-                                        return `<option value="${fecha}">${convertirFechaParaMostrar(fecha)}</option>`;
-                                    }).join('')}
-                                </select>
-                            </div>
-
-                            <div class="columna-campo">
-                                <label class="etiqueta-formulario">Hora de inicio</label>
-                                <select class="entrada hora-select" disabled required>
-                                    <option value="" disabled selected>Seleccione un horario</option>
-                                </select>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-            contenedorTurnos.innerHTML = turnoHTML;
-
-            const fechaSelects = contenedorTurnos.querySelectorAll('.fecha-select');
-            const primerFechaSelect = fechaSelects[0];
-            let turnosPorFecha;
-
-            primerFechaSelect.addEventListener('change', function () {
-
-                if (obtenerPrimeraFechaFueSeleccionada()) return;
-
-                const fechaSeleccionada = this.value;
-                const comienzaSemanaActual = fechasSemanaActual.includes(fechaSeleccionada);
-
-                turnosPorSemana = comienzaSemanaActual
-                    ? [turnosSemanaActual, ...turnosSemanasCriticas]
-                    : [...turnosSemanasCriticas, turnosUltimaSemana];
-
-                turnosPorFecha = Object.assign({}, ...turnosPorSemana);
-
-                fechaSelects.forEach(select => {
-
-                    const indiceSemana = parseInt(select.closest('.turno').dataset.semana) - 1;
-                    const fechasSemana = Object.keys(turnosPorSemana[indiceSemana]);
-
-                    select.innerHTML = crearOpcionPorDefecto('Seleccione una fecha');
-
-                    fechasSemana.forEach(fecha => {
-                        const esFechaSeleccionadaDePrimeraSemana = indiceSemana === 0 && fecha === fechaSeleccionada;
-
-                        const deshabilitada = esFechaSeleccionadaDePrimeraSemana;
-                        const seleccionada = deshabilitada && select === this;
-
-                        agregarOpcion(
-                            select,
-                            fecha,
-                            convertirFechaParaMostrar(fecha),
-                            deshabilitada,
-                            seleccionada
-                        );
-                    });
-
-                    habilitarElemento(select, true);
-                });
-
-                actualizarPrimeraFechaFueSeleccionada(true);
-            });
-
-            fechaSelects.forEach(select => {
-                select.addEventListener('change', function () {
-
-                    const fechasSeleccionadas = Array.from(fechaSelects)
-                        .map(s => s.value)
-                        .filter(v => v);
-
-                    fechaSelects.forEach(s => {
-                        Array.from(s.options).forEach(option => {
-
-                            if (option.value === '') return;
-
-                            option.disabled = fechasSeleccionadas.includes(option.value) && option.value !== s.value;
-                        });
-                    });
-
-                    const fechaSeleccionada = this.value;
-                    const horarios = turnosPorFecha[fechaSeleccionada]; 
-                    const turno = this.closest('.turno');
-                    const horaSelect = turno.querySelector('.hora-select');
-
-                    horaSelect.innerHTML = crearOpcionPorDefecto('Seleccione un horario');
-
-                    horarios.forEach(hora => {
-
-                        const [hh, mm] = hora.split(':');
-                        const horaConvertida = `${hh}:${mm}hs`;
-
-                        agregarOpcion(horaSelect, hora, horaConvertida);
-                    });
-
-                    habilitarElemento(horaSelect, true);
-                    horaSelect.addEventListener('change', deshabilitarHoraSeleccionada);
-                });
-            });
-
-            habilitarElemento(primerFechaSelect, true);
-        }
-
-        actualizarUltimaFrecuenciaValida(frecuenciaSemanal);
-
-    } catch (error) {
-        if (error.name === 'AbortError') throw error;
-        console.error('Error en el gestor de cambios de frecuencia semanal', error);
-        await mostrarAlerta('error', 'Error al actualizar la página', error.message);
+    if (faltanDatosFormulario()) {
+        return;
     }
+
+    actualizarConfiguracionTurnos();
 }
 
-const actividadSelect = document.getElementById('actividad-select');
-const cantidadSelect = document.getElementById('cantidad-select');
-const contenedorTurnos = document.getElementById('contenedor-turnos');
-const formulario = document.getElementById('formulario');
-const frecuenciaSelect = document.getElementById('frecuencia-select');
-const precioInput = document.getElementById('precio-input');
-const turnosCheckbox = document.getElementById('turnos-checkbox');
+let combosActividad = null;
+
 const {
     elementos: {
         idSeleccionado: idPacienteSeleccionado,
@@ -315,19 +107,23 @@ const {
     habilitarBuscador
 } = configurarBuscador('paciente', '/buscar-pacientes', crearLiPaciente);
 
-let combosActividad = null;
-let controladorAbortar = null;
+async function manejarCambioActividad() {
 
-actividadSelect.addEventListener('change', async function() {
-    const idActividad = obtenerValor(this);
-    if (idActividad === null) return;
+    const idActividad = obtenerValor(actividadSelect);
+    if (idActividad === null) {
+        estado.idActividad = null;
+        estado.frecuenciaSemanal = null;
+        estado.cantidadSesiones = null;
+        limpiarSeleccionKineSinOrden();
+        return;
+    }
 
     let combos = [];
 
     try {
         combos = await apiFetch(`/actividades/${idActividad}/combos?con_precio=true`);
     } catch (error) {
-        this.value = obtenerUltimaActividadValida();
+        actividadSelect.value = estado.idActividad ?? '';
         console.error(error);
         await mostrarAlerta('error', 'Error al cargar los combos', error.message);
         return;
@@ -336,26 +132,28 @@ actividadSelect.addEventListener('change', async function() {
     const cantidadCombos = combos.length;
 
     if (cantidadCombos === 0) {
-        this.value = obtenerUltimaActividadValida();
+        actividadSelect.value = estado.idActividad ?? '';
         await mostrarAlerta('error', 'Combos no disponibles', 'La actividad seleccionada no tiene combos con precios registrados.');
         return;
     }
 
-    // REGLA DE NEGOCIO
     if (idActividad === 3 && cantidadCombos !== 4) {
-        this.value = obtenerUltimaActividadValida();
+        actividadSelect.value = estado.idActividad ?? '';
         await mostrarAlerta('error', 'Combos sin precios definidos', 'Por favor, registre los precios de los 4 combos de Kinesiología Convencional.');
         return;
     }
 
     const precioSesionIndExiste = combos.some(c => c.cantidad_sesiones === 1);
     if (!precioSesionIndExiste) {
-        this.value = obtenerUltimaActividadValida();
+        actividadSelect.value = estado.idActividad ?? '';
         await mostrarAlerta('error', 'Precio no definido', 'La actividad seleccionada no tiene un precio definido para su sesión individual.');
         return;
     }
 
-    actualizarUltimaActividadValida(idActividad);
+    estado.idActividad = idActividad;
+    estado.frecuenciaSemanal = null;
+    estado.cantidadSesiones = null;
+
     combosActividad = Object.fromEntries(
         combos.map(combo => [combo.cantidad_sesiones, combo.precio_vigente])
     );
@@ -375,23 +173,29 @@ actividadSelect.addEventListener('change', async function() {
 
     frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
     habilitarElemento(frecuenciaSelect, false);
-    actualizarUltimaFrecuenciaValida('');
-    restablecerMoneda(precioInput);
-    limpiarTurnos(contenedorTurnos);
-});
 
-cantidadSelect.addEventListener('change', function() {
-    // ALMACENAR FRECUENCIA SELECCIONADA PREVIA
+    precioInput.value = '$0,00';
+    limpiarConfiguracionTurnos();
+}
+
+function manejarCambiosCantidad() {
+
     const frecuenciaSeleccionada = obtenerValor(frecuenciaSelect);
 
     frecuenciaSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
     habilitarElemento(frecuenciaSelect, false);
-    restablecerMoneda(precioInput);
-    limpiarTurnos(contenedorTurnos);
+
+    precioInput.value = '$0,00';
+    limpiarConfiguracionTurnos();
 
     const idActividad = obtenerValor(actividadSelect);
-    const cantidadIngresada = obtenerValor(this);
-    if (idActividad === null || cantidadIngresada === null || cantidadIngresada > 10) return;
+    const cantidadIngresada = obtenerValor(cantidadSelect);
+    if (idActividad === null || cantidadIngresada === null || cantidadIngresada > 10) {
+        return;
+    }
+
+    estado.cantidadSesiones = cantidadIngresada;
+    estado.frecuenciaSemanal = null;
 
     if (idActividad !== 3 || cantidadIngresada !== 10) {
         agregarOpcion(frecuenciaSelect, 1, '1 vez por semana');
@@ -408,7 +212,7 @@ cantidadSelect.addEventListener('change', function() {
     }
 
     if (!combosActividad[1]) {
-        precioInput.value = 'ERROR AL CARGAR';
+        precioInput.value = 'Error';
         return;
     }
 
@@ -422,109 +226,90 @@ cantidadSelect.addEventListener('change', function() {
     }
 
     precioInput.value = `$${precioCombo}`;
-    intentarActualizarPagina();
+
+    if (frecuenciaSelect.value) {
+        estado.frecuenciaSemanal = obtenerValor(frecuenciaSelect);
+        actualizarConfiguracionTurnos();
+    }
+}
+
+actividadSelect.addEventListener('change', manejarCambioActividad);
+cantidadSelect.addEventListener('change', manejarCambiosCantidad);
+turnosCheckbox.addEventListener('change', manejarCambioTurnosAutogenerados);
+
+frecuenciaSelect.addEventListener('change', function() {
+    estado.frecuenciaSemanal = obtenerValor(this);
+    actualizarConfiguracionTurnos();
+});
+
+checkboxes.forEach(cb => {
+    cb.addEventListener('change', manejarCambioDiaTurnos);
+});
+
+radioButtons.forEach(radio => {
+    radio.addEventListener('change', async () => {
+        if (estado.turnosAutogenerados) {
+            await manejarCambioSemanaTurnos();
+        } else {
+            manejarCambioSemanaManual(radio.value);
+        }
+    });
+});
+
+primerTurnoSelect.addEventListener('change', async () => {
+    if (estado.turnosAutogenerados) {
+        if (faltanDatosFormulario()) {
+            limpiarConfiguracionTurnos();
+            return;
+        }
+
+        await manejarTurnosAutogenerados();
+    } else {
+        manejarPrimerTurnoManual();
+    }
 });
 
 formulario.addEventListener('submit', async (e) => {
     e.preventDefault();
 
     try {
-        const datos = obtenerDatosFormulario();
-        if (datos === null) {
+        if (faltanDatosFormulario()) {
             throw new Error('Por favor, ingrese todos los datos requeridos en el formulario.');
         }
 
-        const frecuenciaSemanal = datos.frecuenciaSemanal;
-        const cantidadSesiones = datos.cantidadSesiones;
+        const turnosAutogenerados = estado.turnosAutogenerados;
+        const frecuenciaSemanal = estado.frecuenciaSemanal;
+        const cantidadSesiones = estado.cantidadSesiones;
 
-        const turnosAutogenerados = turnosCheckbox.checked;
+        const turnos = turnosAutogenerados
+            ? recolectarPatronSemanal(turnosContainer, frecuenciaSemanal)
+            : recolectarTurnosManuales(turnosContainer, cantidadSesiones);
 
-        const cantidadTurnos = turnosAutogenerados
-            ? frecuenciaSemanal
-            : cantidadSesiones;
+        const payload = construirPayloadKineSinOrden({
+            idActividad: estado.idActividad,
+            idPaciente: estado.idPaciente,
+            cantidadSesiones,
+            frecuenciaSemanal,
+            autogenerados: turnosAutogenerados,
+            turnos,
+            fechaAncla: primerTurnoSelect.value
+        });
 
-        const divsTurnos = contenedorTurnos.querySelectorAll('.turno');
-        const cantidadTurnosReal = divsTurnos.length;
-
-        if (cantidadTurnosReal < cantidadTurnos) {
-            throw new Error('Detectamos una inconsistencia en la estructura de la página. Por favor, recargue la página para solucionarlo.');
-        }
-
-        const turnos = [];
-
-        if (turnosAutogenerados) {
-
-            for (const turno of divsTurnos) {
-
-                const selects = turno.querySelectorAll('select');
-
-                if (selects.length < 2) {
-                    throw new Error('Detectamos una inconsistencia en la estructura de la página. Por favor, recargue la página para solucionarlo.');
-                }
-
-                const diaSemana = selects[0].value;
-                const horaInicio = selects[1].value;
-
-                if (!diaSemana || !horaInicio) {
-                    throw new Error('Por favor, seleccione para cada turno un día de la semana y una hora de inicio.');
-                }
-
-                turnos.push({
-                    dia_semana: diaSemana,
-                    hora_inicio: horaInicio
-                });
-            }
-
-        } else {
-
-            for (const turno of divsTurnos) {
-
-                const selects = turno.querySelectorAll('select');
-
-                if (selects.length < 2) {
-                    throw new Error('Detectamos una inconsistencia en la estructura de la página. Por favor, recargue la página para solucionarlo.');
-                }
-
-                const fechaStr = selects[0].value;
-                const horaInicio = selects[1].value;
-
-                if (!fechaStr || !horaInicio) {
-                    throw new Error('Por favor, seleccione para cada turno una fecha y una hora de inicio.');
-                }
-
-                const [hora, minuto] = horaInicio.split(':').map(Number);
-                const [anio, mes, dia] = fechaStr.split('-').map(Number);
-                const fecha = new Date(anio, mes - 1, dia, hora, minuto, 0, 0);
-
-                turnos.push(transformarFecha(fecha));
-            }
-        }
-
-        const url = formulario.dataset.url;
-        const options = {
+        const respuesta = await apiFetch(formulario.dataset.url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
-            body: JSON.stringify({
-                id_actividad: datos.idActividad,
-                id_paciente: datos.idPaciente,
-                cant_sesiones: cantidadSesiones,
-                autogenerados: turnosAutogenerados,
-                desde_actual: obtenerDesdeActual(),
-                turnos,
-                frecuencia_semanal: frecuenciaSemanal
-            })
-        };
+            body: JSON.stringify(payload)
+        });
 
-        const respuesta = await apiFetch(url, options);
         const idActPac = respuesta.id;
 
         await mostrarAlerta(
-            'success', 
-            '¡Turnos registrados!', 
+            'success',
+            '¡Turnos registrados!',
             'Los turnos del paciente han sido registrados correctamente.'
         );
 
@@ -549,12 +334,12 @@ formulario.addEventListener('submit', async (e) => {
     }
 });
 
-frecuenciaSelect.addEventListener('change', intentarActualizarPagina);
-
 quitarPacienteButton.addEventListener('click', function() {
+    resetearEstado();
     idPacienteSeleccionado.value = '';
     habilitarBuscador(true);
-    limpiarTurnos(contenedorTurnos);
+    actividadSelect.value = '';
+    limpiarSeleccionKineSinOrden();
 });
 
 sugerenciasPaciente.addEventListener('click', function(e) {
@@ -564,15 +349,14 @@ sugerenciasPaciente.addEventListener('click', function(e) {
     const idPaciente = obtenerValor(liSeleccionado.dataset.idPaciente);
     if (idPaciente === null) return;
 
+    estado.idPaciente = idPaciente;
     idPacienteSeleccionado.value = idPaciente;
     pacienteInput.value = liSeleccionado.textContent;
     habilitarBuscador(false);
     limpiarSugerencias(sugerenciasPaciente);
 
-    intentarActualizarPagina();
+    actualizarConfiguracionTurnos();
 });
-
-turnosCheckbox.addEventListener('change', intentarActualizarPagina);
 
 async function cargarActividades() {
     try {
