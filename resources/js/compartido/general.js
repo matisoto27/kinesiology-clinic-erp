@@ -196,6 +196,41 @@ export function formatearFechaLocalISO(fecha) {
     return `${yyyy}-${mm}-${dd}`;
 }
 
+export function lunesDeSemana(fecha) {
+    const lunes = new Date(fecha);
+    const dia = lunes.getDay();
+    const diferencia = dia === 0 ? -6 : 1 - dia;
+    lunes.setDate(lunes.getDate() + diferencia);
+
+    return lunes;
+}
+
+export function fechaDeSemana(diaNombre, tipoSemana) {
+    const hoy = new Date();
+    hoy.setHours(12, 0, 0, 0);
+
+    const lunes = lunesDeSemana(hoy);
+    if (tipoSemana === 'siguiente') {
+        lunes.setDate(lunes.getDate() + 7);
+    }
+
+    const fecha = new Date(lunes);
+    fecha.setDate(lunes.getDate() + (OFFSET_DIAS[diaNombre] - 1));
+
+    return fecha;
+}
+
+export function esFechaValidaSemanaActual(fechaIso) {
+    const ahora = new Date();
+    const hoyIso = formatearFechaLocalISO(ahora);
+
+    if (fechaIso < hoyIso) {
+        return false;
+    }
+
+    return !(fechaIso === hoyIso && ahora.getHours() >= 19);
+}
+
 export const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
 export const OFFSET_DIAS = {
     'Lunes': 1,

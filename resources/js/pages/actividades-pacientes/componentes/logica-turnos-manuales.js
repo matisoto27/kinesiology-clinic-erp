@@ -1,5 +1,7 @@
 import {
     inicioContainer,
+    radioActual,
+    radioSiguiente,
     primerTurnoSelect,
     turnosContainer
 } from './dom-turnos.js';
@@ -11,9 +13,16 @@ import {
     apiFetch,
     convertirFechaParaMostrar,
     crearOpcionPorDefecto,
+    esFechaValidaSemanaActual,
+    formatearFechaLocalISO,
     habilitarElemento,
     mostrarAlerta
 } from '@compartido/general.js';
+import {
+    esSegundoPaso,
+    fechasOcupadasPrimeraInscripcion,
+    frecuenciaPrimeraInscripcion
+} from './logica-dual-calendario.js';
 
 export async function manejarTurnosManuales() {
 
@@ -27,6 +36,7 @@ export async function manejarTurnosManuales() {
     estadoManual.fechasPorSemana = fechasPorSemana;
 
     inicioContainer.classList.remove('hidden');
+    configurarSemanaInicioManual();
 }
 
 function resetearEstadoManual() {
@@ -52,7 +62,7 @@ async function cargarTurnosDisponibles() {
         obtenerTotalTurnos() / estadoManual.frecuenciaSemanal
     );
     fechaFin.setDate(fechaFin.getDate() + (semanasNecesarias * 7) + 14);
-    const fechaFinStr = formatearFechaISO(fechaFin);
+    const fechaFinStr = formatearFechaLocalISO(fechaFin);
 
     const turnos = await apiFetch(
         `/actividades/${estado.idActividad}/turnos-disponibles?id_paciente=${estado.idPaciente}&fecha_comienzo=${fechaComienzoStr}&fecha_fin=${fechaFinStr}`
@@ -66,27 +76,83 @@ async function cargarTurnosDisponibles() {
     };
 }
 
+function configurarSemanaInicioManual() {
+
+    if (esSegundoPaso()) {
+        const actualDisponible = tieneFechasInicioValidasDual('actual');
+        const siguienteDisponible = tieneFechasInicioValidasDual('siguiente');
+
+        radioActual.checked = false;
+        radioActual.disabled = !actualDisponible;
+        radioSiguiente.checked = false;
+        radioSiguiente.disabled = !siguienteDisponible;
+
+        if (!actualDisponible && siguienteDisponible) {
+            radioSiguiente.checked = true;
+            cargarPrimerTurnoSelect('siguiente');
+        }
+
+        return;
+    }
+
+    if (debeForzarSemanaSiguienteManual()) {
+        radioActual.checked = false;
+        radioActual.disabled = true;
+        radioSiguiente.checked = true;
+        radioSiguiente.disabled = false;
+        cargarPrimerTurnoSelect('siguiente');
+        return;
+    }
+
+    radioActual.checked = false;
+    radioActual.disabled = false;
+    radioSiguiente.checked = false;
+    radioSiguiente.disabled = false;
+
+    habilitarElemento(primerTurnoSelect, false);
+    primerTurnoSelect.innerHTML = crearOpcionPorDefecto('Seleccione una fecha');
+}
+
+function tieneFechasInicioValidasDual(tipoInicio) {
+    let fechas = estadoManual.fechasPorSemana[tipoInicio === 'actual' ? 0 : 1] ?? [];
+
+    if (tipoInicio === 'actual') {
+        fechas = fechas.filter(esFechaValidaSemanaActual);
+    }
+
+    return fechas.some(esFechaInicioSeleccionable);
+}
+
 function obtenerPrimerLunes() {
 
     const ahora = new Date();
     const diaActual = ahora.getDay();
-    const hora = ahora.getHours();
-    const minutos = ahora.getMinutes();
 
     const fechaResultado = new Date(ahora);
     const diferenciaHastaLunes = diaActual === 0 ? -6 : 1 - diaActual;
     fechaResultado.setDate(ahora.getDate() + diferenciaHastaLunes);
 
-    const forzarSemanaSiguiente =
-        diaActual === 0 ||
-        diaActual === 6 ||
-        (diaActual === 5 && (hora > 19 || (hora === 19 && minutos >= 30)));
+    return formatearFechaLocalISO(fechaResultado);
+}
 
-    if (forzarSemanaSiguiente) {
-        fechaResultado.setDate(fechaResultado.getDate() + 7);
+function debeForzarSemanaSiguienteManual() {
+
+    const ahora = new Date();
+    const diaActual = ahora.getDay();
+    const hora = ahora.getHours();
+
+    if (diaActual === 0 || diaActual === 6) {
+        return true;
     }
 
-    return formatearFechaISO(fechaResultado);
+    if (diaActual === 5 && hora >= 19) {
+        return true;
+    }
+
+    const fechasSemanaActual = (estadoManual.fechasPorSemana[0] ?? [])
+        .filter(esFechaValidaSemanaActual);
+
+    return fechasSemanaActual.length === 0;
 }
 
 function agruparFechasPorSemana(fechasTurnos) {
@@ -100,7 +166,7 @@ function agruparFechasPorSemana(fechasTurnos) {
         const diferencia = dia === 0 ? -6 : 1 - dia;
         lunes.setDate(lunes.getDate() + diferencia);
 
-        const semanaKey = formatearFechaISO(lunes);
+        const semanaKey = formatearFechaLocalISO(lunes);
 
         if (!acc[semanaKey]) {
             acc[semanaKey] = [];
@@ -111,15 +177,6 @@ function agruparFechasPorSemana(fechasTurnos) {
     }, {});
 
     return Object.values(semanas).map(fechas => fechas.sort());
-}
-
-function formatearFechaISO(fecha) {
-
-    const yyyy = fecha.getFullYear();
-    const mm = String(fecha.getMonth() + 1).padStart(2, '0');
-    const dd = String(fecha.getDate()).padStart(2, '0');
-
-    return `${yyyy}-${mm}-${dd}`;
 }
 
 export function manejarCambioSemanaManual(tipoInicio) {
@@ -141,17 +198,22 @@ function cargarPrimerTurnoSelect(tipoInicio) {
     primerTurnoSelect.innerHTML = crearOpcionPorDefecto('Seleccione una fecha');
 
     estadoManual.semanaInicio = tipoInicio === 'actual' ? 0 : 1;
-    const fechasDisponibles = estadoManual.fechasPorSemana[estadoManual.semanaInicio] ?? [];
+    let fechasDisponibles = estadoManual.fechasPorSemana[estadoManual.semanaInicio] ?? [];
+
+    if (tipoInicio === 'actual') {
+        fechasDisponibles = fechasDisponibles.filter(esFechaValidaSemanaActual);
+    }
 
     fechasDisponibles.forEach(fecha => {
         agregarOpcion(
             primerTurnoSelect,
             fecha,
-            convertirFechaParaMostrar(fecha)
+            convertirFechaParaMostrar(fecha),
+            !esFechaInicioSeleccionable(fecha)
         );
     });
 
-    habilitarElemento(primerTurnoSelect, fechasDisponibles.length > 0);
+    habilitarElemento(primerTurnoSelect, fechasDisponibles.some(esFechaInicioSeleccionable));
 }
 
 export function manejarPrimerTurnoManual() {
@@ -210,14 +272,20 @@ function truncarDeterminacionDesde(numeroTurno) {
 
 function continuarDeterminacionPatron() {
 
-    const { frecuenciaSemanal, fechasDeterminacion, fechasPorSemana } = estadoManual;
+    const { fechasPorSemana } = estadoManual;
+    const frecuencia = esSegundoPaso()
+        ? estadoManual.frecuenciaSemanal
+        : frecuenciaParaDeterminarPatron();
+    const fechas = esSegundoPaso()
+        ? estadoManual.fechasDeterminacion
+        : fechasParaDeterminarPatron();
 
-    if (patronDeterminado(frecuenciaSemanal, fechasDeterminacion, fechasPorSemana)) {
+    if (patronDeterminado(frecuencia, fechas, fechasPorSemana)) {
         finalizarPatron();
         return;
     }
 
-    renderizarSelectDeterminacion(fechasDeterminacion.length + 1);
+    renderizarSelectDeterminacion(estadoManual.fechasDeterminacion.length + 1);
 }
 
 function patronDeterminado(frecuencia, fechasSeleccionadas, fechasPorSemana) {
@@ -250,7 +318,7 @@ function renderizarSelectDeterminacion(numeroTurno) {
     const ultimaFecha = estadoManual.fechasDeterminacion.at(-1);
     const fechasPosibles = obtenerFechasPosteriores(ultimaFecha);
 
-    if (!fechasPosibles.length) {
+    if (!fechasPosibles.some(fecha => !esFechaOcupadaPrimeraInscripcion(fecha))) {
         finalizarPatron();
         return;
     }
@@ -263,7 +331,7 @@ function renderizarSelectDeterminacion(numeroTurno) {
                 <select class="entrada fecha-determinacion">
                     ${crearOpcionPorDefecto('Seleccione una fecha')}
                     ${fechasPosibles.map(fecha => `
-                        <option value="${fecha}">${convertirFechaParaMostrar(fecha)}</option>
+                        <option value="${fecha}" ${esFechaOcupadaPrimeraInscripcion(fecha) ? 'disabled' : ''}>${convertirFechaParaMostrar(fecha)}</option>
                     `).join('')}
                 </select>
             </div>
@@ -291,12 +359,17 @@ function obtenerFechasPosteriores(fechaAnterior) {
 
 async function finalizarPatron() {
 
-    const { frecuenciaSemanal, fechasDeterminacion, fechasPorSemana } = estadoManual;
+    const { frecuenciaSemanal, fechasPorSemana } = estadoManual;
+    const fechas = fechasParaDeterminarPatron();
+    const frecuencia = frecuenciaParaDeterminarPatron();
 
-    const patron = calcularPatron(frecuenciaSemanal, fechasDeterminacion, fechasPorSemana);
-    const indiceSemanaBase = obtenerIndiceSemana(fechasDeterminacion[0], fechasPorSemana);
+    const patronCombinado = calcularPatron(frecuencia, fechas, fechasPorSemana, obtenerTotalTurnosParaPatron());
+    const indiceSemanaBase = obtenerIndiceSemana(fechas[0], fechasPorSemana);
+    const patron = esSegundoPaso()
+        ? calcularPatronSegundaInscripcion(patronCombinado, indiceSemanaBase)
+        : patronCombinado;
 
-    if (!patronEsFactible(patron, indiceSemanaBase, fechasPorSemana)) {
+    if (!patronEsValido(patron) || !patronEsFactible(patron, indiceSemanaBase, fechasPorSemana)) {
         await mostrarAlerta(
             'error',
             'Turnos insuficientes',
@@ -316,9 +389,22 @@ async function finalizarPatron() {
     }
 }
 
-function calcularPatron(frecuencia, fechas, fechasPorSemana) {
+function fechasParaDeterminarPatron() {
+    if (!esSegundoPaso()) {
+        return [...estadoManual.fechasDeterminacion].sort();
+    }
 
-    const totalSesiones = obtenerTotalTurnos();
+    const ultimoIndiceDeterminado = Math.max(
+        ...estadoManual.fechasDeterminacion.map(fecha => obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana))
+    );
+    const fechasPrimera = fechasOcupadasPrimeraInscripcion()
+        .filter(fecha => obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana) <= ultimoIndiceDeterminado);
+
+    return [...new Set([...fechasPrimera, ...estadoManual.fechasDeterminacion])].sort();
+}
+
+function calcularPatron(frecuencia, fechas, fechasPorSemana, totalSesiones = obtenerTotalTurnos()) {
+
     const semanaInicio = obtenerIndiceSemana(fechas[0], fechasPorSemana);
 
     const cantidadPrimeraSemana = fechas.filter(
@@ -345,10 +431,6 @@ function calcularPatron(frecuencia, fechas, fechasPorSemana) {
     return patron;
 }
 
-function obtenerIndiceSemana(fecha, fechasPorSemana) {
-    return fechasPorSemana.findIndex(semana => semana.includes(fecha));
-}
-
 function ajustarPatronATotal(patron, totalSesiones) {
     let suma = patron.reduce((acumulado, valor) => acumulado + valor, 0);
 
@@ -360,7 +442,9 @@ function ajustarPatronATotal(patron, totalSesiones) {
 
 function patronEsFactible(patron, indiceSemanaBase, fechasPorSemana) {
     return patron.every((cantidad, indice) => {
-        const fechasSemana = fechasPorSemana[indiceSemanaBase + indice] ?? [];
+        const fechasSemana = (fechasPorSemana[indiceSemanaBase + indice] ?? [])
+            .filter(fecha => !esFechaOcupadaPrimeraInscripcion(fecha));
+
         return fechasSemana.length >= cantidad;
     });
 }
@@ -385,6 +469,9 @@ function renderizarEstructuraDefinitiva(indiceSemanaBase) {
     let numeroTurnoGlobal = 1;
 
     estadoManual.patron.forEach((cantidad, indice) => {
+        if (cantidad < 1) {
+            return;
+        }
 
         turnosContainer.insertAdjacentHTML(
             'beforeend',
@@ -448,7 +535,8 @@ function inicializarSelectsDefinitivos(semanaBase) {
             agregarOpcion(
                 fechaSelect,
                 fecha,
-                convertirFechaParaMostrar(fecha)
+                convertirFechaParaMostrar(fecha),
+                esFechaOcupadaPrimeraInscripcion(fecha)
             );
         });
 
@@ -585,10 +673,137 @@ function actualizarDuplicadosSemana(indicePatron) {
             }
 
             option.disabled =
+                esFechaOcupadaPrimeraInscripcion(option.value) ||
                 elegidas.includes(option.value) &&
                 option.value !== select.value;
         });
     });
+}
+
+// Dual =======================================
+
+function esFechaOcupadaPrimeraInscripcion(fecha) {
+    return esSegundoPaso() && fechasOcupadasPrimeraInscripcion().includes(fecha);
+}
+
+function esFechaInicioSeleccionable(fecha) {
+    if (esFechaOcupadaPrimeraInscripcion(fecha)) {
+        return false;
+    }
+
+    return !esSegundoPaso() || esFechaInicioDualManualValida(fecha);
+}
+
+function esFechaInicioDualManualValida(fecha) {
+    const indiceBase = indiceSemanaBaseDual(fecha);
+    const indiceCandidato = obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana);
+
+    if (indiceBase < 0 || indiceCandidato < 0) {
+        return false;
+    }
+
+    return posiblesCantidadesPrimeraSemanaDual(indiceBase, indiceCandidato)
+        .some(cantidadPrimeraSemana => {
+            const patronCombinado = crearPatronDesdePrimeraSemana(
+                frecuenciaParaDeterminarPatron(),
+                obtenerTotalTurnosParaPatron(),
+                cantidadPrimeraSemana
+            );
+            const patronSegunda = calcularPatronSegundaInscripcion(patronCombinado, indiceBase);
+
+            return patronSegunda[indiceCandidato - indiceBase] > 0
+                && patronEsValido(patronSegunda)
+                && patronEsFactible(patronSegunda, indiceBase, estadoManual.fechasPorSemana);
+        });
+}
+
+function indiceSemanaBaseDual(fechaCandidata) {
+    const indices = [...fechasOcupadasPrimeraInscripcion(), fechaCandidata]
+        .map(fecha => obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana))
+        .filter(indice => indice >= 0);
+
+    return indices.length ? Math.min(...indices) : -1;
+}
+
+function posiblesCantidadesPrimeraSemanaDual(indiceBase, indiceCandidato) {
+
+    const frecuenciaTotal = frecuenciaParaDeterminarPatron();
+
+    const cantOcupadasPrimera = fechasOcupadasPrimeraInscripcion().filter(
+        fecha => obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana) === indiceBase
+    ).length;
+
+    const primeraSeleccionadaEnBase = indiceCandidato === indiceBase ? 1 : 0;
+    const minimo = cantOcupadasPrimera + primeraSeleccionadaEnBase;
+    const maximo = Math.min(frecuenciaTotal, cantOcupadasPrimera + estadoManual.frecuenciaSemanal);
+    const cantidades = [];
+
+    for (let cantidad = minimo; cantidad <= maximo; cantidad++) {
+        cantidades.push(cantidad);
+    }
+
+    return cantidades;
+}
+
+function frecuenciaParaDeterminarPatron() {
+    return esSegundoPaso()
+        ? frecuenciaPrimeraInscripcion() + estadoManual.frecuenciaSemanal
+        : estadoManual.frecuenciaSemanal;
+}
+
+function obtenerIndiceSemana(fecha, fechasPorSemana) {
+    return fechasPorSemana.findIndex(semana => semana.includes(fecha));
+}
+
+function crearPatronDesdePrimeraSemana(frecuencia, totalSesiones, cantidadPrimeraSemana) {
+    if (cantidadPrimeraSemana >= frecuencia) {
+        const totalSemanas = Math.ceil(totalSesiones / frecuencia);
+        const patron = Array(totalSemanas).fill(frecuencia);
+        ajustarPatronATotal(patron, totalSesiones);
+
+        return patron;
+    }
+
+    const patron = [cantidadPrimeraSemana];
+    let acumulado = cantidadPrimeraSemana;
+
+    while (acumulado < totalSesiones) {
+        const faltante = totalSesiones - acumulado;
+        patron.push(Math.min(frecuencia, faltante));
+        acumulado += patron.at(-1);
+    }
+
+    return patron;
+}
+
+function obtenerTotalTurnosParaPatron() {
+    if (!esSegundoPaso()) {
+        return obtenerTotalTurnos();
+    }
+
+    return frecuenciaParaDeterminarPatron() * 4;
+}
+
+function calcularPatronSegundaInscripcion(patronCombinado, indiceSemanaBase) {
+    const ocupadas = fechasOcupadasPrimeraInscripcion();
+
+    return patronCombinado.map((cantidad, indice) => {
+        const indiceSemana = indiceSemanaBase + indice;
+        const ocupadasSemana = ocupadas.filter(
+            fecha => obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana) === indiceSemana
+        ).length;
+
+        return Math.max(0, cantidad - ocupadasSemana);
+    });
+}
+
+function patronEsValido(patron) {
+    if (!esSegundoPaso()) {
+        return true;
+    }
+
+    return patron.reduce((total, cantidad) => total + cantidad, 0) === obtenerTotalTurnos()
+        && patron.every(cantidad => cantidad >= 0 && cantidad <= estadoManual.frecuenciaSemanal);
 }
 
 const estadoManual = {

@@ -88,17 +88,22 @@ export function construirPayloadRegistro({
     frecuenciaSemanal,
     autogenerados,
     turnos,
-    fechaAncla
+    fechaAncla,
+    esPlanDual = false
 }) {
     const payload = {
         id_actividad: idActividad,
         id_paciente: idPaciente,
-        id_actividad_combo: idActividadCombo,
         cant_sesiones: frecuenciaSemanal * 4,
         autogenerados,
         frecuencia_semanal: frecuenciaSemanal,
-        turnos
+        turnos,
+        plan_dual: esPlanDual
     };
+
+    if (!esPlanDual && idActividadCombo !== null) {
+        payload.id_actividad_combo = idActividadCombo;
+    }
 
     if (autogenerados) {
         if (!fechaAncla) {

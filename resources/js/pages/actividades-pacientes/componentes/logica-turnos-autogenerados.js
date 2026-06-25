@@ -37,18 +37,18 @@ export function obtenerDiasSeleccionados() {
 
 function calcularFechasEsperadas(fechaComienzo, diasSeleccionados) {
 
-    const totalSesiones = obtenerTotalSesiones();
+    const totalSesiones = obtenerCantidadSesiones();
     const inicio = new Date(`${fechaComienzo}T12:00:00`);
     const diaInicio = inicio.getDay();
 
-    const semanasNecesarias = Math.ceil(totalSesiones / estado.frecuenciaSemanal);
+    const maxSemanas = Math.ceil(totalSesiones / estado.frecuenciaSemanal) + 2;
     const diasOrdenados = [...diasSeleccionados].sort(
         (a, b) => OFFSET_DIAS[a] - OFFSET_DIAS[b]
     );
 
     const fechas = [];
 
-    for (let semana = 0; semana < semanasNecesarias && fechas.length < totalSesiones; semana++) {
+    for (let semana = 0; semana <= maxSemanas && fechas.length < totalSesiones; semana++) {
         for (const dia of diasOrdenados) {
 
             if (fechas.length >= totalSesiones) {
@@ -71,7 +71,7 @@ function calcularFechasEsperadas(fechaComienzo, diasSeleccionados) {
     return fechas;
 }
 
-function obtenerTotalSesiones() {
+function obtenerCantidadSesiones() {
 
     if (estado.cantidadSesiones !== null && estado.cantidadSesiones !== undefined) {
         return estado.cantidadSesiones;

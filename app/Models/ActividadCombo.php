@@ -113,6 +113,29 @@ class ActividadCombo extends Model
         return (float) $vinculo->precioVigente->valor;
     }
 
+    public static function obtenerPrecioMensualPorFrecuencia(int $idActividad, int $frecuenciaSemanal): float
+    {
+        $cantidadSesiones = $frecuenciaSemanal * 4;
+
+        $vinculo = self::activo()
+            ->whereActividad($idActividad)
+            ->whereHas('combo', fn ($q) => $q
+                ->where('es_mensual', true)
+                ->where('cantidad_sesiones', $cantidadSesiones))
+            ->with(['precioVigente', 'combo'])
+            ->first();
+
+        if (!$vinculo) {
+            throw new Exception("No existe un combo mensual x{$frecuenciaSemanal} configurado para la actividad indicada.");
+        }
+
+        if (!$vinculo->precioVigente) {
+            throw new Exception("El combo mensual x{$frecuenciaSemanal} no tiene un precio determinado actualmente.");
+        }
+
+        return (float) $vinculo->precioVigente->valor;
+    }
+
     public static function calcularTotalAPagar(int $idActividad, int $cantidadSesiones, bool $exigirComboExacto = false): float
     {
         $mensajeSesionIndividual = 'La actividad no tiene un precio determinado para su sesión individual.';

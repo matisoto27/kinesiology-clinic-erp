@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\PlanDualService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -153,6 +154,14 @@ class Paciente extends Model
             })
             ->select('actividades.*')
             ->get();
+
+        $pendiente = app(PlanDualService::class)->obtenerDualPendiente($this->id);
+
+        if ($pendiente) {
+            $idFaltante = app(PlanDualService::class)->idActividadFaltante((int) $pendiente->id_actividad);
+
+            return $actividades->where('id', $idFaltante)->values();
+        }
 
         return $actividades;
     }

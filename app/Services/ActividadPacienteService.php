@@ -20,13 +20,21 @@ class ActividadPacienteService
 {
     public function __construct(
         private TurnoService $turnoService,
-        private ExpansorTurnosPatron $expansorTurnosPatron
+        private ExpansorTurnosPatron $expansorTurnosPatron,
+        private PlanDualService $planDualService
     ) {}
 
     public function registrar(array $validados): ActividadPaciente
     {
         try {
             return DB::transaction(function () use ($validados) {
+                $esPlanDual = !empty($validados['plan_dual'])
+                    && Actividad::find((int) $validados['id_actividad'])?->esActividadGeneral() === true;
+
+                if ($esPlanDual) {
+                    return $this->registrarPlanDual($validados);
+                }
+
                 $esConOrden = ModalidadRegistro::esConOrden($validados);
                 $ahora = Carbon::now();
 
@@ -36,24 +44,8 @@ class ActividadPacienteService
 
                 $validados = $this->determinarTotal($validados);
 
-                $datosInscripcion = [
-                    'id_actividad' => $validados['id_actividad'],
-                    'id_paciente' => $validados['id_paciente'],
-                    'fecha_comienzo' => $ahora,
-                    'cant_sesiones' => $validados['cant_sesiones'],
-                    'es_fijo' => false,
-                    'total_a_pagar' => $validados['total_a_pagar'],
-                    'pago_completado' => $esConOrden,
-                    'fecha_emision_ord' => $validados['fecha_emision_ord'] ?? null,
-                ];
-
-                $actividadPaciente = ActividadPaciente::create($datosInscripcion);
-
-                $turnosParaInsertar = $validados['autogenerados']
-                    ? $this->prepararTurnosAutomaticos($validados)
-                    : $this->turnoService->prepararTurnosManuales($validados['turnos']);
-
-                $actividadPaciente->turnos()->createMany($turnosParaInsertar);
+                $actividadPaciente = $this->crearInscripcion($validados, $ahora, $esConOrden);
+                $this->persistirTurnos($actividadPaciente, $validados);
 
                 return $actividadPaciente;
             });
@@ -68,6 +60,109 @@ class ActividadPacienteService
 
             throw $th;
         }
+    }
+
+    private function registrarPlanDual(array $validados): ActividadPaciente
+    {
+        $pendiente = $this->planDualService->obtenerDualPendiente((int) $validados['id_paciente']);
+
+        if ($pendiente) {
+            return $this->completarPlanDual($validados, $pendiente);
+        }
+
+        return $this->iniciarPlanDual($validados);
+    }
+
+    private function iniciarPlanDual(array $validados): ActividadPaciente
+    {
+        if ($this->planDualService->obtenerDualPendiente((int) $validados['id_paciente'])) {
+            throw new Exception(PlanDualService::MENSAJE_DUAL_PENDIENTE_EXISTENTE);
+        }
+
+        $frecuencia = (int) $validados['frecuencia_semanal'];
+
+        if ($frecuencia < 1 || $frecuencia > 4) {
+            throw new Exception('La frecuencia semanal del plan dual debe estar entre 1 y 4.');
+        }
+
+        $ahora = Carbon::now();
+        $validados['cant_sesiones'] = $frecuencia * 4;
+        $validados['total_a_pagar'] = 0;
+
+        $actividadPaciente = $this->crearInscripcion($validados, $ahora, false, [
+            'plan_dual_pendiente' => true,
+            'frecuencia_total_dual' => null,
+            'id_act_pac_dual' => null,
+        ]);
+
+        $this->persistirTurnos($actividadPaciente, $validados);
+
+        return $actividadPaciente->fresh(['turnos']);
+    }
+
+    private function completarPlanDual(array $validados, ActividadPaciente $pendiente): ActividadPaciente
+    {
+        $this->planDualService->validarSegundaInscripcion($pendiente, $validados);
+        $frecuenciaPrimera = $pendiente->frecuenciaSemanal();
+        $frecuenciaSegunda = (int) $validados['frecuencia_semanal'];
+
+        $precioPlan = $this->planDualService->obtenerPrecioPlan($frecuenciaPrimera + $frecuenciaSegunda);
+        $totales = $this->planDualService->calcularTotalesProporcionales(
+            $precioPlan,
+            $frecuenciaPrimera,
+            $frecuenciaSegunda
+        );
+
+        $ahora = Carbon::now();
+        $validados['cant_sesiones'] = $frecuenciaSegunda * 4;
+        $validados['total_a_pagar'] = $totales['total_segunda'];
+
+        $segundaInscripcion = $this->crearInscripcion($validados, $ahora, false, [
+            'plan_dual_pendiente' => false,
+            'frecuencia_total_dual' => $totales['frecuencia_total'],
+            'id_act_pac_dual' => $pendiente->id,
+        ]);
+
+        $this->persistirTurnos($segundaInscripcion, $validados);
+
+        $pendiente->update([
+            'plan_dual_pendiente' => false,
+            'frecuencia_total_dual' => $totales['frecuencia_total'],
+            'id_act_pac_dual' => $segundaInscripcion->id,
+            'total_a_pagar' => $totales['total_primera'],
+        ]);
+
+        return $segundaInscripcion->fresh(['turnos']);
+    }
+
+    private function crearInscripcion(
+        array $validados,
+        Carbon $ahora,
+        bool $pagoCompletado,
+        array $datosDual = []
+    ): ActividadPaciente {
+        return ActividadPaciente::create(array_merge([
+            'id_actividad' => $validados['id_actividad'],
+            'id_paciente' => $validados['id_paciente'],
+            'fecha_comienzo' => $ahora,
+            'cant_sesiones' => $validados['cant_sesiones'],
+            'es_fijo' => false,
+            'total_a_pagar' => $validados['total_a_pagar'],
+            'pago_completado' => $pagoCompletado,
+            'fecha_emision_ord' => $validados['fecha_emision_ord'] ?? null,
+            'plan_dual_pendiente' => false,
+            'frecuencia_total_dual' => null,
+            'id_act_pac_dual' => null,
+        ], $datosDual));
+    }
+
+    private function persistirTurnos(ActividadPaciente $actividadPaciente, array $validados): void
+    {
+        $turnosParaInsertar = $validados['autogenerados']
+            ? $this->prepararTurnosAutomaticos($validados)
+            : $this->turnoService->prepararTurnosManuales($validados['turnos']);
+
+        $actividadPaciente->turnos()->createMany($turnosParaInsertar);
     }
 
     private function enriquecerDatosConOrden(array $validados, Carbon $ahora): array

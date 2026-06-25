@@ -27,12 +27,17 @@ class ActividadPaciente extends Model
         'monto_recargo',
         'id_actividad',
         'id_paciente', // Puede ser null
-        'id_paciente_casual' // Puede ser null
+        'id_paciente_casual', // Puede ser null
+        'frecuencia_total_dual',
+        'id_act_pac_dual',
+        'plan_dual_pendiente',
     ];
 
     protected $casts = [
         'fecha_comienzo' => 'date',
         'cant_sesiones' => 'integer',
+        'frecuencia_total_dual' => 'integer',
+        'plan_dual_pendiente' => 'boolean',
         'es_fijo' => 'boolean',
         'total_a_pagar' => 'decimal:2',
         'pago_completado' => 'boolean',
@@ -129,6 +134,30 @@ class ActividadPaciente extends Model
         return $this->hasMany(Pago::class, 'id_act_pac');
     }
 
+    public function actPacDual(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'id_act_pac_dual');
+    }
+
+    public function esDualPendiente(): bool
+    {
+        return $this->plan_dual_pendiente;
+    }
+
+    public function esDualCompleto(): bool
+    {
+        return !$this->plan_dual_pendiente
+            && $this->id_act_pac_dual !== null
+            && $this->frecuencia_total_dual !== null;
+    }
+
+    public function scopeDualCompleto(Builder $consulta): Builder
+    {
+        return $consulta->where('plan_dual_pendiente', false)
+            ->whereNotNull('id_act_pac_dual')
+            ->whereNotNull('frecuencia_total_dual');
+    }
+
     public function esRegular(): bool
     {
         return $this->id_paciente !== null;
@@ -147,6 +176,12 @@ class ActividadPaciente extends Model
     public function esPruebaPilates(): bool
     {
         return $this->esCasual() && $this->id_actividad === Actividad::PILATES;
+    }
+
+    public function frecuenciaSemanal(): int
+    {
+        // OJO: Solo tiene sentido para actividas generales (Gimnasio y Pilates)
+        return (int) ($this->cant_sesiones / 4);
     }
 
     public function scopeTienePacienteRegular(Builder $consulta): Builder

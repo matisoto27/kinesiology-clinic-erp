@@ -1,21 +1,31 @@
 import {
     agregarOpcion,
     crearOpcionPorDefecto,
+    esFechaValidaSemanaActual,
+    fechaDeSemana,
     formatearFechaLocalISO,
     OFFSET_DIAS
 } from '@compartido/general.js';
 import {
-    checkboxes,
     diasContainer,
     inicioContainer,
+    radioActual,
+    radioSiguiente,
     primerTurnoSelect,
     radioButtons,
     turnosContainer
 } from './dom-turnos.js';
 import { estado } from './estado-formulario.js';
+import {
+    esSegundoPaso,
+    sincronizarCheckboxesDiasSemana,
+    configurarRadiosSemanaInicioDual,
+    obtenerFechasValidasPrimerTurnoSegundaPierna
+} from './logica-dual-calendario.js';
 import { manejarTurnosAutogenerados, obtenerDiasSeleccionados } from './logica-turnos-autogenerados.js';
 import { frecuenciaAlcanzada, obtenerSemanaSeleccionada, tieneSemanaSeleccionada } from './reglas-turnos.js';
 import { actualizarDiasCheckBoxes, ocultarSemanasButtons } from './ui-turnos.js';
+import { convertirFechaParaMostrar } from '../../../compartido/general.js';
 
 export function mostrarConfiguracionAutomatica() {
 
@@ -35,7 +45,7 @@ export async function manejarCambioDiaTurnos() {
         return;
     }
 
-    actualizarLimiteDias();
+    sincronizarCheckboxesDiasSemana();
 
     if (frecuenciaAlcanzada()) {
 
@@ -59,29 +69,17 @@ export async function manejarCambioDiaTurnos() {
     }
 }
 
-function actualizarLimiteDias() {
-
-    const diasSeleccionados = Array.from(checkboxes).filter(c => c.checked).length;
-
-    if (diasSeleccionados >= estado.frecuenciaSemanal) {
-        checkboxes.forEach(c => {
-            if (!c.checked) {
-                c.disabled = true;
-            }
-        });
-    } else {
-        checkboxes.forEach(c => {
-            c.disabled = false;
-        });
-    }
-}
-
 async function configurarSemanaInicio() {
 
     const diasSeleccionados = obtenerDiasSeleccionados();
 
-    const radioActual = inicioContainer.querySelector('input[name="inicio"][value="actual"]');
-    const radioSiguiente = inicioContainer.querySelector('input[name="inicio"][value="siguiente"]');
+    if (esSegundoPaso()) {
+        await configurarRadiosSemanaInicioDual(diasSeleccionados, { radioActual, radioSiguiente });
+        if (radioActual.checked || radioSiguiente.checked) {
+            await actualizarPrimerTurnoSelect();
+        }
+        return;
+    }
 
     if (debeForzarSemanaSiguiente(diasSeleccionados)) {
 
@@ -133,24 +131,42 @@ async function actualizarPrimerTurnoSelect() {
     const diasSeleccionados = obtenerDiasSeleccionados();
     const tipoSemana = semanaSeleccionada.value;
 
-    const ahora = new Date();
-    const diaHoy = ahora.getDay();
-
     primerTurnoSelect.innerHTML = crearOpcionPorDefecto('Seleccione una fecha');
 
+    if (esSegundoPaso()) {
+        const fechasValidas = obtenerFechasValidasPrimerTurnoSegundaPierna(diasSeleccionados, tipoSemana);
+
+        fechasValidas.forEach(fechaIso => {
+            agregarOpcion(
+                primerTurnoSelect,
+                fechaIso,
+                convertirFechaParaMostrar(fechaIso)
+            );
+        });
+
+        if (primerTurnoSelect.options.length === 2) {
+            primerTurnoSelect.selectedIndex = 1;
+            primerTurnoSelect.disabled = true;
+            await manejarTurnosAutogenerados();
+        } else {
+            primerTurnoSelect.disabled = fechasValidas.length === 0;
+        }
+
+        return;
+    }
+
     diasSeleccionados.forEach(dia => {
+        const fecha = fechaDeSemana(dia, tipoSemana);
+        const fechaIso = formatearFechaLocalISO(fecha);
 
-        const fecha = obtenerFechaDeSemana(dia, tipoSemana);
-        const diaSemana = fecha.getDay();
-
-        if (tipoSemana === 'actual' && (diaSemana < diaHoy || (diaSemana === diaHoy && ahora.getHours() >= 19))) {
+        if (tipoSemana === 'actual' && !esFechaValidaSemanaActual(fechaIso)) {
             return;
         }
 
         agregarOpcion(
             primerTurnoSelect,
-            formatearFechaLocalISO(fecha),
-            `${dia} ${fecha.getDate()}/${fecha.getMonth() + 1}`
+            fechaIso,
+            convertirFechaParaMostrar(fechaIso)
         );
     });
 
@@ -163,36 +179,6 @@ async function actualizarPrimerTurnoSelect() {
     } else {
         primerTurnoSelect.disabled = false;
     }
-}
-
-function obtenerFechaDeSemana(diaNombre, tipoSemana) {
-
-    const hoy = new Date();
-    hoy.setHours(12, 0, 0, 0);
-
-    const lunes = new Date(hoy);
-    const diaActual = hoy.getDay();
-    const diferenciaHastaLunes = diaActual === 0
-        ? -6
-        : 1 - diaActual;
-    lunes.setDate(
-        hoy.getDate() + diferenciaHastaLunes
-    );
-
-    if (tipoSemana === 'siguiente') {
-        lunes.setDate(
-            lunes.getDate() + 7
-        );
-    }
-
-    const fecha = new Date(lunes);
-
-    fecha.setDate(
-        lunes.getDate() +
-        (OFFSET_DIAS[diaNombre] - 1)
-    );
-
-    return fecha;
 }
 
 export async function manejarCambioSemanaTurnos() {

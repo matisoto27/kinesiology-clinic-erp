@@ -37,6 +37,13 @@
             </div>
 
             <div class="ultima-fila-formulario">
+                <input type="checkbox" class="checkbox-formulario" id="plan-dual-checkbox">
+                <label for="plan-dual-checkbox" class="etiqueta-formulario">Inscripción Dual [Gym/Pilates]</label>
+            </div>
+
+            <div class="hidden mb-4 p-3 rounded bg-amber-500/20 text-white" id="plan-dual-banner"></div>
+
+            <div class="ultima-fila-formulario">
                 <input type="checkbox" class="checkbox-formulario" id="turnos-checkbox" checked>
                 <label for="turnos-checkbox" class="etiqueta-formulario">Generar turnos automaticamente</label>
             </div>

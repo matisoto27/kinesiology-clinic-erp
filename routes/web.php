@@ -49,6 +49,8 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::get('/pacientes', 'inicio')->name('pacientes.inicio');
         Route::get('/buscar-pacientes', 'buscarPorNombre');
         Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
+        Route::get('/pacientes/{id}/inscripcion-dual/pendiente', 'obtenerInscripcionDualPendiente');
+        Route::get('/pacientes/{id}/inscripcion-dual/preview', 'obtenerPreviewInscripcionDual');
         Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
     });
     Route::livewire('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');

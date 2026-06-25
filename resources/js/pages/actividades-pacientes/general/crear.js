@@ -52,7 +52,7 @@ function crearLiPaciente(paciente, esUltimo) {
     return li;
 }
 
-function manejarCambioPaciente(e) {
+async function manejarCambioPaciente(e) {
 
     const elementoClickeado = e.target.closest('li');
     if (!elementoClickeado) return;
@@ -65,6 +65,8 @@ function manejarCambioPaciente(e) {
     estado.idActividadCombo = null;
     estado.frecuenciaSemanal = null;
     estado.cantidadSesiones = null;
+    estado.esPlanDual = false;
+    estado.planDualPendiente = null;
 
     idPacienteSeleccionado.value = idPaciente;
     pacienteInput.value = elementoClickeado.textContent;
@@ -72,64 +74,53 @@ function manejarCambioPaciente(e) {
     habilitarBuscador(false);
     limpiarSugerencias(sugerenciasPaciente);
     limpiarFrecuenciaPrecioTurnos();
+    ocultarBanner();
 
-    cargarActividadesPaciente(idPaciente);
+    const datosDual = await obtenerDatosInscripcionDual(idPaciente);
+    if (datosDual) {
+        await configurarSegundoPasoDual(datosDual);
+        return;
+    }
+
+    await cargarActividadesPaciente(idPaciente);
 }
 
 async function manejarCambioActividad() {
 
-    const idActividad = obtenerValor(actividadSelect);
-    if (idActividad === null) {
-        estado.idActividad = null;
-        estado.idActividadCombo = null;
-        estado.frecuenciaSemanal = null;
-        estado.cantidadSesiones = null;
-        limpiarFrecuenciaPrecioTurnos();
-        return;
-    }
+    const idActividadAnterior = estado.idActividad ?? '';
 
-    let combos = [];
-
-    try {
-        combos = await apiFetch(`/actividades/${idActividad}/combos?con_precio=true`);
-    } catch (error) {
-        actividadSelect.value = estado.idActividad ?? '';
-        console.error(error);
-        await mostrarAlerta('error', 'Error al cargar los combos', error.message);
-        return;
-    }
-
-    if (combos.length === 0) {
-        actividadSelect.value = estado.idActividad ?? '';
-        await mostrarAlerta(
-            'error',
-            'No hay combos disponibles',
-            'No existen combos con un precio registrado para la actividad seleccionada.'
-        );
-        return;
-    }
-
-    estado.idActividad = idActividad;
     estado.idActividadCombo = null;
     estado.frecuenciaSemanal = null;
     estado.cantidadSesiones = null;
 
-    cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
-    combos.forEach(combo => {
-        const sesionesPorSemana = combo.cantidad_sesiones / 4;
-        const contenidoTextual = `${sesionesPorSemana} ${sesionesPorSemana === 1 ? 'vez' : 'veces'} por semana`;
-        const atributos = { id: combo.id_actividad_combo };
-        agregarOpcion(cantidadSelect, sesionesPorSemana, contenidoTextual, false, false, atributos);
-    });
-    habilitarElemento(cantidadSelect, true);
+    const idActividad = obtenerValor(actividadSelect);
+    if (idActividad === null) {
+        estado.idActividad = null;
+        limpiarFrecuenciaPrecioTurnos();
+        return;
+    }
 
-    precioInput.value = '$0,00';
+    estado.idActividad = idActividad;
+
+    const datosDual = estado.planDualPendiente ?? null;
+    const frecuenciasPermitidas = datosDual?.segunda_inscripcion.frecuencias_permitidas ?? [];
+
+    const frecuenciasCargadas = await cargarFrecuenciasDesdeCombos(idActividad, frecuenciasPermitidas);
+    if (!frecuenciasCargadas) {
+        // Error al obtener los combos o ninguna frecuencia pasa el filtro
+        estado.idActividad = idActividadAnterior || null;
+        actividadSelect.value = idActividadAnterior;
+    }
+
+    limpiarPrecio();
     limpiarConfiguracionTurnos();
 }
 
 async function manejarCambioFrecuencia() {
 
+    estado.idActividadCombo = null;
     estado.frecuenciaSemanal = obtenerValor(cantidadSelect);
+    estado.cantidadSesiones = null;
 
     if (faltanDatosObligatorios()) {
         limpiarFrecuenciaPrecioTurnos();
@@ -138,20 +129,41 @@ async function manejarCambioFrecuencia() {
 
     estado.cantidadSesiones = estado.frecuenciaSemanal * 4;
 
-    const opcionSeleccionada = cantidadSelect.options[cantidadSelect.selectedIndex];
-    estado.idActividadCombo = obtenerValor(opcionSeleccionada.dataset.id);
+    if (estado.planDualPendiente) {
+        await actualizarPrecioDual();
+    } else if (estado.esPlanDual) {
+        precioInput.value = "$---";
+    } else {
+        const opcionSeleccionada = cantidadSelect.options[cantidadSelect.selectedIndex];
+        estado.idActividadCombo = obtenerValor(opcionSeleccionada.dataset.id);
 
-    if (estado.idActividadCombo) {
-        const precioResponse = await obtenerPrecio(estado.idActividadCombo);
-        precioInput.value = precioResponse;
+        if (estado.idActividadCombo) {
+            const precioResponse = await obtenerPrecio(estado.idActividadCombo);
+            precioInput.value = precioResponse;
+        }
     }
 
     limpiarConfiguracionTurnos();
 
     if (estado.turnosAutogenerados) {
         mostrarConfiguracionAutomatica();
+        await manejarCambioDiaTurnos();
     } else {
         await manejarTurnosManuales();
+    }
+}
+
+async function manejarCambioPlanDual() {
+
+    if (estado.planDualPendiente) {
+        planDualCheckbox.checked = true;
+        return;
+    }
+
+    estado.esPlanDual = planDualCheckbox.checked;
+
+    if (estado.idActividad) {
+        await manejarCambioActividad();
     }
 }
 
@@ -167,9 +179,39 @@ async function manejarCambioTurnosAutogenerados() {
 
     if (estado.turnosAutogenerados) {
         mostrarConfiguracionAutomatica();
+        await manejarCambioDiaTurnos();
     } else {
         await manejarTurnosManuales();
     }
+}
+
+function finalizarRegistroExitoso(idActPac, esPlanDualCompleto = false) {
+    if (esPlanDualCompleto) {
+        return mostrarAlerta(
+            'success',
+            '¡Plan dual registrado!',
+            'El plan dual Gimnasio/Pilates quedó registrado correctamente.'
+        ).then(() => window.location.replace('/'));
+    }
+
+    return mostrarAlerta(
+        'success',
+        '¡Turnos registrados!',
+        'Los turnos del paciente han sido registrados correctamente.'
+    ).then(() => Swal.fire({
+        title: '¿A dónde quieres ir ahora?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Gestionar pago',
+        cancelButtonText: 'Volver al inicio'
+    }).then(eleccion => {
+        if (eleccion.isConfirmed) {
+            const urlPago = formulario.dataset.urlPago;
+            window.location.href = urlPago.replace('__ID__', idActPac);
+        } else {
+            window.location.replace('/');
+        }
+    }));
 }
 
 const {
@@ -181,10 +223,13 @@ const {
     },
     habilitarBuscador
 } = configurarBuscador('paciente', '/buscar-pacientes', crearLiPaciente);
+const planDualCheckbox = document.getElementById('plan-dual-checkbox');
+const planDualBanner = document.getElementById('plan-dual-banner');
 
 actividadSelect.addEventListener('change', manejarCambioActividad);
 cantidadSelect.addEventListener('change', manejarCambioFrecuencia);
 turnosCheckbox.addEventListener('change', manejarCambioTurnosAutogenerados);
+planDualCheckbox.addEventListener('change', manejarCambioPlanDual);
 
 checkboxes.forEach(cb => {
     cb.addEventListener('change', manejarCambioDiaTurnos);
@@ -227,8 +272,9 @@ formulario.addEventListener('submit', async (e) => {
         const frecuenciaSemanal = estado.frecuenciaSemanal;
         const idActividadCombo = estado.idActividadCombo;
         const cantSesiones = estado.cantidadSesiones;
+        const esPlanDual = estado.esPlanDual || Boolean(estado.planDualPendiente);
 
-        if (idActividadCombo === null) {
+        if (!esPlanDual && idActividadCombo === null) {
             throw new Error('Por favor, seleccione una frecuencia semanal.');
         }
 
@@ -243,7 +289,8 @@ formulario.addEventListener('submit', async (e) => {
             frecuenciaSemanal,
             autogenerados: turnosAutogenerados,
             turnos,
-            fechaAncla: primerTurnoSelect.value
+            fechaAncla: primerTurnoSelect.value,
+            esPlanDual: esPlanDual
         });
 
         const url = formulario.dataset.url;
@@ -258,28 +305,22 @@ formulario.addEventListener('submit', async (e) => {
         };
 
         const respuesta = await apiFetch(url, options);
-        const idActPac = respuesta.id;
+        const pendienteDual =  respuesta?.plan_dual_pendiente ?? null;
 
-        await mostrarAlerta(
-            'success',
-            '¡Turnos registrados!',
-            'Los turnos del paciente han sido registrados correctamente.'
-        );
-
-        const eleccion = await Swal.fire({
-            title: '¿A dónde quieres ir ahora?',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Gestionar pago',
-            cancelButtonText: 'Volver al inicio'
-        });
-
-        if (eleccion.isConfirmed) {
-            const urlPago = formulario.dataset.urlPago;
-            window.location.href = urlPago.replace('__ID__', idActPac);
-        } else {
-            window.location.replace('/');
+        if (pendienteDual) {
+            await mostrarAlerta(
+                'success',
+                'Primera actividad registrada',
+                'Continúe con la segunda actividad del plan dual.'
+            );
+            await configurarSegundoPasoDual(pendienteDual);
+            return;
         }
+
+        const idActPac = respuesta.id;
+        const esPlanDualCompleto = Boolean(respuesta.plan_dual_completado || estado.planDualPendiente);
+
+        await finalizarRegistroExitoso(idActPac, esPlanDualCompleto);
 
     } catch (error) {
         console.error(error);
@@ -297,19 +338,21 @@ quitarPacienteButton.addEventListener('click', function() {
     actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
 
     limpiarFrecuenciaPrecioTurnos();
+    ocultarBanner();
+    planDualCheckbox.disabled = false;
 });
 
 sugerenciasPaciente.addEventListener('click', manejarCambioPaciente);
 
 async function cargarActividadesPaciente(idPaciente) {
-    actividadSelect.innerHTML = crearOpcionPorDefecto('Cargando actividades...');
     habilitarElemento(actividadSelect, false);
+    actividadSelect.innerHTML = crearOpcionPorDefecto('Cargando actividades...');
 
     try {
         const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
 
         if (actividades.length === 0) {
-            actividadSelect.innerHTML = crearOpcionPorDefecto('Paciente suscripto a todas');
+            actividadSelect.innerHTML = crearOpcionPorDefecto('Suscripto a todas');
             return;
         }
 
@@ -321,7 +364,136 @@ async function cargarActividadesPaciente(idPaciente) {
 
     } catch (error) {
         console.error(error);
-        actividadSelect.innerHTML = crearOpcionPorDefecto('Error al cargar');
-        mostrarAlerta('error', 'Error al cargar las actividades', error.message);
+        await mostrarAlerta('error', 'Error al cargar las actividades', error.message);
     }
+}
+
+// FUNCIONES INSCRIPCIÓN DUAL ========================================================================================================
+
+function mostrarBanner(texto) {
+
+    if (!planDualBanner) return;
+
+    planDualBanner.classList.remove('hidden');
+    planDualBanner.textContent = texto;
+}
+
+function ocultarBanner() {
+
+    if (!planDualBanner) return;
+
+    planDualBanner.classList.add('hidden');
+    planDualBanner.textContent = '';
+}
+
+function limpiarPrecio() {
+    if (!precioInput) return;
+    precioInput.value = '$0,00';
+}
+
+async function obtenerDatosInscripcionDual(idPaciente) {
+    try {
+        const datos = await apiFetch(`/pacientes/${idPaciente}/inscripcion-dual/pendiente`);
+
+        return datos.plan_dual_pendiente ?? null;
+
+    } catch (error) {
+        console.error(error);
+        await mostrarAlerta('error', 'Error al cargar datos de inscripción dual', error.message);
+        return null;
+    }
+}
+
+async function actualizarPrecioDual() {
+    try {
+        const preview = await apiFetch(
+            `/pacientes/${estado.idPaciente}/inscripcion-dual/preview?frecuencia_segunda=${estado.frecuenciaSemanal}`
+        );
+        precioInput.value = `$${Number(preview.precio_plan).toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    } catch (error) {
+        console.error(error);
+        await mostrarAlerta('error', 'Error al cargar el precio', error.message);
+        precioInput.value = 'Error';
+    }
+}
+
+async function configurarSegundoPasoDual(datosDual) {
+
+    const pendiente = datosDual;
+    estado.esPlanDual = true;
+    estado.planDualPendiente = pendiente;
+    if (planDualCheckbox) {
+        planDualCheckbox.checked = true;
+        planDualCheckbox.disabled = true;
+    }
+    mostrarBanner('Primera actividad registrada. Complete el plan dual con la segunda actividad.');
+
+    const segundaInscripcion = pendiente.segunda_inscripcion;
+    const idActividad = segundaInscripcion.actividad.id;
+    estado.idActividad = idActividad;
+    estado.idActividadCombo = null;
+    estado.frecuenciaSemanal = null;
+    estado.cantidadSesiones = null;
+
+    actividadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una actividad');
+    agregarOpcion(actividadSelect, idActividad, segundaInscripcion.actividad.nombre);
+    actividadSelect.value = String(idActividad);
+    habilitarElemento(actividadSelect, false);
+
+    await cargarFrecuenciasDesdeCombos(idActividad, segundaInscripcion.frecuencias_permitidas ?? []);
+
+    limpiarPrecio();
+    limpiarConfiguracionTurnos();
+}
+
+async function cargarFrecuenciasDesdeCombos(idActividad, frecuenciasPermitidas = []) {
+
+    habilitarElemento(cantidadSelect, false);
+    cantidadSelect.innerHTML = crearOpcionPorDefecto('Cargando frecuencias ...');
+
+    let combos = [];
+
+    try {
+        combos = await apiFetch(`/actividades/${idActividad}/combos?con_precio=true`);
+    } catch (error) {
+        console.error(error);
+        await mostrarAlerta('error', 'Error al cargar los combos', error.message);
+        return false;
+    }
+
+    const maxima = estado.esPlanDual && !estado.planDualPendiente ? 4 : null;
+
+    const combosFiltrados = combos.filter(combo => {
+        const frecuencia = combo.cantidad_sesiones / 4;
+
+        if (maxima !== null && frecuencia > maxima) {
+            return false;
+        }
+
+        if (frecuenciasPermitidas.length > 0 && !frecuenciasPermitidas.includes(frecuencia)) {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (combosFiltrados.length === 0) {
+        await mostrarAlerta(
+            'error',
+            'No hay combos disponibles',
+            'No existen combos con un precio registrado para la actividad seleccionada.'
+        );
+        return false;
+    }
+
+    cantidadSelect.innerHTML = crearOpcionPorDefecto('Seleccione una frecuencia');
+    combosFiltrados.forEach(combo => {
+        const sesionesPorSemana = combo.cantidad_sesiones / 4;
+        const contenidoTextual = `${sesionesPorSemana} ${sesionesPorSemana === 1 ? 'vez' : 'veces'} por semana`;
+        const atributos = { id: combo.id_actividad_combo };
+        agregarOpcion(cantidadSelect, sesionesPorSemana, contenidoTextual, false, false, atributos);
+    });
+    habilitarElemento(cantidadSelect, true);
+
+    return true;
 }

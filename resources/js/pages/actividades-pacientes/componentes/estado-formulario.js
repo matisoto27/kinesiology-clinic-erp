@@ -16,6 +16,8 @@ export function resetearEstado() {
     estado.idActividadCombo = null;
     estado.frecuenciaSemanal = null;
     estado.cantidadSesiones = null;
+    estado.esPlanDual = false;
+    estado.planDualPendiente = null;
     estado.dias = [];
     estado.semanaInicio = null;
     estado.primerTurno = null;
@@ -28,6 +30,8 @@ export const estado = {
     frecuenciaSemanal: null,
     cantidadSesiones: null,
     turnosAutogenerados: true,
+    esPlanDual: false,
+    planDualPendiente: null,
     dias: [],
     semanaInicio: null,
     primerTurno: null

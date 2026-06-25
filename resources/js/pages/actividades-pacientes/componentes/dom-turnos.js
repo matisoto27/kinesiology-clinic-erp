@@ -13,6 +13,8 @@ export const checkboxes = diasContainer?.querySelectorAll('input[type="checkbox"
 
 export const inicioContainer = document.getElementById('inicio-container');
 export const radioButtons = inicioContainer?.querySelectorAll('input[name="inicio"]') ?? [];
+export const radioActual = inicioContainer?.querySelector('input[name="inicio"][value="actual"]');
+export const radioSiguiente = inicioContainer?.querySelector('input[name="inicio"][value="siguiente"]');
 export const primerTurnoSelect = document.getElementById('primer-turno-select');
 
 export const turnosContainer = document.getElementById('turnos-container');
