@@ -26,7 +26,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
 
     Route::controller(ActividadPacienteController::class)->group(function () {
         Route::post('/actividades-pacientes', 'store')->name('actividades-pacientes.store');
-        Route::post('/actividades-pacientes/actualizar-orden-medica', 'actualizarOrdenMedica')->name('actividades-pacientes.actualizar-orden-medica');
     });
 
     Route::view('/actividades-pacientes/general/crear', 'actividades-pacientes.general.crear')->name('actividades-pacientes.general.crear');
