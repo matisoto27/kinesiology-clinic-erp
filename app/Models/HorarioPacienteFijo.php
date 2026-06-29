@@ -21,4 +21,9 @@ class HorarioPacienteFijo extends Model
     {
         return $this->belongsTo(PacienteFijo::class, 'id_paciente_fijo');
     }
+
+    public function getNombreDiaAttribute(): string
+    {
+        return ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][$this->dia_semana];
+    }
 }
