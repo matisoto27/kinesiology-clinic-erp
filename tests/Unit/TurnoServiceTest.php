@@ -6,6 +6,7 @@ use App\Models\Actividad;
 use App\Services\TurnoService;
 use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
+use Exception;
 use Tests\TestCase;
 
 class TurnoServiceTest extends TestCase
@@ -51,5 +52,66 @@ class TurnoServiceTest extends TestCase
         $this->assertSame('2026-07-21 16:30:00', $resultado[11]['fecha_hora']);
 
         Carbon::setTestNow();
+    }
+
+    public function test_validar_cupos_turnos_casuales_acepta_horarios_disponibles(): void
+    {
+        $actividad = $this->createMock(Actividad::class);
+        $actividad->expects($this->once())
+            ->method('turnosDisponibles')
+            ->with(5, $this->isInstanceOf(Carbon::class), $this->isInstanceOf(Carbon::class), false)
+            ->willReturn([
+                '2026-06-03 10:00:00',
+                '2026-06-05 10:00:00',
+            ]);
+
+        (new TurnoService())->validarCuposTurnosCasuales(
+            $actividad,
+            5,
+            Carbon::parse('2026-06-02'),
+            Carbon::parse('2026-06-06 23:59:59'),
+            ['2026-06-03 10:00:00', '2026-06-05 10:00:00']
+        );
+
+        $this->assertTrue(true);
+    }
+
+    public function test_validar_cupos_turnos_casuales_rechaza_horario_sin_cupo(): void
+    {
+        $actividad = $this->createMock(Actividad::class);
+        $actividad->method('turnosDisponibles')
+            ->willReturn(['2026-06-03 10:00:00']);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('Uno o más horarios seleccionados ya no tienen cupo disponible.');
+
+        (new TurnoService())->validarCuposTurnosCasuales(
+            $actividad,
+            5,
+            Carbon::parse('2026-06-02'),
+            Carbon::parse('2026-06-06 23:59:59'),
+            ['2026-06-05 10:00:00']
+        );
+    }
+
+    public function test_validar_cupos_turnos_casuales_rechaza_fecha_repetida(): void
+    {
+        $actividad = $this->createMock(Actividad::class);
+        $actividad->method('turnosDisponibles')
+            ->willReturn([
+                '2026-06-03 10:00:00',
+                '2026-06-03 11:00:00',
+            ]);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('No puede seleccionar más de un turno por día.');
+
+        (new TurnoService())->validarCuposTurnosCasuales(
+            $actividad,
+            5,
+            Carbon::parse('2026-06-02'),
+            Carbon::parse('2026-06-06 23:59:59'),
+            ['2026-06-03 10:00:00', '2026-06-03 11:00:00']
+        );
     }
 }

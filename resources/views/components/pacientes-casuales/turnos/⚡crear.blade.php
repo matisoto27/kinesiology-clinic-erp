@@ -4,6 +4,7 @@ use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteCasual;
+use App\Services\TurnoService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -145,6 +146,8 @@ new class extends Component
 
         try {
             DB::transaction(function () {
+                $this->revalidarCupos();
+
                 $idActividad = (int) $this->actividadActual->id;
                 $esGympass = $idActividad === 1;
 
@@ -176,10 +179,34 @@ new class extends Component
             });
 
             return redirect()->route('actividades-pacientes.inicio')->with('exito', '¡Turnos registrados con éxito!');
+        } catch (\Exception $ex) {
+            $this->addError('turnosSeleccionados', $ex->getMessage());
+            $this->limpiarTurnos();
         } catch (\Throwable $th) {
             Log::error('[(Livewire) pacientes-casuales.turnos.crear@almacenarTurnos] Error al registrar los turnos del paciente.', ['excepción' => $th->getMessage()]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
+    }
+
+    private function revalidarCupos(): void
+    {
+        $comienzo = ($this->proximaSemana ? now()->addWeek() : now())->startOfWeek()->startOfDay();
+        $fin = $comienzo->copy()->addDays(4)->endOfDay();
+
+        app(TurnoService::class)->validarCuposTurnosCasuales(
+            $this->actividadActual,
+            $this->idPacienteSeleccionado,
+            $comienzo,
+            $fin,
+            $this->fechasHoraSeleccionadas()
+        );
+    }
+
+    private function fechasHoraSeleccionadas(): array
+    {
+        return collect($this->turnosSeleccionados)
+            ->map(fn (array $turno) => Carbon::parse($turno['fecha'] . ' ' . $turno['hora']))
+            ->all();
     }
 
     private function maximoTurnos(): int

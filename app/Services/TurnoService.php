@@ -58,4 +58,35 @@ class TurnoService
             ];
         }, $turnos, array_keys($turnos));
     }
+
+    public function validarCuposTurnosCasuales(
+        Actividad $actividad,
+        int $idPaciente,
+        Carbon $comienzo,
+        Carbon $fin,
+        array $fechasHoraSolicitadas
+    ): void {
+        if ($fechasHoraSolicitadas === []) {
+            throw new Exception('Debe seleccionar al menos un turno.');
+        }
+
+        $disponibles = array_flip($actividad->turnosDisponibles($idPaciente, $comienzo, $fin, false));
+        $fechasVistas = [];
+
+        foreach ($fechasHoraSolicitadas as $fechaHora) {
+            $instante = Carbon::parse($fechaHora);
+            $fecha = $instante->toDateString();
+            $slot = $instante->toDateTimeString();
+
+            if (isset($fechasVistas[$fecha])) {
+                throw new Exception('No puede seleccionar más de un turno por día.');
+            }
+
+            if (!isset($disponibles[$slot])) {
+                throw new Exception('Uno o más horarios seleccionados ya no tienen cupo disponible.');
+            }
+
+            $fechasVistas[$fecha] = true;
+        }
+    }
 }
