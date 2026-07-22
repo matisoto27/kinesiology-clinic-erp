@@ -54,22 +54,28 @@ new class extends Component
 
     public function eliminar(int $id)
     {
-        DB::beginTransaction();
-
         try {
             $inscripcion = ActividadPaciente::withCount('pagos')->findOrFail($id);
-            if ($inscripcion->pagos_count > 0) {
+            $parDual = $inscripcion->id_act_pac_dual
+                ? ActividadPaciente::withCount('pagos')->find($inscripcion->id_act_pac_dual)
+                : null;
+
+            if ($inscripcion->pagos_count > 0 || ($parDual && $parDual->pagos_count > 0)) {
                 session()->flash('error', 'No se puede eliminar la inscripción porque ya tiene pagos registrados.');
                 return;
             }
 
-            $inscripcion->delete();
+            DB::transaction(function () use ($inscripcion, $parDual) {
+                $inscripcion->update(['id_act_pac_dual' => null]);
+                $parDual?->update(['id_act_pac_dual' => null]);
 
-            DB::commit();
+                $inscripcion->delete();
+                $parDual?->delete();
+            });
+
             session()->flash('exito', 'La inscripción ha sido eliminada correctamente.');
             $this->cargarDatos();
         } catch (\Throwable $ex) {
-            DB::rollBack();
             Log::error('[(Livewire) actividades-pacientes.inicio@eliminar] Error al eliminar la inscripción.', [
                 'id' => $id,
                 'excepción' => $ex->getMessage()
