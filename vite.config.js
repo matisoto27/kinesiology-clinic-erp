@@ -14,7 +14,6 @@ export default defineConfig({
                 'resources/js/pages/actividades-pacientes/kinesiologia/con-orden/crear.js',
                 'resources/js/pages/actividades-pacientes/kinesiologia/sin-orden/crear.js',
                 'resources/js/pages/obras-sociales-pacientes/crear.js',
-                'resources/js/pages/pagos/crear.js',
                 'resources/js/pages/precios/crear.js'
             ],
             refresh: true,

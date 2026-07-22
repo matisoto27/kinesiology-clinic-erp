@@ -8,7 +8,6 @@ use App\Http\Controllers\NotaTurnoController;
 use App\Http\Controllers\ObraSocialController;
 use App\Http\Controllers\ObraSocialPacienteController;
 use App\Http\Controllers\PacienteController;
-use App\Http\Controllers\PagoController;
 use App\Http\Controllers\PrecioController;
 use Illuminate\Support\Facades\Route;
 
@@ -63,11 +62,8 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::livewire('/pacientes-fijos', 'pacientes-fijos.inicio')->name('pacientes-fijos.inicio');
     Route::livewire('/pacientes-fijos/crear', 'pacientes-fijos.crear')->name('pacientes-fijos.crear');
 
-    Route::controller(PagoController::class)->group(function () {
-        Route::get('/pagos/crear', 'crear')->name('pagos.crear');
-        Route::get('/actividades-pacientes/{id}/pagos/crear', 'crear')->name('actividades-pacientes.pagos.crear');
-        Route::post('/pagos', 'almacenar')->name('pagos.almacenar');
-    });
+    Route::livewire('/pagos/crear', 'pagos.crear')->name('pagos.crear');
+    Route::livewire('/actividades-pacientes/{id}/pagos/crear', 'pagos.crear')->name('actividades-pacientes.pagos.crear');
     Route::livewire('/pagos/copagos/crear', 'pagos.copagos.crear')->name('copagos.crear');
 
     Route::controller(NotaTurnoController::class)->group(function () {
