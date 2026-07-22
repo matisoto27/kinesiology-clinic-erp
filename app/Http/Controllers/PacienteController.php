@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Resources\PacienteResource;
 use App\Models\Paciente;
 use App\Services\PlanDualService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -109,18 +108,6 @@ class PacienteController extends Controller
 
             return response()->json(['error' => $ex->getMessage()], 422);
         }
-    }
-
-    public function inicio()
-    {
-        $consultaPacientes = Paciente::query()
-            ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'actividad_fisica', 'es_adulto_mayor', 'vive_con', 'created_at'])
-            ->with(['contactosEmergencia:id,nombre,telefono,vinculo,id_paciente', 'sintomasActivos:id,nombre', 'patologias:id,nombre'])
-            ->latest()
-            ->paginate(10);
-
-        $pacientes = PacienteResource::collection($consultaPacientes);
-        return view('pacientes.inicio', compact('pacientes'));
     }
 
     public function buscarPorNombre(Request $request)

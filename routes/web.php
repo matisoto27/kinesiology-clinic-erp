@@ -45,7 +45,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
     });
 
     Route::controller(PacienteController::class)->group(function () {
-        Route::get('/pacientes', 'inicio')->name('pacientes.inicio');
+        Route::view('/pacientes', 'pacientes.inicio')->name('pacientes.inicio');
         Route::get('/buscar-pacientes', 'buscarPorNombre');
         Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
         Route::get('/pacientes/{id}/inscripcion-dual/pendiente', 'obtenerInscripcionDualPendiente');
