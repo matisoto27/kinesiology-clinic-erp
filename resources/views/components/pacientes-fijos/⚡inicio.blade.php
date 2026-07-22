@@ -1,21 +1,48 @@
 <?php
 
+use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new class extends Component
 {
+    use WithPagination;
+
+    #[Url(as: 'paciente')]
+    public string $consultaPaciente = '';
+
+    #[Url(as: 'actividad')]
+    public string $filtroActividad = '';
+
+    public function updatingConsultaPaciente(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFiltroActividad(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function pacientesFijos()
     {
         return PacienteFijo::query()
-            ->select('id', 'id_actividad', 'id_paciente', 'id_pac_fijo_dual')
+            ->select([
+                'pacientes_fijos.id',
+                'pacientes_fijos.id_actividad',
+                'pacientes_fijos.id_paciente',
+                'pacientes_fijos.id_pac_fijo_dual',
+            ])
             ->principales()
+            ->join('pacientes', 'pacientes.id', '=', 'pacientes_fijos.id_paciente')
             ->with([
                 'actividad:id,nombre',
                 'paciente:id,nombre,apellido',
@@ -23,7 +50,21 @@ new class extends Component
                 'pacFijoDual.actividad:id,nombre',
                 'pacFijoDual.horarios',
             ])
-            ->get();
+            ->when(!empty($this->consultaPaciente), fn ($consulta) => $consulta->whereHas(
+                'paciente',
+                fn ($subconsulta) => $subconsulta->buscarPorApNom($this->consultaPaciente)
+            ))
+            ->when($this->filtroActividad === 'gimnasio', fn ($consulta) => $consulta
+                ->where('pacientes_fijos.id_actividad', Actividad::GIMNASIO)
+                ->whereNull('pacientes_fijos.id_pac_fijo_dual'))
+            ->when($this->filtroActividad === 'pilates', fn ($consulta) => $consulta
+                ->where('pacientes_fijos.id_actividad', Actividad::PILATES)
+                ->whereNull('pacientes_fijos.id_pac_fijo_dual'))
+            ->when($this->filtroActividad === 'dual', fn ($consulta) => $consulta
+                ->whereNotNull('pacientes_fijos.id_pac_fijo_dual'))
+            ->orderBy('pacientes.apellido')
+            ->orderBy('pacientes.nombre')
+            ->paginate(10);
     }
 
     public function eliminar($id)
@@ -73,6 +114,29 @@ new class extends Component
 
         <h2 class="titulo-formulario">Listado de pacientes fijos</h2>
 
+        <div class="fila-formulario">
+            <div class="columna-campo">
+                <label for="buscar-paciente" class="etiqueta-formulario">Buscar Paciente</label>
+                <input
+                    id="buscar-paciente"
+                    type="text"
+                    class="entrada w-[28ch]"
+                    placeholder="Ingrese nombre y/o apellido"
+                    wire:model.live.debounce.300ms="consultaPaciente"
+                >
+            </div>
+
+            <div class="columna-campo">
+                <label for="filtro-actividad" class="etiqueta-formulario">Filtrar por Actividad</label>
+                <select id="filtro-actividad" class="entrada" wire:model.live="filtroActividad">
+                    <option value="">Todas</option>
+                    <option value="gimnasio">Gimnasio</option>
+                    <option value="pilates">Pilates</option>
+                    <option value="dual">Dual</option>
+                </select>
+            </div>
+        </div>
+
         <table class="tabla-listado">
                 <thead>
                     <tr class="tabla-listado__cabecera">
@@ -85,7 +149,7 @@ new class extends Component
                 <tbody>
                     @forelse($this->pacientesFijos as $pacFijo)
                         @php($esDualConPareja = $pacFijo->esDual() && $pacFijo->pacFijoDual)
-                        <tr class="group tabla-listado__fila">
+                        <tr class="group tabla-listado__fila" wire:key="paciente-fijo-{{ $pacFijo->id }}">
                             <td>{{ $pacFijo->paciente->apellido_nombre }}</td>
                             <td>
                                 @if($esDualConPareja)
@@ -137,10 +201,16 @@ new class extends Component
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="py-10 text-center text-gray-300 italic">No hay registros disponibles.</td>
+                            <td colspan="4" class="py-10 text-center text-gray-300 italic">
+                                {{ $this->consultaPaciente !== '' || $this->filtroActividad !== '' ? 'No se encontraron pacientes fijos.' : 'No hay registros disponibles.' }}
+                            </td>
                         </tr>
                     @endforelse
                 </tbody>
         </table>
+
+        <div class="mt-4">
+            {{ $this->pacientesFijos->links(data: ['scrollTo' => false]) }}
+        </div>
     </div>
 </div>
