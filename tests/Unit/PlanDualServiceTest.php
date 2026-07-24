@@ -26,22 +26,14 @@ class PlanDualServiceTest extends TestCase
         $this->service = app(PlanDualService::class);
     }
 
-    public function test_calcular_totales_proporcionales_distribuye_precio_del_plan(): void
+    public function test_preview_precio_segunda_visita_usa_combo_de_frecuencia_total(): void
     {
-        $totales = $this->service->calcularTotalesProporcionales(30000.00, 2, 1);
+        $this->crearPreciosMensualesDual(frecuenciaTotal: 3, precioGym: 30000.00, precioPilates: 30000.00);
 
-        $this->assertSame(3, $totales['frecuencia_total']);
-        $this->assertSame(20000.00, $totales['total_primera']);
-        $this->assertSame(10000.00, $totales['total_segunda']);
-        $this->assertSame(30000.00, $totales['total_primera'] + $totales['total_segunda']);
-    }
+        $preview = $this->service->previewPrecioSegundaVisita(2, 1);
 
-    public function test_calcular_totales_proporcionales_rechaza_frecuencia_total_invalida(): void
-    {
-        $this->expectException(Exception::class);
-        $this->expectExceptionMessage('La frecuencia total del plan no tiene un valor válido.');
-
-        $this->service->calcularTotalesProporcionales(30000.00, 3, 3);
+        $this->assertSame(3, $preview['frecuencia_total']);
+        $this->assertSame(30000.00, $preview['precio_plan']);
     }
 
     public function test_validar_precios_coincidentes_no_lanza_excepcion_cuando_coinciden(): void
@@ -61,18 +53,6 @@ class PlanDualServiceTest extends TestCase
         $this->expectExceptionMessage(sprintf(PlanDualService::MENSAJE_PRECIOS_NO_COINCIDEN, 3));
 
         $this->service->validarPreciosCoincidentes(3);
-    }
-
-    public function test_preview_precio_segunda_visita_usa_combo_de_frecuencia_total(): void
-    {
-        $this->crearPreciosMensualesDual(frecuenciaTotal: 3, precioGym: 30000.00, precioPilates: 30000.00);
-
-        $preview = $this->service->previewPrecioSegundaVisita(2, 1);
-
-        $this->assertSame(3, $preview['frecuencia_total']);
-        $this->assertSame(30000.00, $preview['precio_plan']);
-        $this->assertSame(20000.00, $preview['total_primera']);
-        $this->assertSame(10000.00, $preview['total_segunda']);
     }
 
     public function test_frecuencias_permitidas_segunda_inscripcion_respetan_tope_de_cinco(): void

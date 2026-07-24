@@ -122,17 +122,28 @@ new class extends Component
     #[Computed]
     public function pendientesDePago()
     {
-        return ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'primerTurno'])
+        $inscripciones = ActividadPaciente::query()
+            ->with(['actividad', 'pacienteRegular', 'pacienteCasual', 'primerTurno'])
             ->withSum('pagos', 'monto')
             ->sinPagar()
             ->when($this->filtroActividad === 'gimnasio', fn ($consulta) => $consulta
-                ->where('id_actividad', Actividad::GIMNASIO))
+                ->where(function ($sc) {
+                    $sc->where('id_actividad', Actividad::GIMNASIO)
+                        ->orWhere(fn ($sc) => $sc->dualCompleto());
+                })
+            )
             ->when($this->filtroActividad === 'pilates', fn ($consulta) => $consulta
-                ->where('id_actividad', Actividad::PILATES))
+                ->where(function ($sc) {
+                    $sc->where('id_actividad', Actividad::PILATES)
+                        ->orWhere(fn ($sc) => $sc->dualCompleto());
+                })
+            )
             ->when($this->filtroActividad === 'kinesiologia', fn ($consulta) => $consulta
                 ->whereHas('actividad', fn ($subconsulta) => $subconsulta
                     ->where('id_tipo_actividad', Actividad::TIPO_KINESIOLOGIA)))
-            ->get()
+            ->get();
+
+        return ActividadPaciente::filtrarProximasPagables($inscripciones)
             ->sortBy(fn ($ap) => $ap->primerTurno?->fecha_hora ?? now()->addYears(100));
     }
 
@@ -209,6 +220,13 @@ new class extends Component
                     ->with('actividad')
                     ->withSum('pagos', 'monto')
                     ->findOrFail($this->idActPac);
+
+                if (!$inscripcion->esProximaPagable()) {
+                    throw ValidationException::withMessages([
+                        'idActPac' => ['El paciente cuenta con una inscripción más reciente cuyo pago se encuentra incompleto.'],
+                    ]);
+                }
+
                 $deudaActual = (float) $inscripcion->deuda;
 
                 if ($this->monto > $deudaActual) {
@@ -267,10 +285,14 @@ new class extends Component
             );
         }
 
+        $nombreActividad = $actPac->esPrimeraDual() && $actPac->esDualCompleto()
+            ? sprintf('Gym/Pilates (x%d)', (int) $actPac->frecuencia_total_dual)
+            : $actPac->nombre_actividad;
+
         return sprintf(
             '[1er Turno: %s] %s - %s',
             $actPac->primerTurno->fecha_hora->format('d/m/Y'),
-            $actPac->nombre_actividad,
+            $nombreActividad,
             $actPac->ap_nom_paciente
         );
     }

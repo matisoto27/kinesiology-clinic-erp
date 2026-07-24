@@ -106,20 +106,16 @@ class ActividadPacienteService
         $frecuenciaPrimera = $pendiente->frecuenciaSemanal();
         $frecuenciaSegunda = (int) $validados['frecuencia_semanal'];
 
-        $precioPlan = $this->planDualService->obtenerPrecioPlan($frecuenciaPrimera + $frecuenciaSegunda);
-        $totales = $this->planDualService->calcularTotalesProporcionales(
-            $precioPlan,
-            $frecuenciaPrimera,
-            $frecuenciaSegunda
-        );
+        $frecuenciaTotal = $frecuenciaPrimera + $frecuenciaSegunda;
+        $precioPlan = $this->planDualService->obtenerPrecioPlan($frecuenciaTotal);
 
         $ahora = Carbon::now();
         $validados['cant_sesiones'] = $frecuenciaSegunda * 4;
-        $validados['total_a_pagar'] = $totales['total_segunda'];
+        $validados['total_a_pagar'] = 0;
 
-        $segundaInscripcion = $this->crearInscripcion($validados, $ahora, false, [
+        $segundaInscripcion = $this->crearInscripcion($validados, $ahora, true, [
             'plan_dual_pendiente' => false,
-            'frecuencia_total_dual' => $totales['frecuencia_total'],
+            'frecuencia_total_dual' => $frecuenciaTotal,
             'id_act_pac_dual' => $pendiente->id,
         ]);
 
@@ -127,9 +123,9 @@ class ActividadPacienteService
 
         $pendiente->update([
             'plan_dual_pendiente' => false,
-            'frecuencia_total_dual' => $totales['frecuencia_total'],
+            'frecuencia_total_dual' => $frecuenciaTotal,
             'id_act_pac_dual' => $segundaInscripcion->id,
-            'total_a_pagar' => $totales['total_primera'],
+            'total_a_pagar' => $precioPlan,
         ]);
 
         return $segundaInscripcion->fresh(['turnos']);

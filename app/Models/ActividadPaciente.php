@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Collection;
 
 class ActividadPaciente extends Model
 {
@@ -139,6 +140,11 @@ class ActividadPaciente extends Model
         return $this->belongsTo(self::class, 'id_act_pac_dual');
     }
 
+    public function pertenecePlanDual(): bool
+    {
+        return $this->esDualPendiente() || $this->esDualCompleto();
+    }
+
     public function esDualPendiente(): bool
     {
         return $this->plan_dual_pendiente;
@@ -151,11 +157,61 @@ class ActividadPaciente extends Model
             && $this->frecuencia_total_dual !== null;
     }
 
+    public function esPrimeraDual(): bool
+    {
+        return $this->esDualPendiente() || ($this->esDualCompleto() && (int) $this->id < (int) $this->id_act_pac_dual);
+    }
+
+    public function esSegundaDual(): bool
+    {
+        return $this->pertenecePlanDual() && !$this->esPrimeraDual();
+    }
+
     public function scopeDualCompleto(Builder $consulta): Builder
     {
         return $consulta->where('plan_dual_pendiente', false)
             ->whereNotNull('id_act_pac_dual')
             ->whereNotNull('frecuencia_total_dual');
+    }
+
+    public static function filtrarProximasPagables(Collection $inscripciones): Collection
+    {
+        return $inscripciones
+            ->filter(fn (self $inscripcion) => $inscripcion->calcularDeuda() > 0)
+            ->groupBy(fn (self $inscripcion) => sprintf(
+                '%s-%s',
+                $inscripcion->id_paciente ?? 'c' . $inscripcion->id_paciente_casual,
+                $inscripcion->id_actividad
+            ))
+            ->map(function (Collection $grupo) {
+                return $grupo->sortBy([
+                    ['fecha_comienzo', 'asc'],
+                    ['id', 'asc'],
+                ])->first();
+            })
+            ->values();
+    }
+
+    public function esProximaPagable(): bool
+    {
+        if ($this->calcularDeuda() <= 0) {
+            return false;
+        }
+
+        $consulta = self::query()
+            ->withSum('pagos', 'monto')
+            ->sinPagar()
+            ->where('id_actividad', $this->id_actividad);
+
+        if ($this->id_paciente !== null) {
+            $consulta->where('id_paciente', $this->id_paciente);
+        } else {
+            $consulta->where('id_paciente_casual', $this->id_paciente_casual);
+        }
+
+        $proxima = self::filtrarProximasPagables($consulta->get())->first();
+
+        return $proxima !== null && (int) $proxima->id === (int) $this->id;
     }
 
     public function esRegular(): bool

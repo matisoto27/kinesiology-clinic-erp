@@ -91,8 +91,11 @@ class PacienteFijoDualTest extends TestCase
         $this->assertTrue($nuevoPilates->esDualCompleto());
         $this->assertSame($nuevoPilates->id, $nuevoGym->id_act_pac_dual);
         $this->assertSame($nuevoGym->id, $nuevoPilates->id_act_pac_dual);
-        $this->assertSame('20000.00', (string) $nuevoGym->total_a_pagar);
-        $this->assertSame('10000.00', (string) $nuevoPilates->total_a_pagar);
+        $this->assertSame('30000.00', (string) $nuevoGym->total_a_pagar);
+        $this->assertSame('0.00', (string) $nuevoPilates->total_a_pagar);
+        $this->assertFalse($nuevoGym->pago_completado);
+        $this->assertTrue($nuevoPilates->pago_completado);
+        $this->assertLessThan($nuevoPilates->id, $nuevoGym->id);
     }
 
     public function test_command_post_alta_dual_no_renova_si_hay_cobertura_suficiente(): void

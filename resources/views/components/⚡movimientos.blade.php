@@ -193,7 +193,9 @@ new class extends Component
 
                             <small class="block text-emerald-400 group-hover:text-emerald-900 font-bold tracking-wide uppercase">
                                 @if($mov->actividadPaciente->actividad->esActividadGeneral())
-                                    @if ($mov->actividadPaciente->esRegular())
+                                    @if ($mov->actividadPaciente->esPrimeraDual())
+                                        Gym/Pilates (x{{ $mov->actividadPaciente->frecuencia_total_dual }})
+                                    @elseif ($mov->actividadPaciente->esRegular())
                                         {{ $mov->actividadPaciente->nombre_actividad }} ({{ (int)($cantidad / 4) }} {{ (int)($cantidad / 4) === 1 ? 'vez' : 'veces' }} por semana)
                                     @else
                                         Prueba de Pilates

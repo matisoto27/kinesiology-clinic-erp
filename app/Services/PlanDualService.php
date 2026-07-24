@@ -99,13 +99,10 @@ class PlanDualService
     {
         $frecuenciaTotal = $frecuenciaPrimera + $frecuenciaSegunda;
         $precioPlan = $this->obtenerPrecioPlan($frecuenciaTotal);
-        $totales = $this->calcularTotalesProporcionales($precioPlan, $frecuenciaPrimera, $frecuenciaSegunda);
 
         return [
             'frecuencia_total' => $frecuenciaTotal,
             'precio_plan' => $precioPlan,
-            'total_primera' => $totales['total_primera'],
-            'total_segunda' => $totales['total_segunda'],
         ];
     }
 
@@ -124,23 +121,6 @@ class PlanDualService
         if (round($precioGym, 2) !== round($precioPilates, 2)) {
             throw new Exception(sprintf(self::MENSAJE_PRECIOS_NO_COINCIDEN, $frecuenciaTotal));
         }
-    }
-
-    public function calcularTotalesProporcionales(float $precioPlan, int $freqPrimera, int $freqSegunda): array
-    {
-        $frecuenciaTotal = $freqPrimera + $freqSegunda;
-
-        if ($frecuenciaTotal < 1 || $frecuenciaTotal > 5) {
-            throw new Exception('La frecuencia total del plan no tiene un valor válido.');
-        }
-
-        $totalPrimera = round($precioPlan * ($freqPrimera / $frecuenciaTotal), 2);
-
-        return [
-            'frecuencia_total' => $frecuenciaTotal,
-            'total_primera' => $totalPrimera,
-            'total_segunda' => round($precioPlan - $totalPrimera, 2),
-        ];
     }
 
     public function validarSegundaInscripcion(ActividadPaciente $pendiente, array $validados): void

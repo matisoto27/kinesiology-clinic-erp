@@ -55,6 +55,146 @@ class ActividadPacienteScopeTest extends TestCase
         $this->assertFalse($resultado->contains($actPac->id));
     }
 
+    public function test_par_dual_completo_distingue_primera_y_segunda_inscripcion(): void
+    {
+        [$primera, $segunda] = $this->crearParDualCompleto();
+
+        $this->assertTrue($primera->esPrimeraDual());
+        $this->assertFalse($primera->esSegundaDual());
+        $this->assertTrue($primera->pertenecePlanDual());
+
+        $this->assertTrue($segunda->esSegundaDual());
+        $this->assertFalse($segunda->esPrimeraDual());
+        $this->assertTrue($segunda->pertenecePlanDual());
+    }
+
+    public function test_dual_incompleto_es_primera_dual_y_no_segunda_dual(): void
+    {
+        $inscripcion = new ActividadPaciente([
+            'plan_dual_pendiente' => true,
+        ]);
+
+        $this->assertTrue($inscripcion->pertenecePlanDual());
+        $this->assertTrue($inscripcion->esPrimeraDual());
+        $this->assertFalse($inscripcion->esSegundaDual());
+    }
+
+    public function test_filtrar_proximas_pagables_deja_solo_la_inscripcion_mas_antigua_por_paciente_y_actividad(): void
+    {
+        $tipo = TipoActividad::create(['descripcion' => 'General']);
+
+        $pilates = Actividad::create([
+            'nombre' => 'Pil',
+            'id_tipo_actividad' => $tipo->id,
+        ]);
+
+        $paciente = Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Nombre',
+            'apellido' => 'Apellido',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+
+        $original = ActividadPaciente::create([
+            'id_actividad' => $pilates->id,
+            'id_paciente' => $paciente->id,
+            'fecha_comienzo' => '2026-06-01',
+            'cant_sesiones' => 8,
+            'es_fijo' => true,
+            'total_a_pagar' => 20000,
+        ]);
+
+        $renovacion1 = ActividadPaciente::create([
+            'id_actividad' => $pilates->id,
+            'id_paciente' => $paciente->id,
+            'fecha_comienzo' => '2026-07-01',
+            'cant_sesiones' => 8,
+            'es_fijo' => true,
+            'total_a_pagar' => 20000,
+        ]);
+
+        $renovacion2 = ActividadPaciente::create([
+            'id_actividad' => $pilates->id,
+            'id_paciente' => $paciente->id,
+            'fecha_comienzo' => '2026-08-01',
+            'cant_sesiones' => 8,
+            'es_fijo' => true,
+            'total_a_pagar' => 20000,
+        ]);
+
+        $impagas = ActividadPaciente::withSum('pagos', 'monto')->sinPagar()->get();
+        $pagables = ActividadPaciente::filtrarProximasPagables($impagas);
+
+        $this->assertCount(1, $pagables->where('id_paciente', $paciente->id));
+        $this->assertSame($original->id, $pagables->firstWhere('id_paciente', $paciente->id)?->id);
+        $this->assertTrue($original->fresh()->esProximaPagable());
+        $this->assertFalse($renovacion1->fresh()->esProximaPagable());
+        $this->assertFalse($renovacion2->fresh()->esProximaPagable());
+    }
+
+    /**
+     * @return array{0: ActividadPaciente, 1: ActividadPaciente}
+     */
+    private function crearParDualCompleto(): array
+    {
+        $tipo = TipoActividad::create(['descripcion' => 'General']);
+
+        $gimnasio = Actividad::create([
+            'nombre' => 'Gym',
+            'id_tipo_actividad' => $tipo->id,
+        ]);
+
+        $pilates = Actividad::create([
+            'nombre' => 'Pil',
+            'id_tipo_actividad' => $tipo->id,
+        ]);
+
+        $paciente = Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Nombre',
+            'apellido' => 'Apellido',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+
+        $primera = ActividadPaciente::create([
+            'id_actividad' => $gimnasio->id,
+            'id_paciente' => $paciente->id,
+            'fecha_comienzo' => '2026-06-01',
+            'cant_sesiones' => 8,
+            'es_fijo' => false,
+            'total_a_pagar' => 30000,
+            'frecuencia_total_dual' => 3,
+            'plan_dual_pendiente' => false,
+        ]);
+
+        $segunda = ActividadPaciente::create([
+            'id_actividad' => $pilates->id,
+            'id_paciente' => $paciente->id,
+            'fecha_comienzo' => '2026-06-02',
+            'cant_sesiones' => 4,
+            'es_fijo' => false,
+            'total_a_pagar' => 0,
+            'pago_completado' => true,
+            'frecuencia_total_dual' => 3,
+            'plan_dual_pendiente' => false,
+        ]);
+
+        $primera->update(['id_act_pac_dual' => $segunda->id]);
+        $segunda->update(['id_act_pac_dual' => $primera->id]);
+
+        return [$primera->fresh(), $segunda->fresh()];
+    }
+
     private function crearInscripcionConUltimoTurno(string $fechaUltimoTurno): ActividadPaciente
     {
         $tipo = TipoActividad::create(['descripcion' => 'General']);

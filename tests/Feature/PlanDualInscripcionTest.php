@@ -59,9 +59,11 @@ class PlanDualInscripcionTest extends TestCase
         $this->assertSame(Actividad::GIMNASIO, (int) $inscripcion->id_actividad);
         $this->assertCount(8, $inscripcion->turnos);
         $this->assertSame(1, ActividadPaciente::where('plan_dual_pendiente', true)->count());
+        $this->assertTrue($inscripcion->esPrimeraDual());
+        $this->assertFalse($inscripcion->esSegundaDual());
     }
 
-    public function test_segunda_inscripcion_dual_completa_plan_y_distribuye_totales(): void
+    public function test_segunda_inscripcion_dual_completa_plan_y_asigna_total_a_primera(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
 
@@ -91,9 +93,16 @@ class PlanDualInscripcionTest extends TestCase
         $this->assertSame(3, $segunda->frecuencia_total_dual);
         $this->assertSame($segunda->id, $primera->id_act_pac_dual);
         $this->assertSame($primera->id, $segunda->id_act_pac_dual);
-        $this->assertSame('20000.00', (string) $primera->total_a_pagar);
-        $this->assertSame('10000.00', (string) $segunda->total_a_pagar);
+        $this->assertSame('30000.00', (string) $primera->total_a_pagar);
+        $this->assertSame('0.00', (string) $segunda->total_a_pagar);
+        $this->assertFalse($primera->pago_completado);
+        $this->assertTrue($segunda->pago_completado);
+        $this->assertLessThan($segunda->id, $primera->id);
         $this->assertTrue($segunda->esDualCompleto());
+        $this->assertTrue($primera->esPrimeraDual());
+        $this->assertFalse($primera->esSegundaDual());
+        $this->assertTrue($segunda->esSegundaDual());
+        $this->assertFalse($segunda->esPrimeraDual());
         $this->assertSame(2, ActividadPaciente::count());
         $this->assertSame(12, Turno::count());
     }

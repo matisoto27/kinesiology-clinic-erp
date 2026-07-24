@@ -307,8 +307,6 @@ class GenerarTurnosMensuales extends Command
         ExpansorTurnosPatron $expansorTurnosPatron,
         PlanDualService $planDualService
     ): array {
-        $frecuenciaGym = $actPacGym->frecuenciaSemanal();
-        $frecuenciaPilates = $actPacPilates->frecuenciaSemanal();
         $frecuenciaTotal = (int) $actPacGym->frecuencia_total_dual;
 
         if ($frecuenciaTotal < 1) {
@@ -316,11 +314,6 @@ class GenerarTurnosMensuales extends Command
         }
 
         $precioPlan = $planDualService->obtenerPrecioPlan($frecuenciaTotal);
-        $totales = $planDualService->calcularTotalesProporcionales(
-            $precioPlan,
-            $frecuenciaGym,
-            $frecuenciaPilates
-        );
 
         $nuevoGym = $this->renovarInscripcionDualPorActividad(
             $actPacGym,
@@ -329,7 +322,7 @@ class GenerarTurnosMensuales extends Command
             $horariosGym,
             $turnoService,
             $expansorTurnosPatron,
-            $totales['total_primera']
+            $precioPlan
         );
 
         $nuevoPilates = $this->renovarInscripcionDualPorActividad(
@@ -339,7 +332,7 @@ class GenerarTurnosMensuales extends Command
             $horariosPilates,
             $turnoService,
             $expansorTurnosPatron,
-            $totales['total_segunda']
+            0
         );
 
         $nuevoGym->update([
@@ -402,6 +395,7 @@ class GenerarTurnosMensuales extends Command
             'cant_sesiones' => $cantidadSesiones,
             'es_fijo' => true,
             'total_a_pagar' => $totalAPagar,
+            'pago_completado' => $totalAPagar <= 0, // La 2da inscripcion del par dual tendrá pago_completado = true
             'plan_dual_pendiente' => false,
         ]);
         $nuevoActPac->turnos()->createMany($turnosValidados);

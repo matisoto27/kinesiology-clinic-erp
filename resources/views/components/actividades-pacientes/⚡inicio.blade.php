@@ -1,58 +1,54 @@
 <?php
 
 use App\Models\ActividadPaciente;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new class extends Component
 {
-    public ?string $filtroPago = null;
+    use WithPagination;
 
-    public Collection $inscripciones;
+    public string $filtroPago = '';
 
     public ?ActividadPaciente $inscripcionSeleccionada = null;
 
     public bool $mostrarModal = false;
 
-    public function mount()
+    public function updatingFiltroPago(): void
     {
-        $this->cargarDatos();
+        $this->resetPage();
     }
 
-    public function updatedFiltroPago()
+    #[Computed]
+    public function inscripciones()
     {
-        $this->cargarDatos();
+        return ActividadPaciente::query()
+            ->with(['actividad', 'pacienteRegular', 'pacienteCasual'])
+            ->withSum('pagos', 'monto')
+            ->when($this->filtroPago === 'completado', fn ($consulta) => $consulta
+                ->where('pago_completado', true))
+            ->when($this->filtroPago === 'pendiente', fn ($consulta) => $consulta
+                ->where('pago_completado', false))
+            ->orderByDesc('created_at')
+            ->paginate(10);
     }
 
-    protected function cargarDatos()
-    {
-        $consulta = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'pagos', 'turnos'])
-            ->withSum('pagos', 'monto');
-
-        if ($this->filtroPago === 'completado') {
-            $consulta->where('pago_completado', true);
-        } elseif ($this->filtroPago === 'pendiente') {
-            $consulta->where('pago_completado', false);
-        }
-
-        $this->inscripciones = $consulta->orderByDesc('created_at')->get();
-    }
-
-    public function verDetalles(int $id)
+    public function verDetalles(int $id): void
     {
         $this->inscripcionSeleccionada = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'turnos'])->find($id);
         $this->mostrarModal = true;
     }
 
-    public function cerrarModal()
+    public function cerrarModal(): void
     {
         $this->mostrarModal = false;
         $this->inscripcionSeleccionada = null;
     }
 
-    public function eliminar(int $id)
+    public function eliminar(int $id): void
     {
         try {
             $inscripcion = ActividadPaciente::withCount('pagos')->findOrFail($id);
@@ -74,11 +70,10 @@ new class extends Component
             });
 
             session()->flash('exito', 'La inscripción ha sido eliminada correctamente.');
-            $this->cargarDatos();
         } catch (\Throwable $ex) {
             Log::error('[(Livewire) actividades-pacientes.inicio@eliminar] Error al eliminar la inscripción.', [
                 'id' => $id,
-                'excepción' => $ex->getMessage()
+                'excepción' => $ex->getMessage(),
             ]);
 
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
@@ -120,16 +115,25 @@ new class extends Component
         </thead>
 
         <tbody>
-            @forelse($inscripciones as $actPac)
+            @forelse($this->inscripciones as $actPac)
                 @php
                     $cantidad = (int) $actPac->cant_sesiones;
                     $esGeneral = $actPac->actividad->esActividadGeneral();
                     $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
                 @endphp
 
-                <tr class="tabla-listado__fila h-28">
+                <tr class="tabla-listado__fila h-28" wire:key="inscripcion-{{ $actPac->id }}">
                     <td colspan="2">
                         @if ($actPac->esRegular())
+                            @if ($actPac->pertenecePlanDual())
+                                <span class="badge bg-indigo-600">
+                                    @if ($actPac->esDualPendiente())
+                                        Dual (incompleto)
+                                    @else
+                                        Dual (x{{ $actPac->frecuencia_total_dual }})
+                                    @endif
+                                </span>
+                            @endif
                             {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
                         @elseif ($actPac->esGympass())
                             <span class="badge bg-emerald-600">Paciente Gympass</span>
@@ -157,7 +161,11 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esRegular() || $actPac->esPruebaPilates())
+                        @if ($actPac->esDualPendiente())
+                            <span class="text-gray-400 italic">INC</span>
+                        @elseif ($actPac->esSegundaDual())
+                            <span class="text-gray-400 italic">N/A</span>
+                        @elseif ($actPac->esRegular() || $actPac->esPruebaPilates())
                             <div class="flex flex-col">
                                 <span class="{{ $actPac->fecha_recargo ? 'text-gray-500 text-sm line-through' : 'font-bold' }}">
                                     ${{ number_format($actPac->total_a_pagar, 2, ',', '.') }}
@@ -186,7 +194,11 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if($actPac->pago_completado)
+                        @if ($actPac->esDualPendiente())
+                            <span class="text-gray-400 italic">INC</span>
+                        @elseif ($actPac->esSegundaDual())
+                            <span class="text-gray-400 italic">N/A</span>
+                        @elseif($actPac->pago_completado)
                             <span class="px-3 py-1 inline-flex items-center bg-emerald-500 rounded text-sm font-semibold">
                                 Completado
                             </span>
@@ -197,10 +209,14 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if($actPac->deuda > 0)
+                        @if ($actPac->esDualPendiente())
+                            <span class="text-gray-400 italic">INC</span>
+                        @elseif($actPac->deuda > 0)
                             <span class="px-3 py-1 inline-flex items-center bg-red-500 rounded text-sm font-semibold">
                                 ${{ number_format($actPac->deuda, 2, ',', '.') }}
                             </span>
+                        @elseif ($actPac->esSegundaDual())
+                            <span class="text-gray-400 italic">N/A</span>
                         @else
                             <span class="text-gray-400 italic">Saldada</span>
                         @endif
@@ -224,11 +240,17 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="10" class="py-10 text-center text-gray-300 italic">No hay registros disponibles.</td>
+                    <td colspan="10" class="py-10 text-center text-gray-300 italic">
+                        {{ $filtroPago !== '' ? 'No se encontraron inscripciones con ese filtro de pago.' : 'No hay registros disponibles.' }}
+                    </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
+
+    <div class="mt-4">
+        {{ $this->inscripciones->links(data: ['scrollTo' => false]) }}
+    </div>
 
     @if($mostrarModal && $inscripcionSeleccionada)
         <div class="modal-informativo" wire:keydown.escape.window="cerrarModal">
