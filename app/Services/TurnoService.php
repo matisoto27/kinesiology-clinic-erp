@@ -2,9 +2,12 @@
 
 namespace App\Services;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
+use App\Models\Turno;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Facades\DB;
 
 class TurnoService
 {
@@ -88,5 +91,28 @@ class TurnoService
 
             $fechasVistas[$fecha] = true;
         }
+    }
+
+    public function reprogramar(Turno $turnoOriginal, Carbon $nuevaFechaHora): Turno
+    {
+        if (str_contains($turnoOriginal->estado, 'Presente')) {
+            throw new ReglaNegocioException('No se puede reprogramar un turno donde el paciente ya ha asistido.');
+        }
+
+        return DB::transaction(function () use ($turnoOriginal, $nuevaFechaHora) {
+            $esGeneral = $turnoOriginal->actividadPaciente->actividad->esActividadGeneral();
+
+            // Para turnos de kinesiología no se modifica el estado del turno original.
+            if ($esGeneral && !$turnoOriginal->esAusenteAviso()) {
+                $turnoOriginal->update(['estado' => 'Ausente avisó']);
+            }
+
+            return Turno::create([
+                'id_act_pac' => $turnoOriginal->id_act_pac,
+                'nro_turno' => $turnoOriginal->nro_turno,
+                'fecha_hora' => $nuevaFechaHora,
+                'id_turno_original' => $turnoOriginal->id,
+            ]);
+        });
     }
 }

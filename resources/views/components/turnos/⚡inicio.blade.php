@@ -1,6 +1,9 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
+use App\Models\Actividad;
 use App\Models\Turno;
+use App\Services\TurnoService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -54,6 +57,13 @@ new class extends Component
             })
             ->when(!empty($this->consultaPaciente), function($consulta) {
                 $consulta->whereHas('actividadPaciente', fn($sc) => $sc->buscarPaciente($this->consultaPaciente));
+            })
+            ->where(function ($consulta) {
+                $consulta->whereDoesntHave('turnoRecuperacion')
+                    ->orWhereHas(
+                        'actividadPaciente.actividad',
+                        fn ($sc) => $sc->where('id_tipo_actividad', Actividad::TIPO_GENERAL)
+                    );
             })
             ->orderByDesc('fecha_hora')
             ->paginate(10);
@@ -155,43 +165,23 @@ new class extends Component
             ->toArray();
     }
 
-    public function actualizar()
+    public function actualizar(TurnoService $turnoService)
     {
-        if (str_contains($this->turnoSeleccionado->estado, 'Presente')) {
-            session()->flash('error', 'No se puede editar un turno donde el paciente ya ha asistido.');
-            $this->cerrarModal();
-            return;
-        }
-
         try {
-            $mensaje = DB::transaction(function () {
-                $nuevaFechaHora = $this->fechaSeleccionada . ' ' . $this->horaSeleccionada;
+            $esGeneral = $this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral();
+            $nuevaFechaHora = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada);
 
-                if ($this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral()) {
-                    if (!$this->turnoSeleccionado->esAusenteAviso()) {
-                        $this->turnoSeleccionado->update(['estado' => 'Ausente avisó']);
-                    }
-
-                    Turno::create([
-                        'id_act_pac' => $this->turnoSeleccionado->id_act_pac,
-                        'nro_turno' => $this->turnoSeleccionado->nro_turno,
-                        'fecha_hora' => $nuevaFechaHora,
-                        'id_turno_original' => $this->turnoSeleccionado->id
-                    ]);
-
-                    return '¡El turno ha sido reprogramado con éxito!';
-
-                } else {
-                    $this->turnoSeleccionado->update(['fecha_hora' => $nuevaFechaHora]);
-                    return 'La fecha del turno de Kinesiología ha sido actualizada.';
-                }
-            });
+            $turnoService->reprogramar($this->turnoSeleccionado, $nuevaFechaHora);
 
             $this->cerrarModal();
-            session()->flash('exito', $mensaje);
+            session()->flash('exito', $esGeneral
+                ? '¡El turno ha sido reprogramado con éxito!'
+                : 'La fecha del turno de Kinesiología ha sido actualizada.');
 
+        } catch (ReglaNegocioException $ex) {
+            $this->cerrarModal();
+            session()->flash('error', $ex->getMessage());
         } catch (\Throwable $ex) {
-            DB::rollBack();
             Log::error('[(Livewire) turnos.inicio@actualizar] Error al actualizar la fecha del turno.', ['excepción' => $ex->getMessage()]);
 
             $this->cerrarModal();

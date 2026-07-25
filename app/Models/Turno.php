@@ -84,9 +84,20 @@ class Turno extends Model
 
     public function puedeSerReprogramado(): bool
     {
-        if ($this->turnoOriginal || $this->turnoRecuperacion) return false; // Esto aplica solamente para actividades de tipo general
-        if ($this->estado === 'Presente') return false;
-        return $this->esAusenteAviso() || $this->fecha_hora->isFuture();
+        if ($this->estado === 'Presente') {
+            return false;
+        }
+
+        if ($this->actividadPaciente->actividad->esActividadGeneral()) {
+            if ($this->turnoOriginal || $this->turnoRecuperacion) {
+                return false;
+            }
+
+            return $this->esAusenteAviso() || $this->fecha_hora->isFuture();
+        }
+
+        // Los turnos de kinesiología siempre pueden reprogramarse, salvo que este turno en particular ya haya sido reemplazado por otro.
+        return !$this->turnoRecuperacion;
     }
 
     public function scopeConActPac(Builder $consulta): Builder
