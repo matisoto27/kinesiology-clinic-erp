@@ -67,7 +67,7 @@ new class extends Component
     public function inscripcionesElegibles()
     {
         return ActividadPaciente::query()
-            ->select('id', 'id_actividad', 'id_paciente', 'fecha_comienzo', 'cant_sesiones', 'frecuencia_total_dual', 'id_act_pac_dual', 'plan_dual_pendiente')
+            ->select('id', 'id_actividad', 'id_paciente', 'cant_sesiones', 'frecuencia_total_dual', 'id_act_pac_dual', 'plan_dual_pendiente')
             ->with([
                 'actividad' => fn ($consulta) => $consulta->select('id', 'nombre')->with('horarios:id,hora_inicio'),
                 'pacienteRegular:id,nombre,apellido',
@@ -107,8 +107,8 @@ new class extends Component
                 $inscripcionGym = (int) $inscripcion->id_actividad === Actividad::GIMNASIO ? $inscripcion : $pareja;
                 $inscripcionPilates = (int) $inscripcionGym->id === (int) $inscripcion->id ? $pareja : $inscripcion;
                 $fechaInicio = collect([
-                    $inscripcionGym->primerTurno?->fecha_hora,
-                    $inscripcionPilates->primerTurno?->fecha_hora,
+                    $inscripcionGym->primerTurno->fecha_hora,
+                    $inscripcionPilates->primerTurno->fecha_hora,
                 ])
                 ->filter()
                 ->min()
@@ -140,7 +140,7 @@ new class extends Component
                     '%s - %s - 1er Turno: %s',
                     $inscripcion->ap_nom_paciente,
                     $inscripcion->nombre_actividad,
-                    $inscripcion->primerTurno?->fecha_hora->format('d-m-Y') ?? $inscripcion->fecha_comienzo->format('d-m-Y')
+                    $inscripcion->primerTurno->fecha_hora->format('d-m-Y')
                 ),
                 'es_dual' => false,
                 'inscripcion' => $inscripcion,

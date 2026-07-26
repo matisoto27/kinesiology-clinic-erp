@@ -91,7 +91,7 @@ new class extends Component
                             'id_paciente' => $registro->id_paciente,
                             'es_fijo' => true,
                         ])
-                        ->where('fecha_comienzo', '>', now())
+                        ->whereHas('primerTurno', fn ($consulta) => $consulta->where('fecha_hora', '>', now()))
                         ->whereDoesntHave('turnos', fn ($consulta) => $consulta->where('estado', 'Presente'))
                         ->delete();
 

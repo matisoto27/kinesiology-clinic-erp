@@ -17,7 +17,6 @@ class ActividadPaciente extends Model
     public $timestamps = true;
 
     protected $fillable = [
-        'fecha_comienzo',
         'cant_sesiones',
         'es_fijo',
         'total_a_pagar',
@@ -35,7 +34,6 @@ class ActividadPaciente extends Model
     ];
 
     protected $casts = [
-        'fecha_comienzo' => 'date',
         'cant_sesiones' => 'integer',
         'frecuencia_total_dual' => 'integer',
         'plan_dual_pendiente' => 'boolean',
@@ -47,13 +45,6 @@ class ActividadPaciente extends Model
         'porcentaje_recargo' => 'decimal:2',
         'monto_recargo' => 'decimal:2'
     ];
-
-    protected function fechaMostrar(): Attribute
-    {
-        return Attribute::make(
-            get: fn() => $this->es_fijo ? $this->created_at : $this->fecha_comienzo
-        );
-    }
 
     protected function totalConRecargo(): Attribute
     {
@@ -183,12 +174,7 @@ class ActividadPaciente extends Model
                 $inscripcion->id_paciente ?? 'c' . $inscripcion->id_paciente_casual,
                 $inscripcion->id_actividad
             ))
-            ->map(function (Collection $grupo) {
-                return $grupo->sortBy([
-                    ['fecha_comienzo', 'asc'],
-                    ['id', 'asc'],
-                ])->first();
-            })
+            ->map(fn (Collection $grupo) => $grupo->sortBy('id')->first())
             ->values();
     }
 

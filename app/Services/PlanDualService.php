@@ -5,8 +5,11 @@ namespace App\Services;
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
+use App\Models\Paciente;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class PlanDualService
 {
@@ -31,6 +34,22 @@ class PlanDualService
         Carbon::THURSDAY => 'Jueves',
         Carbon::FRIDAY => 'Viernes',
     ];
+
+    private const HORAS_LIMITE_PENDIENTE = 8;
+
+    public function actividadesGeneralesDisponibles(Paciente $paciente): Collection
+    {
+        $pendiente = $this->obtenerDualPendiente($paciente->id);
+
+        if ($pendiente) {
+            $idFaltante = $this->idActividadFaltante((int) $pendiente->id_actividad);
+            return $paciente->obtenerActividadesGeneralesSinSuscripcion()
+                ->where('id', $idFaltante)
+                ->values();
+        }
+
+        return $paciente->obtenerActividadesGeneralesSinSuscripcion();
+    }
 
     public function obtenerPendiente(int $idPaciente): ?array
     {
@@ -75,10 +94,25 @@ class PlanDualService
 
     public function obtenerDualPendiente(int $idPaciente): ?ActividadPaciente
     {
-        return ActividadPaciente::query()
+        $pendiente = ActividadPaciente::query()
             ->where('id_paciente', $idPaciente)
             ->where('plan_dual_pendiente', true)
             ->first();
+
+        if ($pendiente && $pendiente->created_at->lt(now()->subHours(self::HORAS_LIMITE_PENDIENTE))) {
+            Log::info('[PlanDualService] Pendiente dual expirado por antigüedad, eliminado.', [
+                'id_act_pac' => $pendiente->id,
+                'id_paciente' => $idPaciente,
+                'creado' => $pendiente->created_at->toDateTimeString(),
+                'horas_transcurridas' => $pendiente->created_at->diffInHours(now()),
+            ]);
+
+            $pendiente->delete();
+
+            return null;
+        }
+
+        return $pendiente;
     }
 
     public function idActividadFaltante(int $idActividadRegistrada): int

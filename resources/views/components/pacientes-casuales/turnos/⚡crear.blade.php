@@ -161,7 +161,6 @@ new class extends Component
                     ->values();
 
                 $actividadPaciente = ActividadPaciente::create([
-                    'fecha_comienzo' => now(),
                     'cant_sesiones' => count($this->turnosSeleccionados),
                     'es_fijo' => false,
                     'total_a_pagar' => $totalAPagar,

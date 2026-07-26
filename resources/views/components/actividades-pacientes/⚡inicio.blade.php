@@ -143,7 +143,12 @@ new class extends Component
                             {{ $actPac->ap_nom_paciente }}
                         @endif
                     </td>
-                    <td>{{ $actPac->fecha_mostrar->format('d/m/Y') }}</td>
+                    <td>
+                        {{ $actPac->created_at->format('d/m/Y H:i') }}
+                        @if ($actPac->es_fijo)
+                            <span class="badge bg-slate-500 text-xs">Autogenerado</span>
+                        @endif
+                    </td>
                     <td>
                         @if ($esGeneral)
                             <span class="block font-bold">
@@ -260,7 +265,7 @@ new class extends Component
                 </button>
 
                 <h2 class="modal-informativo__titulo">
-                    [{{ $inscripcionSeleccionada->fecha_mostrar->format('d/m/Y') }}]
+                    [{{ $inscripcionSeleccionada->created_at->format('d/m/Y H:i') }}]
                     <div>
                         {{ $inscripcionSeleccionada->nombre_actividad }} - {{ $inscripcionSeleccionada->ap_nom_paciente }}
                     </div>

@@ -11,13 +11,13 @@ use Throwable;
 
 class PacienteController extends Controller
 {
-    public function obtenerActividadesGeneralesSinSuscripcion(int $id)
+    public function obtenerActividadesGeneralesSinSuscripcion(int $id, PlanDualService $planDualService)
     {
         try {
 
             $paciente = Paciente::findOrFail($id);
 
-            $actividades = $paciente->obtenerActividadesGeneralesSinSuscripcion();
+            $actividades = $planDualService->actividadesGeneralesDisponibles($paciente);
 
             return response()->json($actividades);
 

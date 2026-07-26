@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Services\PlanDualService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -129,40 +128,36 @@ class Paciente extends Model
         });
     }
 
+    public const DIAS_VENTANA_INSCRIPCION = 7;
+
     public function obtenerActividadesGeneralesSinSuscripcion(): Collection
     {
-        $diferenciaEnDias = 3;
+        return Actividad::query()
+            ->where('actividades.id_tipo_actividad', Actividad::TIPO_GENERAL)
+            ->get()
+            ->filter(fn (Actividad $actividad) => $this->cumpleVentanaInscripcionGeneral((int) $actividad->id))
+            ->values();
+    }
 
-        $ultimosTurnos = ActividadPaciente::query()
-            ->select('id_actividad', DB::raw('MAX(tur.fecha_hora) as max_fecha_hora_turno'))
-            ->join('turnos AS tur', 'actividades_pacientes.id', '=', 'tur.id_act_pac') 
-            ->where('actividades_pacientes.id_paciente', $this->id)
-            ->groupBy('id_actividad');
+    public function cumpleVentanaInscripcionGeneral(int $idActividad): bool
+    {
+        $maxFechaHora = $this->maxFechaHoraTurnoPorActividad($idActividad);
 
-        $actividades = Actividad::query()
-            ->where('actividades.id_tipo_actividad', 1)
-            ->leftJoinSub($ultimosTurnos, 'ut', function ($join) {
-                $join->on('actividades.id', '=', 'ut.id_actividad');
-            })
-            ->where(function ($query) use ($diferenciaEnDias) {
-                $query->whereNull('ut.id_actividad')
-                      ->orWhere(function ($q) use ($diferenciaEnDias) {
-                        $ahora = Carbon::now();
-                        $q->whereRaw('ut.max_fecha_hora_turno > ?', [$ahora])
-                          ->whereRaw("TIMESTAMPDIFF(DAY, ?, ut.max_fecha_hora_turno) <= ?", [$ahora, $diferenciaEnDias]);
-                      });
-            })
-            ->select('actividades.*')
-            ->get();
-
-        $pendiente = app(PlanDualService::class)->obtenerDualPendiente($this->id);
-
-        if ($pendiente) {
-            $idFaltante = app(PlanDualService::class)->idActividadFaltante((int) $pendiente->id_actividad);
-
-            return $actividades->where('id', $idFaltante)->values();
+        if ($maxFechaHora === null) {
+            return true;
         }
 
-        return $actividades;
+        return Carbon::now()->diffInDays($maxFechaHora, false) <= self::DIAS_VENTANA_INSCRIPCION;
+    }
+
+    private function maxFechaHoraTurnoPorActividad(int $idActividad): ?Carbon
+    {
+        $max = ActividadPaciente::query()
+            ->join('turnos AS tur', 'actividades_pacientes.id', '=', 'tur.id_act_pac')
+            ->where('actividades_pacientes.id_paciente', $this->id)
+            ->where('actividades_pacientes.id_actividad', $idActividad)
+            ->max('tur.fecha_hora');
+
+        return $max !== null ? Carbon::parse($max) : null;
     }
 }

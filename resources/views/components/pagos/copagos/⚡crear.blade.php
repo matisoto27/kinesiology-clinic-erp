@@ -21,19 +21,20 @@ new class extends Component
     #[Computed]
     public function actividadesPacientes()
     {
+        $desde = Carbon::now()->subMonth()->startOfMonth();
+        $hasta = Carbon::now();
+
         return ActividadPaciente::query()
             ->with([
                 'actividad:id,nombre',
-                'pacienteRegular:id,nombre,apellido'
+                'pacienteRegular:id,nombre,apellido',
+                'primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora',
             ])
             ->whereNotNull('fecha_emision_ord')
-            ->whereBetween('fecha_comienzo', [
-                Carbon::now()->subMonth()->startOfMonth(),
-                Carbon::now()
-            ])
+            ->whereHas('primerTurno', fn ($consulta) => $consulta->whereBetween('fecha_hora', [$desde, $hasta]))
             ->tienePacienteRegular()
-            ->latest('fecha_comienzo')
-            ->get();
+            ->get()
+            ->sortByDesc(fn (ActividadPaciente $actPac) => $actPac->primerTurno->fecha_hora);
     }
 
     #[Computed]
@@ -108,7 +109,7 @@ new class extends Component
                     <option value="" disabled selected>Seleccione un registro de sesiones</option>
                     @foreach($this->actividadesPacientes as $actPac)
                         <option value="{{ $actPac->id }}">
-                            [{{ $actPac->fecha_comienzo->format('d/m/Y') }}]
+                            [{{ $actPac->primerTurno->fecha_hora->format('d/m/Y') }}]
                             {{ $actPac->nombre_actividad }} ({{ $actPac->cant_sesiones === 1 ? '1 sesión' : $actPac->cant_sesiones . ' sesiones' }}) - {{ $actPac->ap_nom_paciente }}
                         </option>
                     @endforeach

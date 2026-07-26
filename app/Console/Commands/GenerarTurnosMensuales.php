@@ -282,7 +282,6 @@ class GenerarTurnosMensuales extends Command
         $nuevoActPac = ActividadPaciente::create([
             'id_actividad' => $actPac->id_actividad,
             'id_paciente' => $idPaciente,
-            'fecha_comienzo' => $turnosValidados[0]['fecha_hora'],
             'cant_sesiones' => $cantidadSesiones,
             'es_fijo' => true,
             'total_a_pagar' => $actCombo->precioVigente->valor,
@@ -391,7 +390,6 @@ class GenerarTurnosMensuales extends Command
         $nuevoActPac = ActividadPaciente::create([
             'id_actividad' => $actPac->id_actividad,
             'id_paciente' => $idPaciente,
-            'fecha_comienzo' => $turnosValidados[0]['fecha_hora'],
             'cant_sesiones' => $cantidadSesiones,
             'es_fijo' => true,
             'total_a_pagar' => $totalAPagar,

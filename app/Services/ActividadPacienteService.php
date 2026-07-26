@@ -6,18 +6,18 @@ use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\Paciente;
-use App\Support\Registros\DeteccionRegistroDuplicado;
 use App\Support\Registros\ModalidadRegistro;
 use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
 use Exception;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
 class ActividadPacienteService
 {
+    public const MENSAJE_INSCRIPCION_NO_DISPONIBLE = 'El paciente tiene una inscripción en curso para esta actividad.';
+
     public function __construct(
         private TurnoService $turnoService,
         private ExpansorTurnosPatron $expansorTurnosPatron,
@@ -53,10 +53,6 @@ class ActividadPacienteService
             Log::error('[ActividadPacienteService@registrar] Error al registrar la inscripción del paciente', [
                 'excepción' => $th->getMessage(),
             ]);
-
-            if ($th instanceof QueryException && DeteccionRegistroDuplicado::esDuplicado($th)) {
-                throw new Exception(DeteccionRegistroDuplicado::MENSAJE, previous: $th);
-            }
 
             throw $th;
         }
@@ -137,10 +133,16 @@ class ActividadPacienteService
         bool $pagoCompletado,
         array $datosDual = []
     ): ActividadPaciente {
+        if (!empty($validados['id_paciente'])) {
+            $this->assertPacienteRegularPuedeInscribirse(
+                (int) $validados['id_paciente'],
+                (int) $validados['id_actividad']
+            );
+        }
+
         return ActividadPaciente::create(array_merge([
             'id_actividad' => $validados['id_actividad'],
             'id_paciente' => $validados['id_paciente'],
-            'fecha_comienzo' => $ahora,
             'cant_sesiones' => $validados['cant_sesiones'],
             'es_fijo' => false,
             'total_a_pagar' => $validados['total_a_pagar'],
@@ -211,5 +213,21 @@ class ActividadPacienteService
             $expansion['turnos'],
             $expansion['semanas']
         );
+    }
+
+    private function assertPacienteRegularPuedeInscribirse(int $idPaciente, int $idActividad): void
+    {
+        $actividad = Actividad::find($idActividad);
+
+        if (!$actividad?->esActividadGeneral()) {
+            return;
+        }
+
+        $paciente = Paciente::findOrFail($idPaciente);
+        $disponibles = $this->planDualService->actividadesGeneralesDisponibles($paciente)->pluck('id');
+
+        if (!$disponibles->contains($idActividad)) {
+            throw new Exception(self::MENSAJE_INSCRIPCION_NO_DISPONIBLE);
+        }
     }
 }

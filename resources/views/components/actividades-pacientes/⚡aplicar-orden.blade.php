@@ -49,7 +49,8 @@ new class extends Component
         return ActividadPaciente::select('actividades_pacientes.*')
             ->with([
                 'actividad:id,nombre',
-                'pacienteRegular:id,nombre,apellido'
+                'pacienteRegular:id,nombre,apellido',
+                'primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora',
             ])
             ->tienePacienteRegular()
             ->conActividad()
@@ -173,7 +174,7 @@ new class extends Component
                     </option>
                     @foreach($this->inscripcionesFiltradas as $insc)
                         <option value="{{ $insc->id }}">
-                            [{{ $insc->fecha_comienzo->format('d/m/Y') }}]
+                            [{{ $insc->primerTurno->fecha_hora->format('d/m/Y') }}]
                             {{ $insc->nombre_actividad }} - {{ $insc->ap_nom_paciente }}
                         </option>
                     @endforeach
