@@ -144,9 +144,9 @@ new class extends Component
         }
 
         if ($this->nroHorario === 1) {
-            $consulta->whereTime('fecha_hora', '>=', '08:00')->whereTime('fecha_hora', '<', '12:00');
+            $consulta->whereTime('fecha_hora', '>=', '07:00')->whereTime('fecha_hora', '<', '12:00');
         } elseif ($this->nroHorario === 2) {
-            $consulta->whereTime('fecha_hora', '>=', '16:00')->whereTime('fecha_hora', '<', '20:00');
+            $consulta->whereTime('fecha_hora', '>=', '15:00')->whereTime('fecha_hora', '<', '20:00');
         }
 
         $turnos = $consulta->orderByDesc('created_at')->get();

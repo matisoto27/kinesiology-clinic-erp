@@ -4,6 +4,7 @@ use App\Models\ActividadPaciente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -11,7 +12,14 @@ new class extends Component
 {
     use WithPagination;
 
+    #[Url(as: 'pago')]
     public string $filtroPago = '';
+
+    #[Url(as: 'ocultarFuturas')]
+    public bool $ocultarInscripcionesFuturas = true;
+
+    #[Url(as: 'paciente')]
+    public string $consultaPaciente = '';
 
     public ?ActividadPaciente $inscripcionSeleccionada = null;
 
@@ -22,17 +30,63 @@ new class extends Component
         $this->resetPage();
     }
 
+    public function updatingOcultarInscripcionesFuturas(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingConsultaPaciente(): void
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function inscripciones()
     {
         return ActividadPaciente::query()
-            ->with(['actividad', 'pacienteRegular', 'pacienteCasual'])
+            ->select([
+                'actividades_pacientes.id',
+                'actividades_pacientes.id_act_pac_dual',
+                'actividades_pacientes.id_actividad',
+                'actividades_pacientes.id_paciente',
+                'actividades_pacientes.id_paciente_casual',
+                'actividades_pacientes.cant_sesiones',
+                'actividades_pacientes.es_fijo',
+                'actividades_pacientes.total_a_pagar',
+                'actividades_pacientes.pago_completado',
+                'actividades_pacientes.fecha_emision_ord',
+                'actividades_pacientes.fecha_recargo',
+                'actividades_pacientes.porcentaje_recargo',
+                'actividades_pacientes.monto_recargo',
+                'actividades_pacientes.frecuencia_total_dual',
+                'actividades_pacientes.plan_dual_pendiente',
+                'actividades_pacientes.created_at',
+            ])
+            ->with([
+                'actividad:id,nombre,id_tipo_actividad',
+                'pacienteRegular:id,nombre,apellido',
+                'pacienteCasual:id,nombre,apellido',
+            ])
             ->withSum('pagos', 'monto')
-            ->when($this->filtroPago === 'completado', fn ($consulta) => $consulta
-                ->where('pago_completado', true))
-            ->when($this->filtroPago === 'pendiente', fn ($consulta) => $consulta
-                ->where('pago_completado', false))
-            ->orderByDesc('created_at')
+            ->addSelect(DB::raw('
+                GREATEST(
+                    actividades_pacientes.id,
+                    COALESCE(actividades_pacientes.id_act_pac_dual, actividades_pacientes.id)
+                ) as dual_group_key
+            '))
+            ->when($this->filtroPago === 'completado', fn ($q) => $q
+                ->where('actividades_pacientes.pago_completado', true)
+                ->where('actividades_pacientes.total_a_pagar', '>', 0))
+            ->when($this->filtroPago === 'pendiente', fn ($q) => $q
+                ->where('actividades_pacientes.pago_completado', false)
+                ->where('actividades_pacientes.total_a_pagar', '>', 0))
+            ->when($this->consultaPaciente !== '', fn ($q) => $q->buscarPaciente($this->consultaPaciente))
+            ->when($this->ocultarInscripcionesFuturas, fn ($q) => $q->whereHas(
+                'primerTurno',
+                fn ($sq) => $sq->where('turnos.fecha_hora', '<', now()->startOfDay()->addWeek())
+            ))
+            ->orderByDesc('dual_group_key')
+            ->orderByDesc('actividades_pacientes.id')
             ->paginate(10);
     }
 
@@ -93,6 +147,29 @@ new class extends Component
                 <option value="completado">Pago Completado</option>
                 <option value="pendiente">Pago Pendiente</option>
             </select>
+        </div>
+
+        <div class="columna-campo">
+            <label for="buscar-paciente" class="etiqueta-formulario">Buscar Paciente</label>
+            <input
+                id="buscar-paciente"
+                type="text"
+                class="entrada w-[28ch]"
+                placeholder="Ingrese nombre y/o apellido"
+                wire:model.live.debounce.300ms="consultaPaciente"
+            >
+        </div>
+
+        <div class="flex items-center gap-1 self-end pb-2">
+            <input
+                id="ocultar-inscripciones-futuras"
+                type="checkbox"
+                class="checkbox-formulario"
+                wire:model.live="ocultarInscripcionesFuturas"
+            >
+            <label for="ocultar-inscripciones-futuras" class="etiqueta-formulario">
+                Ocultar inscripciones futuras
+            </label>
         </div>
     </div>
 
@@ -246,7 +323,9 @@ new class extends Component
             @empty
                 <tr>
                     <td colspan="10" class="py-10 text-center text-gray-300 italic">
-                        {{ $filtroPago !== '' ? 'No se encontraron inscripciones con ese filtro de pago.' : 'No hay registros disponibles.' }}
+                        {{ $filtroPago !== '' || $ocultarInscripcionesFuturas || $consultaPaciente !== ''
+                            ? 'No se encontraron inscripciones con los filtros aplicados.'
+                            : 'No hay registros disponibles.' }}
                     </td>
                 </tr>
             @endforelse

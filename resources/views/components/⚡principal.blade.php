@@ -24,8 +24,14 @@ new class extends Component
     #[Url(as: 'actividad')]
     public int $idActividad = 0;
 
+    #[Url(as: 'horario')]
+    public int $nroHorario = 0;
+
     #[Url(as: 'paciente')]
     public string $consultaPaciente = '';
+
+    #[Url(as: 'todos')]
+    public bool $mostrarTodos = false;
 
     public string $fechaActual = '';
     public string $horaActual = '';
@@ -43,9 +49,25 @@ new class extends Component
         $this->horaActual = $ahora->format('H:i');
     }
 
-    public function updatedIdTipoActividad() { $this->idActividad = 0; $this->resetPage(); }
+    public function updatedIdTipoActividad()
+    {
+        $this->idActividad = 0;
+        $this->resetPage();
+    }
+
     public function updatedIdActividad() { $this->resetPage(); }
     public function updatedConsultaPaciente() { $this->resetPage(); }
+
+    public function updatedNroHorario($value)
+    {
+        $this->mostrarTodos = $value > 0;
+        $this->resetPage();
+    }
+
+    public function updatedMostrarTodos()
+    {
+        $this->resetPage();
+    }
 
     #[Computed]
     public function actividadesFiltradas()
@@ -61,28 +83,48 @@ new class extends Component
     #[Computed]
     public function turnos()
     {
-        $hoy = Carbon::today();
+        $this->horaActual;
 
-        $inicioDia = $hoy;
-        $finDia = $hoy->copy()->endOfDay();
+        $hoy = Carbon::today();
+        $ahora = Carbon::now();
 
         return Turno::query()
-            ->with([
-                'actividadPaciente.actividad',
-                'actividadPaciente.pacienteRegular:id,nombre,apellido',
-                'actividadPaciente.pacienteCasual:id,nombre,apellido'
+            ->conActPac()
+            ->conActividad()
+            ->select([
+                'turnos.id',
+                'turnos.id_act_pac',
+                'turnos.nro_turno',
+                'turnos.fecha_hora',
+                'turnos.estado',
+                'turnos.id_turno_original',
             ])
-            ->whereBetween('fecha_hora', [$inicioDia, $finDia])
-            ->when($this->idTipoActividad > 0, function($consulta) {
-                $consulta->whereHas('actividadPaciente.actividad', fn($sc) => $sc->where('id_tipo_actividad', $this->idTipoActividad));
+            ->with([
+                'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,cant_sesiones',
+                'actividadPaciente.actividad:id,nombre,id_tipo_actividad',
+                'actividadPaciente.pacienteRegular:id,nombre,apellido',
+                'actividadPaciente.pacienteCasual:id,nombre,apellido',
+            ])
+            ->whereBetween('turnos.fecha_hora', [$hoy, $hoy->copy()->endOfDay()])
+            ->when(! $this->mostrarTodos, function ($consulta) use ($ahora) {
+                $consulta->whereBetween('turnos.fecha_hora', [
+                    $ahora->copy()->subHour(),
+                    $ahora->copy()->addHour(),
+                ]);
             })
-            ->when($this->idActividad > 0, function($consulta) {
-                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->where('id_actividad', $this->idActividad));
+            ->when($this->idTipoActividad > 0, fn($q) => $q->deTipo($this->idTipoActividad))
+            ->when($this->idActividad > 0, fn($q) => $q->deLaActividad($this->idActividad))
+            ->when(!empty($this->consultaPaciente), fn($q) => $q->buscarPaciente($this->consultaPaciente))
+            ->when($this->nroHorario === 1, function ($consulta) {
+                $consulta->whereTime('turnos.fecha_hora', '>=', '07:00')
+                    ->whereTime('turnos.fecha_hora', '<', '12:00');
             })
-            ->when(!empty($this->consultaPaciente), function($consulta) {
-                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->buscarPaciente($this->consultaPaciente));
+            ->when($this->nroHorario === 2, function ($consulta) {
+                $consulta->whereTime('turnos.fecha_hora', '>=', '15:00')
+                    ->whereTime('turnos.fecha_hora', '<', '20:00');
             })
-            ->orderBy('fecha_hora')
+            ->orderBy('turnos.fecha_hora')
+            ->orderBy('turnos.id')
             ->paginate(10);
     }
 
@@ -183,6 +225,15 @@ new class extends Component
         </div>
 
         <div class="columna-campo w-xs">
+            <label for="filtro-horario" class="etiqueta-formulario">Franja horaria</label>
+            <select id="filtro-horario" class="entrada" wire:model.live="nroHorario">
+                <option value="0">Cualquier horario</option>
+                <option value="1">Turno mañana</option>
+                <option value="2">Turno tarde</option>
+            </select>
+        </div>
+
+        <div class="columna-campo w-xs">
             <div class="flex items-center gap-1">
                 <x-iconos.lupa />
                 <label for="buscar-paciente" class="etiqueta-formulario">Buscar Paciente</label>
@@ -194,6 +245,19 @@ new class extends Component
                 class="entrada"
                 wire:model.live.debounce.350ms="consultaPaciente"
             >
+        </div>
+    </div>
+
+    <div class="mb-4 flex">
+        <div class="flex items-center gap-1">
+            <input
+                id="mostrar-todos"
+                type="checkbox"
+                class="checkbox-formulario"
+                @if($nroHorario > 0) disabled @endif
+                wire:model.live="mostrarTodos"
+            >
+            <label for="mostrar-todos" class="etiqueta-formulario">Mostrar todos los turnos del día</label>
         </div>
     </div>
 
@@ -305,7 +369,7 @@ new class extends Component
                 @endforeach
             @else
                 <tr>
-                    <td colspan="4" class="py-4 text-lg text-center italic">No encontramos turnos para los filtros ingresados.</td>
+                    <td colspan="5" class="py-4 text-lg text-center italic">No encontramos turnos para los filtros ingresados.</td>
                 </tr>
             @endif
         </tbody>

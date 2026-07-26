@@ -26,6 +26,8 @@ new class extends Component
     #[Url(as: 'paciente')]
     public string $consultaPaciente = '';
 
+    public bool $ocultarTurnosFuturos = true;
+
     public bool $mostrarModal = false;
 
     public ?Turno $turnoSeleccionado = null;
@@ -40,6 +42,21 @@ new class extends Component
     public array $horasDisponiblesParaFecha = [];
 
     public string $horaSeleccionada = '';
+
+    public function updatingConsultaPaciente(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingIdActividad(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingOcultarTurnosFuturos(): void
+    {
+        $this->resetPage();
+    }
 
     #[Computed]
     public function turnos()
@@ -58,6 +75,8 @@ new class extends Component
             ->when(!empty($this->consultaPaciente), function($consulta) {
                 $consulta->whereHas('actividadPaciente', fn($sc) => $sc->buscarPaciente($this->consultaPaciente));
             })
+            ->when($this->ocultarTurnosFuturos, fn ($consulta) => $consulta
+                ->where('fecha_hora', '<', now()->startOfDay()->addWeek()))
             ->where(function ($consulta) {
                 $consulta->whereDoesntHave('turnoRecuperacion')
                     ->orWhereHas(
@@ -219,6 +238,18 @@ new class extends Component
                     <option value="{{ $act->id }}">{{ $act->nombre }}</option>
                 @endforeach
             </select>
+        </div>
+
+        <div class="flex items-center gap-1 self-end pb-2">
+            <input
+                id="ocultar-turnos-futuros"
+                type="checkbox"
+                class="checkbox-formulario"
+                wire:model.live="ocultarTurnosFuturos"
+            >
+            <label for="ocultar-turnos-futuros" class="etiqueta-formulario">
+                Ocultar turnos futuros
+            </label>
         </div>
     </div>
 

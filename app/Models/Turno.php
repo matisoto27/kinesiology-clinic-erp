@@ -32,7 +32,7 @@ class Turno extends Model
     {
         // SALIDAS:
         // Actividades de tipo general: Ausente - Ausente avisó - Presente - Presente recupera
-        // Actividades de tipo kinesiología: Ausente - Presente (SIEMPRE TIENEN TURNO ORIGINAL NULO)
+        // Actividades de tipo kinesiología: Ausente - Presente
 
         return Attribute::make(
             get: function (string $valor) {
@@ -105,6 +105,16 @@ class Turno extends Model
         return $consulta->join('actividades_pacientes', 'turnos.id_act_pac', '=', 'actividades_pacientes.id');
     }
 
+    public function scopeConActividad(Builder $consulta): Builder
+    {
+        return $consulta->join('actividades', 'actividades_pacientes.id_actividad', '=', 'actividades.id');
+    }
+
+    public function scopeDeTipo(Builder $consulta, int $idTipoActividad): Builder
+    {
+        return $consulta->where('actividades.id_tipo_actividad', $idTipoActividad);
+    }
+
     public function scopeDeLaActividad(Builder $consulta, int $idActividad): Builder
     {
         return $consulta->where('actividades_pacientes.id_actividad', $idActividad);
@@ -117,14 +127,12 @@ class Turno extends Model
             : $consulta->where('actividades_pacientes.id_paciente_casual', $idPaciente);
     }
 
-    public function scopeConActividad(Builder $consulta): Builder
+    public function scopeBuscarPaciente(Builder $consulta, string $termino): Builder
     {
-        return $consulta->join('actividades', 'actividades_pacientes.id_actividad', '=', 'actividades.id');
-    }
-
-    public function scopeDeTipo(Builder $consulta, int $idTipoActividad): Builder
-    {
-        return $consulta->where('actividades.id_tipo_actividad', $idTipoActividad);
+        return $consulta->whereHas(
+            'actividadPaciente',
+            fn($sc) => $sc->buscarPaciente($termino)
+        );
     }
 
     public function scopeEntreFechas(Builder $consulta, string $limiteInferior, string $limiteSuperior): Builder
