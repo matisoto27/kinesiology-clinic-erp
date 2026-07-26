@@ -11,7 +11,6 @@ use App\Models\ObraSocial;
 use App\Models\ObraSocialPaciente;
 use App\Models\Paciente;
 use App\Models\Precio;
-use App\Models\TipoActividad;
 use App\Models\Turno;
 use App\Services\ActividadPacienteService;
 use App\Services\TurnoService;
@@ -228,7 +227,55 @@ class ActividadPacienteServiceTest extends TestCase
         $this->assertCount(4, $actividadPaciente->turnos);
     }
 
-    public function test_no_permite_doble_inscripcion_mismo_dia(): void
+    public function test_no_permite_inscripcion_general_con_plan_activo_fuera_de_ventana(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        ['actividad' => $actividad, 'actividadCombo' => $actividadCombo] = $this->crearActividadGeneralConAbonoMensual(15000.00);
+        $paciente = $this->crearPaciente();
+
+        $this->crearInscripcionConUltimoTurno(
+            paciente: $paciente,
+            actividad: $actividad,
+            fechaUltimoTurno: '2026-06-25 10:00:00'
+        );
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage(ActividadPacienteService::MENSAJE_INSCRIPCION_NO_DISPONIBLE);
+
+        $this->service->registrar($this->payloadSinOrdenGeneral(
+            actividad: $actividad,
+            paciente: $paciente,
+            actividadCombo: $actividadCombo,
+            cantSesiones: 4
+        ));
+    }
+
+    public function test_permite_inscripcion_general_dentro_de_ventana_de_siete_dias(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        ['actividad' => $actividad, 'actividadCombo' => $actividadCombo] = $this->crearActividadGeneralConAbonoMensual(15000.00);
+        $paciente = $this->crearPaciente();
+
+        $this->crearInscripcionConUltimoTurno(
+            paciente: $paciente,
+            actividad: $actividad,
+            fechaUltimoTurno: '2026-06-06 10:00:00'
+        );
+
+        $nueva = $this->service->registrar($this->payloadSinOrdenGeneral(
+            actividad: $actividad,
+            paciente: $paciente,
+            actividadCombo: $actividadCombo,
+            cantSesiones: 4
+        ));
+
+        $this->assertSame(2, ActividadPaciente::count());
+        $this->assertSame(4, $nueva->cant_sesiones);
+    }
+
+    public function test_permite_doble_inscripcion_kine_el_mismo_dia_porque_no_aplica_ventana_general(): void
     {
         Carbon::setTestNow('2026-06-02 09:00:00');
 
@@ -237,22 +284,10 @@ class ActividadPacienteServiceTest extends TestCase
         $payload = $this->payloadSinOrdenKine($actividad, $paciente, 5);
 
         $this->service->registrar($payload);
+        $this->service->registrar($payload);
 
-        $this->assertSame(1, ActividadPaciente::count());
-        $this->assertSame(5, Turno::count());
-
-        try {
-            $this->service->registrar($payload);
-            $this->fail('Se esperaba una excepción por inscripción duplicada el mismo día.');
-        } catch (Exception $e) {
-            $this->assertSame(
-                'El paciente ya ha realizado un registro para esta actividad en la fecha de hoy.',
-                $e->getMessage()
-            );
-        }
-
-        $this->assertSame(1, ActividadPaciente::count());
-        $this->assertSame(5, Turno::count());
+        $this->assertSame(2, ActividadPaciente::count());
+        $this->assertSame(10, Turno::count());
     }
 
     public function test_revierte_transaccion_si_falla_creacion_de_turnos(): void
@@ -334,11 +369,10 @@ class ActividadPacienteServiceTest extends TestCase
         ?float $precioCombo10 = null,
         ?float $precioMensual = null
     ): array {
-        $tipo = TipoActividad::create(['descripcion' => 'Kinesiología']);
 
         $actividad = Actividad::create([
-            'nombre' => 'Kinesiología test ' . uniqid(),
-            'id_tipo_actividad' => $tipo->id,
+            'nombre' => 'ActKin T' . uniqid(),
+            'id_tipo_actividad' => Actividad::TIPO_KINESIOLOGIA,
         ]);
 
         $this->crearVinculoConPrecio($actividad, cantidadSesiones: 1, esMensual: false, precio: $precioSesion);
@@ -370,11 +404,9 @@ class ActividadPacienteServiceTest extends TestCase
 
     private function crearActividadGeneralConAbonoMensual(float $precioMensual): array
     {
-        $tipo = TipoActividad::create(['descripcion' => 'General']);
-
         $actividad = Actividad::create([
-            'nombre' => 'Actividad general test ' . uniqid(),
-            'id_tipo_actividad' => $tipo->id,
+            'nombre' => 'ActGen T' . uniqid(),
+            'id_tipo_actividad' => Actividad::TIPO_GENERAL,
         ]);
 
         $actividadCombo = $this->crearVinculoConPrecio(
@@ -397,7 +429,7 @@ class ActividadPacienteServiceTest extends TestCase
         float $precio
     ): ActividadCombo {
         $combo = Combo::create([
-            'nombre' => "Combo {$cantidadSesiones} test " . uniqid(),
+            'nombre' => "Cx{$cantidadSesiones} T" . uniqid(),
             'cantidad_sesiones' => $cantidadSesiones,
             'es_mensual' => $esMensual,
         ]);
@@ -472,5 +504,33 @@ class ActividadPacienteServiceTest extends TestCase
         }
 
         return $turnos;
+    }
+
+    private function crearInscripcionConUltimoTurno(
+        Paciente $paciente,
+        Actividad $actividad,
+        string $fechaUltimoTurno
+    ): ActividadPaciente {
+        $actPac = ActividadPaciente::create([
+            'id_actividad' => $actividad->id,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 2,
+            'es_fijo' => false,
+            'total_a_pagar' => 1000,
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $actPac->id,
+            'nro_turno' => 1,
+            'fecha_hora' => Carbon::parse($fechaUltimoTurno)->subDay()->format('Y-m-d H:i:s'),
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $actPac->id,
+            'nro_turno' => 2,
+            'fecha_hora' => $fechaUltimoTurno,
+        ]);
+
+        return $actPac;
     }
 }

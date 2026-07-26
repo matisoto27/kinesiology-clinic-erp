@@ -9,7 +9,6 @@ use App\Models\Combo;
 use App\Models\Horario;
 use App\Models\Paciente;
 use App\Models\Precio;
-use App\Models\TipoActividad;
 use App\Models\Turno;
 use App\Services\ActividadPacienteService;
 use App\Services\PlanDualService;
@@ -222,19 +221,8 @@ class PlanDualInscripcionTest extends TestCase
         array $preciosPorFrecuencia,
         array $precioPilatesPorFrecuencia = []
     ): void {
-        $tipo = TipoActividad::create(['descripcion' => 'General']);
-
-        $gimnasio = Actividad::create([
-            'id' => Actividad::GIMNASIO,
-            'nombre' => 'Gimnasio',
-            'id_tipo_actividad' => $tipo->id,
-        ]);
-
-        $pilates = Actividad::create([
-            'id' => Actividad::PILATES,
-            'nombre' => 'Pilates',
-            'id_tipo_actividad' => $tipo->id,
-        ]);
+        $gimnasio = Actividad::findOrFail(Actividad::GIMNASIO);
+        $pilates = Actividad::findOrFail(Actividad::PILATES);
 
         $horario = Horario::create([
             'hora_inicio' => '10:00:00',
@@ -257,7 +245,7 @@ class PlanDualInscripcionTest extends TestCase
         $cantidadSesiones = $frecuenciaSemanal * 4;
 
         $combo = Combo::create([
-            'nombre' => "Combo mensual x{$frecuenciaSemanal} test " . uniqid(),
+            'nombre' => "CMx{$frecuenciaSemanal} T" . uniqid(),
             'cantidad_sesiones' => $cantidadSesiones,
             'es_mensual' => true,
         ]);

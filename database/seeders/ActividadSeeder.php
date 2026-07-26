@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Actividad;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class ActividadSeeder extends Seeder
 {
@@ -24,7 +25,7 @@ class ActividadSeeder extends Seeder
         ];
 
         foreach ($actividades as $act) {
-            Actividad::firstOrCreate(
+            DB::table('actividades')->updateOrInsert(
                 ['id' => $act['id']],
                 [
                     'nombre' => $act['nombre'],

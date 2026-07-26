@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\TipoActividad;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 
 class TipoActividadSeeder extends Seeder
 {
@@ -18,7 +19,7 @@ class TipoActividadSeeder extends Seeder
         ];
 
         foreach ($tipos as $tipo) {
-            TipoActividad::firstOrCreate(
+            DB::table('tipos_actividad')->updateOrInsert(
                 ['id' => $tipo['id']],
                 ['descripcion' => $tipo['descripcion']]
             );

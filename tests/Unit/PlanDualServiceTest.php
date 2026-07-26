@@ -6,9 +6,11 @@ use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\Combo;
+use App\Models\Paciente;
 use App\Models\Precio;
-use App\Models\TipoActividad;
+use App\Models\Turno;
 use App\Services\PlanDualService;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -24,6 +26,13 @@ class PlanDualServiceTest extends TestCase
         parent::setUp();
 
         $this->service = app(PlanDualService::class);
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
     }
 
     public function test_preview_precio_segunda_visita_usa_combo_de_frecuencia_total(): void
@@ -70,21 +79,78 @@ class PlanDualServiceTest extends TestCase
         $this->assertSame(Actividad::GIMNASIO, $this->service->idActividadFaltante(Actividad::PILATES));
     }
 
+    public function test_actividades_generales_disponibles_con_dual_pendiente_filtra_solo_la_faltante(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        $paciente = Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Nombre',
+            'apellido' => 'Apellido',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+
+        $pendiente = ActividadPaciente::create([
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 4,
+            'es_fijo' => false,
+            'total_a_pagar' => 0,
+            'plan_dual_pendiente' => true,
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $pendiente->id,
+            'nro_turno' => 1,
+            'fecha_hora' => '2026-06-05 10:00:00',
+        ]);
+
+        $disponibles = $this->service->actividadesGeneralesDisponibles($paciente);
+
+        $this->assertCount(1, $disponibles);
+        $this->assertSame(Actividad::PILATES, $disponibles->first()->id);
+    }
+
+    public function test_obtener_dual_pendiente_elimina_inscripcion_anticuada(): void
+    {
+        Carbon::setTestNow('2026-06-01 18:00:00');
+
+        $paciente = Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Nombre',
+            'apellido' => 'Apellido',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+
+        $pendiente = ActividadPaciente::create([
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 4,
+            'es_fijo' => false,
+            'total_a_pagar' => 0,
+            'plan_dual_pendiente' => true,
+        ]);
+
+        $pendiente->forceFill(['created_at' => '2026-06-01 08:00:00'])->save();
+
+        $this->assertNull($this->service->obtenerDualPendiente($paciente->id));
+        $this->assertSame(0, ActividadPaciente::count());
+    }
+
     private function crearPreciosMensualesDual(int $frecuenciaTotal, float $precioGym, float $precioPilates): void
     {
-        $tipo = TipoActividad::create(['descripcion' => 'General']);
-
-        $gimnasio = Actividad::create([
-            'id' => Actividad::GIMNASIO,
-            'nombre' => 'Gimnasio',
-            'id_tipo_actividad' => $tipo->id,
-        ]);
-
-        $pilates = Actividad::create([
-            'id' => Actividad::PILATES,
-            'nombre' => 'Pilates',
-            'id_tipo_actividad' => $tipo->id,
-        ]);
+        $gimnasio = Actividad::findOrFail(Actividad::GIMNASIO);
+        $pilates = Actividad::findOrFail(Actividad::PILATES);
 
         $this->crearComboMensual($gimnasio, $frecuenciaTotal, $precioGym);
         $this->crearComboMensual($pilates, $frecuenciaTotal, $precioPilates);
@@ -93,7 +159,7 @@ class PlanDualServiceTest extends TestCase
     private function crearComboMensual(Actividad $actividad, int $frecuenciaSemanal, float $precio): void
     {
         $combo = Combo::create([
-            'nombre' => "Combo mensual x{$frecuenciaSemanal} unit " . uniqid(),
+            'nombre' => "CMx{$frecuenciaSemanal} T" . uniqid(),
             'cantidad_sesiones' => $frecuenciaSemanal * 4,
             'es_mensual' => true,
         ]);

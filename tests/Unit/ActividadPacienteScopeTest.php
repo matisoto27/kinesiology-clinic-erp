@@ -5,7 +5,6 @@ namespace Tests\Unit;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Paciente;
-use App\Models\TipoActividad;
 use App\Models\Turno;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,11 +80,9 @@ class ActividadPacienteScopeTest extends TestCase
 
     public function test_filtrar_proximas_pagables_deja_solo_la_inscripcion_mas_antigua_por_paciente_y_actividad(): void
     {
-        $tipo = TipoActividad::create(['descripcion' => 'General']);
-
         $pilates = Actividad::create([
             'nombre' => 'Pil',
-            'id_tipo_actividad' => $tipo->id,
+            'id_tipo_actividad' => Actividad::TIPO_GENERAL,
         ]);
 
         $paciente = Paciente::create([
@@ -103,7 +100,6 @@ class ActividadPacienteScopeTest extends TestCase
         $original = ActividadPaciente::create([
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
-            'fecha_comienzo' => '2026-06-01',
             'cant_sesiones' => 8,
             'es_fijo' => true,
             'total_a_pagar' => 20000,
@@ -112,7 +108,6 @@ class ActividadPacienteScopeTest extends TestCase
         $renovacion1 = ActividadPaciente::create([
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
-            'fecha_comienzo' => '2026-07-01',
             'cant_sesiones' => 8,
             'es_fijo' => true,
             'total_a_pagar' => 20000,
@@ -121,7 +116,6 @@ class ActividadPacienteScopeTest extends TestCase
         $renovacion2 = ActividadPaciente::create([
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
-            'fecha_comienzo' => '2026-08-01',
             'cant_sesiones' => 8,
             'es_fijo' => true,
             'total_a_pagar' => 20000,
@@ -142,16 +136,14 @@ class ActividadPacienteScopeTest extends TestCase
      */
     private function crearParDualCompleto(): array
     {
-        $tipo = TipoActividad::create(['descripcion' => 'General']);
-
         $gimnasio = Actividad::create([
             'nombre' => 'Gym',
-            'id_tipo_actividad' => $tipo->id,
+            'id_tipo_actividad' => Actividad::TIPO_GENERAL,
         ]);
 
         $pilates = Actividad::create([
             'nombre' => 'Pil',
-            'id_tipo_actividad' => $tipo->id,
+            'id_tipo_actividad' => Actividad::TIPO_GENERAL,
         ]);
 
         $paciente = Paciente::create([
@@ -169,7 +161,6 @@ class ActividadPacienteScopeTest extends TestCase
         $primera = ActividadPaciente::create([
             'id_actividad' => $gimnasio->id,
             'id_paciente' => $paciente->id,
-            'fecha_comienzo' => '2026-06-01',
             'cant_sesiones' => 8,
             'es_fijo' => false,
             'total_a_pagar' => 30000,
@@ -180,7 +171,6 @@ class ActividadPacienteScopeTest extends TestCase
         $segunda = ActividadPaciente::create([
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
-            'fecha_comienzo' => '2026-06-02',
             'cant_sesiones' => 4,
             'es_fijo' => false,
             'total_a_pagar' => 0,
@@ -197,11 +187,9 @@ class ActividadPacienteScopeTest extends TestCase
 
     private function crearInscripcionConUltimoTurno(string $fechaUltimoTurno): ActividadPaciente
     {
-        $tipo = TipoActividad::create(['descripcion' => 'General']);
-
         $actividad = Actividad::create([
-            'nombre' => 'Gimnasio test ' . uniqid(),
-            'id_tipo_actividad' => $tipo->id,
+            'nombre' => 'Gimnasio T' . uniqid(),
+            'id_tipo_actividad' => Actividad::TIPO_GENERAL,
         ]);
 
         $paciente = Paciente::create([
@@ -219,7 +207,6 @@ class ActividadPacienteScopeTest extends TestCase
         $actPac = ActividadPaciente::create([
             'id_actividad' => $actividad->id,
             'id_paciente' => $paciente->id,
-            'fecha_comienzo' => '2026-04-01',
             'cant_sesiones' => 4,
             'es_fijo' => false,
             'total_a_pagar' => 1000,
