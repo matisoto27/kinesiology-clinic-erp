@@ -110,6 +110,11 @@ new class extends Component
                 ? ActividadPaciente::withCount('pagos')->find($inscripcion->id_act_pac_dual)
                 : null;
 
+            if ($inscripcion->es_fijo || ($parDual && $parDual->es_fijo)) {
+                session()->flash('error', 'Las inscripciones autogeneradas no se pueden eliminar desde aquí. Debe dar de baja al paciente desde el listado de Pacientes fijos.');
+                return;
+            }
+
             if ($inscripcion->pagos_count > 0 || ($parDual && $parDual->pagos_count > 0)) {
                 session()->flash('error', 'No se puede eliminar la inscripción porque ya tiene pagos registrados.');
                 return;
@@ -311,13 +316,15 @@ new class extends Component
                         </div>
                     </td>
                     <td>
-                        <button
-                            type="button"
-                            class="text-white hover:text-red-400 transition-colors duration-200"
-                            wire:click="eliminar({{ $actPac->id }})"
-                            wire:confirm="¿Estás seguro de que deseas eliminar la inscripción? Se eliminará tanto la inscripción como todos los turnos asociados a la misma.">
-                            <x-iconos.basura />
-                        </button>
+                        @unless ($actPac->es_fijo)
+                            <button
+                                type="button"
+                                class="text-white hover:text-red-400 transition-colors duration-200"
+                                wire:click="eliminar({{ $actPac->id }})"
+                                wire:confirm="¿Estás seguro de que deseas eliminar la inscripción? Se eliminará tanto la inscripción como todos los turnos asociados a la misma.">
+                                <x-iconos.basura />
+                            </button>
+                        @endunless
                     </td>
                 </tr>
             @empty

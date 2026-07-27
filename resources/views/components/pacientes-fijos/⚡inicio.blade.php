@@ -72,29 +72,54 @@ new class extends Component
         try {
             DB::transaction(function () use ($id) {
                 $pacienteFijo = PacienteFijo::with('pacFijoDual')->findOrFail($id);
-                $pareja = $pacienteFijo->pacFijoDual;
-
                 $registros = collect([$pacienteFijo]);
 
-                if ($pareja) {
-                    $registros->push($pareja);
+                if ($pacienteFijo->pacFijoDual) {
+                    $registros->push($pacienteFijo->pacFijoDual);
                 }
 
                 foreach ($registros as $registro) {
                     $registro->update(['id_pac_fijo_dual' => null]);
                 }
 
-                foreach ($registros as $registro) {
-                    ActividadPaciente::query()
-                        ->where([
-                            'id_actividad' => $registro->id_actividad,
-                            'id_paciente' => $registro->id_paciente,
-                            'es_fijo' => true,
-                        ])
-                        ->whereHas('primerTurno', fn ($consulta) => $consulta->where('fecha_hora', '>', now()))
-                        ->whereDoesntHave('turnos', fn ($consulta) => $consulta->where('estado', 'Presente'))
-                        ->delete();
+                $inscripciones = ActividadPaciente::query()
+                    ->where('id_paciente', $pacienteFijo->id_paciente)
+                    ->where('es_fijo', true)
+                    ->withCount('pagos')
+                    ->get();
 
+                $yaVistas = [];
+
+                foreach ($inscripciones as $inscripcion) {
+                    if (isset($yaVistas[$inscripcion->id])) {
+                        continue;
+                    }
+
+                    $par = $inscripcion->id_act_pac_dual
+                        ? $inscripciones->firstWhere('id', $inscripcion->id_act_pac_dual)
+                        : null;
+
+                    $yaVistas[$inscripcion->id] = true;
+
+                    if ($par) {
+                        $yaVistas[$par->id] = true;
+                    }
+
+                    $bloqueada = $this->inscripcionNoEliminable($inscripcion)
+                        || ($par && $this->inscripcionNoEliminable($par));
+
+                    if ($bloqueada) {
+                        continue;
+                    }
+
+                    $inscripcion->update(['id_act_pac_dual' => null]);
+                    $par?->update(['id_act_pac_dual' => null]);
+
+                    $inscripcion->delete();
+                    $par?->delete();
+                }
+
+                foreach ($registros as $registro) {
                     $registro->delete();
                 }
             });
@@ -104,6 +129,15 @@ new class extends Component
             Log::error('[(Livewire) pacientes-fijos.inicio@eliminar] Error al eliminar el paciente fijo.', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Ocurrió un error al intentar eliminar el paciente fijo de los registros.');
         }
+    }
+
+    private function inscripcionNoEliminable(ActividadPaciente $inscripcion): bool
+    {
+        if ($inscripcion->pagos_count > 0) {
+            return true;
+        }
+
+        return $inscripcion->turnos()->where('estado', 'Presente')->exists();
     }
 };
 ?>
