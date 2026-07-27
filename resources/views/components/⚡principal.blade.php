@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -81,6 +82,73 @@ new class extends Component
     }
 
     #[Computed]
+    public function fijosAusentesSinPago(): Collection
+    {
+        $ahora = Carbon::now();
+
+        return ActividadPaciente::query()
+            ->where('es_fijo', true)
+            ->where('total_a_pagar', '>', 0)
+            ->whereHas('pacienteFijo')
+            ->whereDoesntHave('pagos')
+            ->conUltimoTurnoVigente()
+            ->with([
+                'pacienteRegular:id,nombre,apellido',
+                'actividad:id,nombre',
+                'turnos' => fn ($q) => $q
+                    ->where('fecha_hora', '<', $ahora)
+                    ->orderByDesc('fecha_hora')
+                    ->select(['id', 'id_act_pac', 'fecha_hora', 'estado']),
+                'actPacDual.turnos' => fn ($q) => $q
+                    ->where('fecha_hora', '<', $ahora)
+                    ->orderByDesc('fecha_hora')
+                    ->select(['id', 'id_act_pac', 'fecha_hora', 'estado']),
+            ])
+            ->get()
+            ->filter(function (ActividadPaciente $inscripcion) {
+                $turnos = $inscripcion->turnos;
+
+                if ($inscripcion->esDualCompleto() && $inscripcion->actPacDual) {
+                    $turnos = $turnos
+                        ->concat($inscripcion->actPacDual->turnos)
+                        ->sortByDesc(fn (Turno $turno) => $turno->fecha_hora->timestamp)
+                        ->values();
+                }
+
+                $racha = 0;
+
+                foreach ($turnos as $turno) {
+                    if ($turno->estado === 'Ausente') {
+                        $racha++;
+
+                        if ($racha >= 2) {
+                            return true;
+                        }
+
+                        continue;
+                    }
+
+                    break;
+                }
+
+                return false;
+            })
+            ->map(function (ActividadPaciente $inscripcion) {
+                $paciente = $inscripcion->pacienteRegular;
+                $actividad = $inscripcion->esDualCompleto()
+                    ? 'Gym+Pilates x' . $inscripcion->frecuencia_total_dual
+                    : $inscripcion->actividad->nombre . ' x' . $inscripcion->frecuenciaSemanal();
+
+                return (object) [
+                    'id' => $inscripcion->id,
+                    'paciente' => trim(($paciente->nombre ?? '') . ' ' . ($paciente->apellido ?? '')),
+                    'actividad' => $actividad,
+                ];
+            })
+            ->values();
+    }
+
+    #[Computed]
     public function turnos()
     {
         $this->horaActual;
@@ -107,7 +175,7 @@ new class extends Component
                 'actividadPaciente.pacienteCasual:id,nombre,apellido',
             ])
             ->whereBetween('turnos.fecha_hora', [$hoy, $hoy->copy()->endOfDay()])
-            ->when(! $this->mostrarTodos, function ($consulta) use ($ahora) {
+            ->when(!$this->mostrarTodos, function ($consulta) use ($ahora) {
                 $consulta->whereBetween('turnos.fecha_hora', [
                     $ahora->copy()->subHour(),
                     $ahora->copy()->addHour(),
@@ -188,69 +256,95 @@ new class extends Component
 };
 ?>
 
-<div class="contenedor my-5 px-8 max-w-screen-xl bg-[#006E6B] rounded-3xl" wire:poll.60s="actualizarReloj">
-    <div class="mb-4 flex justify-between text-white">
-        <div class="text-3xl font-bold">
-            <h2>Asistencia de hoy</h2>
-            <p>{{ $fechaActual }}</p>
-        </div>
-        <p class="text-6xl">{{ $horaActual }}</p>
+<div class="mx-auto my-5 flex flex-col lg:flex-row max-w-7xl gap-3">
+    <div class="px-8 py-5 shrink-0 bg-[#006E6B] rounded-3xl w-full lg:w-[22rem]">
+        <h3 class="mb-4 text-2xl font-bold text-white">Pacientes fijos que no están asistiendo ni pagando</h3>
+        <table class="w-full overflow-hidden rounded-xl">
+            <thead class="bg-[#014745] text-white">
+                <tr>
+                    <th class="py-3 text-center">Paciente</th>
+                    <th class="py-3 text-center">Actividad</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white">
+                @forelse($this->fijosAusentesSinPago as $item)
+                    <tr class="border-b last:border-b-0" wire:key="fijo-ausente-{{ $item->id }}">
+                        <td class="px-2 py-3 text-center">{{ $item->paciente }}</td>
+                        <td class="px-2 py-3 text-center">{{ $item->actividad }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="2" class="py-4 text-center italic">Ninguno por ahora.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 
-    <div class="mb-4 flex gap-3">
-        <div class="columna-campo">
-            <label for="filtro-tipo" class="etiqueta-formulario">Tipo de actividad</label>
-            <select
-                id="filtro-tipo"
-                class="entrada"
-                wire:model.live="idTipoActividad">
-                <option value="0">Todos los tipos</option>
-                @foreach($tiposActividad as $tipo)
-                    <option value="{{ $tipo->id }}">{{ $tipo->descripcion }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="columna-campo w-xs">
-            <label for="filtro-actividad" class="etiqueta-formulario">Actividad</label>
-            <select
-                id="filtro-actividad"
-                class="entrada"
-                @if($idTipoActividad === 0) disabled @endif
-                wire:model.live="idActividad">
-                <option value="0">Todas las actividades</option>
-                @foreach($this->actividadesFiltradas as $act)
-                    <option value="{{ $act->id }}">{{ $act->nombre }}</option>
-                @endforeach
-            </select>
-        </div>
-
-        <div class="columna-campo w-xs">
-            <label for="filtro-horario" class="etiqueta-formulario">Franja horaria</label>
-            <select id="filtro-horario" class="entrada" wire:model.live="nroHorario">
-                <option value="0">Cualquier horario</option>
-                <option value="1">Turno mañana</option>
-                <option value="2">Turno tarde</option>
-            </select>
-        </div>
-
-        <div class="columna-campo w-xs">
-            <div class="flex items-center gap-1">
-                <x-iconos.lupa />
-                <label for="buscar-paciente" class="etiqueta-formulario">Buscar Paciente</label>
+    <div class="px-8 py-5 flex-1 bg-[#006E6B] rounded-3xl min-w-0" wire:poll.60s="actualizarReloj">
+        <div class="mb-4 flex justify-between text-white">
+            <div class="text-3xl font-bold">
+                <h2>Asistencia de hoy</h2>
+                <p>{{ $fechaActual }}</p>
             </div>
-            <input
-                id="buscar-paciente"
-                type="text"
-                placeholder="Ingrese nombre y/o apellido"
-                class="entrada"
-                wire:model.live.debounce.350ms="consultaPaciente"
-            >
+            <p class="text-6xl">{{ $horaActual }}</p>
         </div>
-    </div>
 
-    <div class="mb-4 flex">
-        <div class="flex items-center gap-1">
+        <div class="fila-formulario">
+            <div class="columna-campo">
+                <label for="filtro-tipo" class="etiqueta-formulario">Tipo de actividad</label>
+                <select
+                    id="filtro-tipo"
+                    class="entrada"
+                    wire:model.live="idTipoActividad">
+                    <option value="0">Todos los tipos</option>
+                    @foreach($tiposActividad as $tipo)
+                        <option value="{{ $tipo->id }}">{{ $tipo->descripcion }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="columna-campo w-xs">
+                <label for="filtro-actividad" class="etiqueta-formulario">Actividad</label>
+                <select
+                    id="filtro-actividad"
+                    class="entrada"
+                    @if($idTipoActividad === 0) disabled @endif
+                    wire:model.live="idActividad">
+                    <option value="0">Todas las actividades</option>
+                    @foreach($this->actividadesFiltradas as $act)
+                        <option value="{{ $act->id }}">{{ $act->nombre }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="columna-campo w-xs">
+                <label for="filtro-horario" class="etiqueta-formulario">Franja horaria</label>
+                <select id="filtro-horario" class="entrada" wire:model.live="nroHorario">
+                    <option value="0">Cualquier horario</option>
+                    <option value="1">Turno mañana</option>
+                    <option value="2">Turno tarde</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="fila-formulario">
+            <div class="columna-campo w-xs">
+                <div class="flex items-center gap-1">
+                    <x-iconos.lupa />
+                    <label for="buscar-paciente" class="etiqueta-formulario">Buscar Paciente</label>
+                </div>
+                <input
+                    id="buscar-paciente"
+                    type="text"
+                    placeholder="Ingrese nombre y/o apellido"
+                    class="entrada"
+                    wire:model.live.debounce.350ms="consultaPaciente"
+                >
+            </div>
+        </div>
+
+        <div class="ultima-fila-formulario">
             <input
                 id="mostrar-todos"
                 type="checkbox"
@@ -260,75 +354,90 @@ new class extends Component
             >
             <label for="mostrar-todos" class="etiqueta-formulario">Mostrar todos los turnos del día</label>
         </div>
-    </div>
 
-    <x-alerta tipo="exito" />
-    <x-alerta tipo="error" />
+        <x-alerta tipo="exito" />
+        <x-alerta tipo="error" />
 
-    <table class="my-5 w-full overflow-hidden rounded-xl">
-        <thead class="bg-[#014745] text-white">
-            <tr>
-                <th class="py-3 text-center">Hora de ingreso</th>
-                <th colspan="2" class="py-3 text-center">Descripción</th>
-                <th colspan="2" class="py-3 text-center">Acciones / Estado</th>
-            </tr>
-        </thead>
+        <table class="my-5 w-full overflow-hidden rounded-xl">
+            <thead class="bg-[#014745] text-white">
+                <tr>
+                    <th class="py-3 text-center">Hora de ingreso</th>
+                    <th colspan="2" class="py-3 text-center">Descripción</th>
+                    <th colspan="2" class="py-3 text-center">Acciones / Estado</th>
+                </tr>
+            </thead>
 
-        <tbody class="bg-white">
-            @if($this->turnos->count())
-                @foreach($this->turnos as $turno)
-                    <tr class="h-24 border-b last:border-b-0" wire:key="turno-{{ $turno->id }}">
-                        <td class="text-center">{{ $turno->fecha_hora->format('H:i') }}</td>
-                        <td colspan="2" class="text-center">
-                            @if ($turno->actividadPaciente->esRegular())
-                                {{ $turno->actividadPaciente->nombre_actividad }} |
-                                {{ $turno->ap_nom_paciente }} |
-                                Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
-                            @elseif ($turno->actividadPaciente->esGympass())
-                                <span class="badge bg-emerald-600">Paciente Gympass</span>
-                                {{ $turno->ap_nom_paciente }} |
-                                Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
-                            @else
-                                <span class="badge bg-purple-600">Prueba de Pilates</span>
-                                {{ $turno->ap_nom_paciente }}
-                            @endif
-                            @if($turno->esReprogramado())
-                                <div class="mt-2">
-                                    <span class="badge bg-blue-600">Turno Reprogramado</span>
-                                </div>
-                            @endif
-                        </td>
-                        <td colspan="2" class="text-center">
-                            <div class="w-fit mx-auto grid grid-cols-2 gap-2">
-                                @if ($turno->id_turno_original === null)
-                                    @if ($turno->actividadPaciente->actividad->esActividadGeneral())
-                                        @if ($turno->esAusenteAviso())
-                                            <div class="col-span-2 flex justify-center">
-                                                <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
-                                                    Ausente avisó (AA)
-                                                </span>
-                                            </div>
-                                        @elseif (str_contains($turno->estado, 'Presente'))
-                                            <div class="col-span-2 flex justify-center">
-                                                <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">
-                                                    {{ $turno->estado }}
-                                                </span>
-                                            </div>
+            <tbody class="bg-white">
+                @if($this->turnos->count())
+                    @foreach($this->turnos as $turno)
+                        <tr class="h-24 border-b last:border-b-0" wire:key="turno-{{ $turno->id }}">
+                            <td class="text-center">{{ $turno->fecha_hora->format('H:i') }}</td>
+                            <td colspan="2" class="text-center">
+                                @if ($turno->actividadPaciente->esRegular())
+                                    {{ $turno->actividadPaciente->nombre_actividad }} |
+                                    {{ $turno->ap_nom_paciente }} |
+                                    Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                                @elseif ($turno->actividadPaciente->esGympass())
+                                    <span class="badge bg-emerald-600">Paciente Gympass</span>
+                                    {{ $turno->ap_nom_paciente }} |
+                                    Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                                @else
+                                    <span class="badge bg-purple-600">Prueba de Pilates</span>
+                                    {{ $turno->ap_nom_paciente }}
+                                @endif
+                                @if($turno->esReprogramado())
+                                    <div class="mt-2">
+                                        <span class="badge bg-blue-600">Turno Reprogramado</span>
+                                    </div>
+                                @endif
+                            </td>
+                            <td colspan="2" class="text-center">
+                                <div class="w-fit mx-auto grid grid-cols-2 gap-2">
+                                    @if ($turno->id_turno_original === null)
+                                        @if ($turno->actividadPaciente->actividad->esActividadGeneral())
+                                            @if ($turno->esAusenteAviso())
+                                                <div class="col-span-2 flex justify-center">
+                                                    <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                        Ausente avisó (AA)
+                                                    </span>
+                                                </div>
+                                            @elseif (str_contains($turno->estado, 'Presente'))
+                                                <div class="col-span-2 flex justify-center">
+                                                    <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                        {{ $turno->estado }}
+                                                    </span>
+                                                </div>
+                                            @else
+                                                <button
+                                                    class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                                    wire:click="confirmarAsistencia({{ $turno->id }})"
+                                                    wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
+                                                    wire:loading.attr="disabled">
+                                                    Confirmar asistencia
+                                                </button>
+                                                <button
+                                                    class="px-4 py-2 bg-orange-400 hover:bg-red-600 text-white text-lg font-medium rounded-md transition-all duration-100 active:scale-95 hover:scale-110"
+                                                    wire:click="marcarAusenteAviso({{ $turno->id }})"
+                                                    wire:confirm="¿Estás seguro de que deseas actualizar el estado del turno a 'Ausente avisó'?"
+                                                    wire:loading.attr="disabled">
+                                                    No viene pero avisó
+                                                </button>
+                                            @endif
                                         @else
-                                            <button
-                                                class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
-                                                wire:click="confirmarAsistencia({{ $turno->id }})"
-                                                wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
-                                                wire:loading.attr="disabled">
-                                                Confirmar asistencia
-                                            </button>
-                                            <button
-                                                class="px-4 py-2 bg-orange-400 hover:bg-red-600 text-white text-lg font-medium rounded-md transition-all duration-100 active:scale-95 hover:scale-110"
-                                                wire:click="marcarAusenteAviso({{ $turno->id }})"
-                                                wire:confirm="¿Estás seguro de que deseas actualizar el estado del turno a 'Ausente avisó'?"
-                                                wire:loading.attr="disabled">
-                                                No viene pero avisó
-                                            </button>
+                                            @if ($turno->estado === 'Ausente')
+                                                <button
+                                                    class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
+                                                    wire:click="confirmarAsistencia({{ $turno->id }})"
+                                                    wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
+                                                    wire:loading.attr="disabled">
+                                                    Confirmar asistencia
+                                                </button>
+                                                <div></div>
+                                            @else
+                                                <div class="col-span-2 flex justify-center">
+                                                    <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">Presente</span>
+                                                </div>
+                                            @endif
                                         @endif
                                     @else
                                         @if ($turno->estado === 'Ausente')
@@ -342,41 +451,26 @@ new class extends Component
                                             <div></div>
                                         @else
                                             <div class="col-span-2 flex justify-center">
-                                                <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">Presente</span>
+                                                <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                    {{ $turno->estado }}
+                                                </span>
                                             </div>
                                         @endif
                                     @endif
-                                @else
-                                    @if ($turno->estado === 'Ausente')
-                                        <button
-                                            class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
-                                            wire:click="confirmarAsistencia({{ $turno->id }})"
-                                            wire:confirm="¿Estás seguro de que deseas confirmar la asistencia del turno?"
-                                            wire:loading.attr="disabled">
-                                            Confirmar asistencia
-                                        </button>
-                                        <div></div>
-                                    @else
-                                        <div class="col-span-2 flex justify-center">
-                                            <span class="px-4 py-2 bg-green-600 text-white font-semibold rounded-md cursor-not-allowed">
-                                                {{ $turno->estado }}
-                                            </span>
-                                        </div>
-                                    @endif
-                                @endif
-                            </div>
-                        </td>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforeach
+                @else
+                    <tr>
+                        <td colspan="5" class="py-4 text-lg text-center italic">No encontramos turnos para los filtros ingresados.</td>
                     </tr>
-                @endforeach
-            @else
-                <tr>
-                    <td colspan="5" class="py-4 text-lg text-center italic">No encontramos turnos para los filtros ingresados.</td>
-                </tr>
-            @endif
-        </tbody>
-    </table>
+                @endif
+            </tbody>
+        </table>
 
-    <div class="mt-4">
-        {{ $this->turnos->links(data: ['scrollTo' => false]) }}
+        <div class="mt-4">
+            {{ $this->turnos->links(data: ['scrollTo' => false]) }}
+        </div>
     </div>
 </div>
