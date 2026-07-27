@@ -183,6 +183,20 @@ new class extends Component
                     'Este día ya está asignado en otro turno.'
                 );
             }
+
+            return;
+        }
+
+        if (str_contains($key, '.hora_inicio')) {
+            $indice = explode('.', $key)[0];
+
+            if ($this->horaCruzadaOcupada('turnos', $indice)) {
+                $this->turnos[$indice]['hora_inicio'] = '';
+                $this->addError(
+                    "turnos.{$indice}.hora_inicio",
+                    'Ese día y horario ya está asignado en la otra actividad.'
+                );
+            }
         }
     }
 
@@ -197,6 +211,20 @@ new class extends Component
                 $this->addError(
                     "turnosPilates.{$indice}.dia_semana",
                     'Este día ya está asignado en otro turno.'
+                );
+            }
+
+            return;
+        }
+
+        if (str_contains($key, '.hora_inicio')) {
+            $indice = explode('.', $key)[0];
+
+            if ($this->horaCruzadaOcupada('turnosPilates', $indice)) {
+                $this->turnosPilates[$indice]['hora_inicio'] = '';
+                $this->addError(
+                    "turnosPilates.{$indice}.hora_inicio",
+                    'Ese día y horario ya está asignado en la otra actividad.'
                 );
             }
         }
@@ -266,7 +294,7 @@ new class extends Component
             'turnosPilates.*.hora_inicio' => 'required',
         ]);
 
-        if ($this->validarDiasRepetidosEnSubmit()) {
+        if ($this->validarDiasRepetidosEnSubmit() || $this->validarHorariosCruzadosEnSubmit()) {
             return;
         }
 
@@ -430,16 +458,12 @@ new class extends Component
 
     public function diasOcupados(string $prefijoModelo, int|string $indice): array
     {
-        $turnosGym = $prefijoModelo === 'turnos'
-            ? collect($this->turnos)->except($indice)
+        $turnos = $prefijoModelo === 'turnosPilates'
+            ? collect($this->turnosPilates)
             : collect($this->turnos);
 
-        $turnosPilates = $prefijoModelo === 'turnosPilates'
-            ? collect($this->turnosPilates)->except($indice)
-            : collect($this->turnosPilates);
-
-        return $turnosGym
-            ->merge($turnosPilates)
+        return $turnos
+            ->except($indice)
             ->pluck('dia_semana')
             ->filter()
             ->unique()
@@ -447,11 +471,27 @@ new class extends Component
             ->all();
     }
 
+    public function horasOcupadasPorLaOtraActividad(string $prefijoModelo, string $dia): array
+    {
+        if (!$this->esDual || $dia === '') {
+            return [];
+        }
+
+        $otra = $prefijoModelo === 'turnos' ? $this->turnosPilates : $this->turnos;
+
+        return collect($otra)
+            ->filter(fn (array $turno) => ($turno['dia_semana'] ?? '') === $dia && ($turno['hora_inicio'] ?? '') !== '')
+            ->pluck('hora_inicio')
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     private function validarDiasRepetidosEnSubmit(): bool
     {
-        $diasVistos = [];
         $tieneErrores = false;
 
+        $diasGym = [];
         foreach ($this->turnos as $indice => $turno) {
             $dia = $turno['dia_semana'] ?? '';
 
@@ -459,15 +499,16 @@ new class extends Component
                 continue;
             }
 
-            if (isset($diasVistos[$dia])) {
+            if (isset($diasGym[$dia])) {
                 $this->addError("turnos.{$indice}.dia_semana", 'Este día ya está asignado en otro turno.');
                 $tieneErrores = true;
                 continue;
             }
 
-            $diasVistos[$dia] = true;
+            $diasGym[$dia] = true;
         }
 
+        $diasPilates = [];
         foreach ($this->turnosPilates as $indice => $turno) {
             $dia = $turno['dia_semana'] ?? '';
 
@@ -475,13 +516,49 @@ new class extends Component
                 continue;
             }
 
-            if (isset($diasVistos[$dia])) {
+            if (isset($diasPilates[$dia])) {
                 $this->addError("turnosPilates.{$indice}.dia_semana", 'Este día ya está asignado en otro turno.');
                 $tieneErrores = true;
                 continue;
             }
 
-            $diasVistos[$dia] = true;
+            $diasPilates[$dia] = true;
+        }
+
+        return $tieneErrores;
+    }
+
+    private function validarHorariosCruzadosEnSubmit(): bool
+    {
+        $tieneErrores = false;
+        $slotsGym = [];
+
+        foreach ($this->turnos as $turno) {
+            $dia = $turno['dia_semana'] ?? '';
+            $hora = $turno['hora_inicio'] ?? '';
+
+            if ($dia === '' || $hora === '') {
+                continue;
+            }
+
+            $slotsGym["{$dia}|{$hora}"] = true;
+        }
+
+        foreach ($this->turnosPilates as $indice => $turno) {
+            $dia = $turno['dia_semana'] ?? '';
+            $hora = $turno['hora_inicio'] ?? '';
+
+            if ($dia === '' || $hora === '') {
+                continue;
+            }
+
+            if (isset($slotsGym["{$dia}|{$hora}"])) {
+                $this->addError(
+                    "turnosPilates.{$indice}.hora_inicio",
+                    'Ese día y horario ya está asignado en la otra actividad.'
+                );
+                $tieneErrores = true;
+            }
         }
 
         return $tieneErrores;
@@ -490,6 +567,26 @@ new class extends Component
     private function diaYaOcupado(string $prefijoModelo, int|string $indice, string $dia): bool
     {
         return $dia !== '' && in_array($dia, $this->diasOcupados($prefijoModelo, $indice), true);
+    }
+
+    private function horaCruzadaOcupada(string $prefijoModelo, int|string $indice): bool
+    {
+        if (!$this->esDual) {
+            return false;
+        }
+
+        $turno = $prefijoModelo === 'turnos'
+            ? ($this->turnos[$indice] ?? null)
+            : ($this->turnosPilates[$indice] ?? null);
+
+        $dia = $turno['dia_semana'] ?? '';
+        $hora = $turno['hora_inicio'] ?? '';
+
+        if ($dia === '' || $hora === '') {
+            return false;
+        }
+
+        return in_array($hora, $this->horasOcupadasPorLaOtraActividad($prefijoModelo, $dia), true);
     }
 };
 ?>
@@ -527,6 +624,7 @@ new class extends Component
                         'prefijoModelo' => 'turnos',
                         'diasOcupados' => $this->diasOcupados('turnos', $i),
                         'diaSeleccionado' => (string) ($turnos[$i]['dia_semana'] ?? ''),
+                        'horasOcupadas' => $this->horasOcupadasPorLaOtraActividad('turnos', (string) ($turnos[$i]['dia_semana'] ?? '')),
                         'turnosPorDia' => $this->turnosPorDia,
                     ])
                 @endfor
@@ -543,6 +641,7 @@ new class extends Component
                         'prefijoModelo' => 'turnosPilates',
                         'diasOcupados' => $this->diasOcupados('turnosPilates', $i),
                         'diaSeleccionado' => (string) ($turnosPilates[$i]['dia_semana'] ?? ''),
+                        'horasOcupadas' => $this->horasOcupadasPorLaOtraActividad('turnosPilates', (string) ($turnosPilates[$i]['dia_semana'] ?? '')),
                         'turnosPorDia' => $this->turnosPorDiaPilates,
                     ])
                 @endfor

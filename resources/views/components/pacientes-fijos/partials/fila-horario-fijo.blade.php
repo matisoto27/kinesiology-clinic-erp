@@ -28,7 +28,10 @@
             <option value="" disabled selected>Seleccione hora de inicio</option>
             @if($diaSeleccionado !== '' && !empty($turnosPorDia[$diaSeleccionado]))
                 @foreach($turnosPorDia[$diaSeleccionado] as $opcion)
-                    <option value="{{ $opcion['valor'] }}">{{ $opcion['label'] }}</option>
+                    <option
+                        value="{{ $opcion['valor'] }}"
+                        @disabled(in_array($opcion['valor'], $horasOcupadas ?? [], true))
+                    >{{ $opcion['label'] }}</option>
                 @endforeach
             @endif
         </select>
