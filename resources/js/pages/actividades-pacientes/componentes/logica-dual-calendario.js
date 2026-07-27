@@ -16,26 +16,9 @@ export function sincronizarCheckboxesDiasSemana() {
         return false;
     }
 
-    const ocupados = esSegundoPaso() ? diasSemanaPrimeraInscripcion() : [];
-    const disponibles = Array.from(checkboxes).filter(cb => !ocupados.includes(cb.value));
-    const frecuenciaTotal = frecuenciaPrimeraInscripcion() + estado.frecuenciaSemanal;
-    const debeAutoseleccionar = esSegundoPaso()
-        && frecuenciaTotal === 5
-        && disponibles.length === estado.frecuenciaSemanal;
-
-    if (debeAutoseleccionar) {
-        disponibles.forEach(cb => { cb.checked = true; });
-    }
-
     const cantidadSeleccionados = Array.from(checkboxes).filter(c => c.checked).length;
 
     checkboxes.forEach(cb => {
-        if (ocupados.includes(cb.value)) {
-            cb.checked = false;
-            cb.disabled = true;
-            return;
-        }
-
         if (cantidadSeleccionados >= estado.frecuenciaSemanal) {
             cb.disabled = !cb.checked;
             return;
@@ -196,12 +179,15 @@ function esFechaInicioSegundaValida(fechaCandidata, diasSegunda) {
         return diasCombinados.includes(dia);
     });
 
-    // Para cada ocurrencia, determinar si está cubierta
+    // Días de la 1era inscripción (incluidos los compartidos) solo los cubre la 1era desde su fecha ancla.
+    // La 2da inscripción no puede tapar esos slots antes, aunque también use ese día.
     const cubiertas = ocurrencias.map(iso => {
         const d = new Date(iso + 'T00:00:00');
         const dia = nombreDiaSemana(d);
         const porPrimera = diasPrimera.includes(dia) && iso >= fechaAncla;
-        const porSegunda = diasSegunda.includes(dia) && iso >= fechaCandidata;
+        const porSegunda = diasSegunda.includes(dia)
+            && !diasPrimera.includes(dia)
+            && iso >= fechaCandidata;
         return porPrimera || porSegunda;
     });
 

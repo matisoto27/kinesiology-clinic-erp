@@ -141,20 +141,69 @@ class PlanDualInscripcionTest extends TestCase
         $this->assertTrue(ActividadPaciente::first()->plan_dual_pendiente);
     }
 
-    public function test_segunda_inscripcion_dual_autogenerada_rechaza_dias_repetidos(): void
+    public function test_segunda_inscripcion_dual_autogenerada_permite_dias_compartidos_alineados(): void
     {
-        Carbon::setTestNow('2026-06-01 08:00:00');
+        Carbon::setTestNow('2026-07-27 08:00:00');
 
         $this->crearActividadesGeneralesPlanDual(preciosPorFrecuencia: [
-            2 => 20000.00,
+            1 => 10000.00,
             3 => 30000.00,
         ]);
         $paciente = $this->crearPaciente();
 
-        $this->service->registrar($this->payloadPrimeraInscripcionDual(
-            paciente: $paciente,
-            frecuenciaSemanal: 2
-        ));
+        $this->service->registrar([
+            'plan_dual' => true,
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'autogenerados' => true,
+            'fecha_ancla' => '2026-08-05',
+            'frecuencia_semanal' => 1,
+            'cant_sesiones' => 4,
+            'turnos' => [
+                ['dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $segunda = $this->service->registrar([
+            'plan_dual' => true,
+            'id_actividad' => Actividad::PILATES,
+            'id_paciente' => $paciente->id,
+            'autogenerados' => true,
+            'fecha_ancla' => '2026-07-29',
+            'frecuencia_semanal' => 2,
+            'cant_sesiones' => 8,
+            'turnos' => [
+                ['dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['dia_semana' => 'Miércoles', 'hora_inicio' => '11:00:00'],
+            ],
+        ]);
+
+        $this->assertFalse($segunda->plan_dual_pendiente);
+        $this->assertSame(2, ActividadPaciente::count());
+    }
+
+    public function test_segunda_inscripcion_dual_autogenerada_rechaza_inicio_que_desfasa_patron_con_dias_compartidos(): void
+    {
+        Carbon::setTestNow('2026-07-27 08:00:00');
+
+        $this->crearActividadesGeneralesPlanDual(preciosPorFrecuencia: [
+            1 => 10000.00,
+            3 => 30000.00,
+        ]);
+        $paciente = $this->crearPaciente();
+
+        $this->service->registrar([
+            'plan_dual' => true,
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'autogenerados' => true,
+            'fecha_ancla' => '2026-08-05',
+            'frecuencia_semanal' => 1,
+            'cant_sesiones' => 4,
+            'turnos' => [
+                ['dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
 
         try {
             $this->service->registrar([
@@ -162,17 +211,18 @@ class PlanDualInscripcionTest extends TestCase
                 'id_actividad' => Actividad::PILATES,
                 'id_paciente' => $paciente->id,
                 'autogenerados' => true,
-                'fecha_ancla' => '2026-06-05',
-                'frecuencia_semanal' => 1,
-                'cant_sesiones' => 4,
+                'fecha_ancla' => '2026-07-27',
+                'frecuencia_semanal' => 2,
+                'cant_sesiones' => 8,
                 'turnos' => [
                     ['dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                    ['dia_semana' => 'Miércoles', 'hora_inicio' => '11:00:00'],
                 ],
             ]);
-            $this->fail('Se esperaba una excepción por días repetidos entre inscripciones duales.');
+            $this->fail('Se esperaba una excepción por patrón dual desfasado con días compartidos.');
         } catch (Exception $e) {
             $this->assertSame(
-                'Los días de la segunda inscripción no pueden repetir días de la primera inscripción dual.',
+                'La fecha de inicio de la segunda inscripción no respeta el patrón del plan dual.',
                 $e->getMessage()
             );
         }

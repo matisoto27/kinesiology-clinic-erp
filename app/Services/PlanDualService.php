@@ -186,24 +186,16 @@ class PlanDualService
 
         if (!empty($validados['autogenerados'])) {
             $this->validarCalendarioAutomaticoSegunda($pendiente, $validados);
-            return;
         }
-
-        $this->validarTurnosManualesSegunda($pendiente, $validados);
     }
 
     private function validarCalendarioAutomaticoSegunda(ActividadPaciente $pendiente, array $validados): void
     {
-        $diasPrimera = $this->diasSemanaPrimeraInscripcion($pendiente);
         $diasSegunda = collect($validados['turnos'])->pluck('dia_semana')->unique()->values()->all();
         $frecuenciaSegunda = (int) $validados['frecuencia_semanal'];
 
         if (count($diasSegunda) !== $frecuenciaSegunda) {
             throw new Exception('La cantidad de días elegidos no coincide con la frecuencia semanal de la segunda inscripción.');
-        }
-
-        if (array_intersect($diasPrimera, $diasSegunda) !== []) {
-            throw new Exception('Los días de la segunda inscripción no pueden repetir días de la primera inscripción dual.');
         }
 
         $fechaAnclaSegunda = $validados['fecha_ancla'] ?? null;
@@ -240,7 +232,11 @@ class PlanDualService
         $cubiertas = array_map(function (string $iso) use ($diasPrimera, $diasSegunda, $fechaAncla, $fechaCandidata) {
             $dia = $this->nombreDiaSemana(Carbon::parse($iso));
             $porPrimera = in_array($dia, $diasPrimera, true) && $iso >= $fechaAncla;
-            $porSegunda = in_array($dia, $diasSegunda, true) && $iso >= $fechaCandidata;
+            // Días de la 1era inscripción (incluidos los compartidos) solo los cubre la 1era desde su fecha ancla.
+            // La 2da inscripción no puede tapar esos slots antes, aunque también use ese día.
+            $porSegunda = in_array($dia, $diasSegunda, true)
+                && !in_array($dia, $diasPrimera, true)
+                && $iso >= $fechaCandidata;
 
             return $porPrimera || $porSegunda;
         }, $ocurrencias);
@@ -305,26 +301,4 @@ class PlanDualService
             ->all();
     }
 
-    private function validarTurnosManualesSegunda(ActividadPaciente $pendiente, array $validados): void
-    {
-        $ocupadas = $this->fechasPrimeraInscripcion($pendiente);
-        $recibidas = collect($validados['turnos'])
-            ->map(fn (string $fechaHora) => Carbon::parse($fechaHora)->toDateString())
-            ->all();
-
-        if (array_intersect($ocupadas, $recibidas) !== []) {
-            throw new Exception('Los turnos de la segunda inscripción no pueden ocupar fechas ya usadas por la primera inscripción dual.');
-        }
-    }
-
-    private function fechasPrimeraInscripcion(ActividadPaciente $pendiente): array
-    {
-        return $pendiente->turnos()
-            ->orderBy('fecha_hora')
-            ->get()
-            ->map(fn ($turno) => $turno->fecha_hora->toDateString())
-            ->unique()
-            ->values()
-            ->all();
-    }
 }

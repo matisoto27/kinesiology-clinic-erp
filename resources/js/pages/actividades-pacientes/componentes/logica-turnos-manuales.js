@@ -318,7 +318,7 @@ function renderizarSelectDeterminacion(numeroTurno) {
     const ultimaFecha = estadoManual.fechasDeterminacion.at(-1);
     const fechasPosibles = obtenerFechasPosteriores(ultimaFecha);
 
-    if (!fechasPosibles.some(fecha => !esFechaOcupadaPrimeraInscripcion(fecha))) {
+    if (fechasPosibles.length === 0) {
         finalizarPatron();
         return;
     }
@@ -331,7 +331,7 @@ function renderizarSelectDeterminacion(numeroTurno) {
                 <select class="entrada fecha-determinacion">
                     ${crearOpcionPorDefecto('Seleccione una fecha')}
                     ${fechasPosibles.map(fecha => `
-                        <option value="${fecha}" ${esFechaOcupadaPrimeraInscripcion(fecha) ? 'disabled' : ''}>${convertirFechaParaMostrar(fecha)}</option>
+                        <option value="${fecha}">${convertirFechaParaMostrar(fecha)}</option>
                     `).join('')}
                 </select>
             </div>
@@ -400,7 +400,7 @@ function fechasParaDeterminarPatron() {
     const fechasPrimera = fechasOcupadasPrimeraInscripcion()
         .filter(fecha => obtenerIndiceSemana(fecha, estadoManual.fechasPorSemana) <= ultimoIndiceDeterminado);
 
-    return [...new Set([...fechasPrimera, ...estadoManual.fechasDeterminacion])].sort();
+    return [...fechasPrimera, ...estadoManual.fechasDeterminacion].sort();
 }
 
 function calcularPatron(frecuencia, fechas, fechasPorSemana, totalSesiones = obtenerTotalTurnos()) {
@@ -442,9 +442,7 @@ function ajustarPatronATotal(patron, totalSesiones) {
 
 function patronEsFactible(patron, indiceSemanaBase, fechasPorSemana) {
     return patron.every((cantidad, indice) => {
-        const fechasSemana = (fechasPorSemana[indiceSemanaBase + indice] ?? [])
-            .filter(fecha => !esFechaOcupadaPrimeraInscripcion(fecha));
-
+        const fechasSemana = fechasPorSemana[indiceSemanaBase + indice] ?? [];
         return fechasSemana.length >= cantidad;
     });
 }
@@ -532,12 +530,7 @@ function inicializarSelectsDefinitivos(semanaBase) {
         const horaSelect = bloque.querySelector('.hora-select');
 
         fechasSemana.forEach(fecha => {
-            agregarOpcion(
-                fechaSelect,
-                fecha,
-                convertirFechaParaMostrar(fecha),
-                esFechaOcupadaPrimeraInscripcion(fecha)
-            );
+            agregarOpcion(fechaSelect, fecha, convertirFechaParaMostrar(fecha));
         });
 
         fechaSelect.addEventListener('change', () => {
@@ -673,7 +666,6 @@ function actualizarDuplicadosSemana(indicePatron) {
             }
 
             option.disabled =
-                esFechaOcupadaPrimeraInscripcion(option.value) ||
                 elegidas.includes(option.value) &&
                 option.value !== select.value;
         });
@@ -682,15 +674,7 @@ function actualizarDuplicadosSemana(indicePatron) {
 
 // Dual =======================================
 
-function esFechaOcupadaPrimeraInscripcion(fecha) {
-    return esSegundoPaso() && fechasOcupadasPrimeraInscripcion().includes(fecha);
-}
-
 function esFechaInicioSeleccionable(fecha) {
-    if (esFechaOcupadaPrimeraInscripcion(fecha)) {
-        return false;
-    }
-
     return !esSegundoPaso() || esFechaInicioDualManualValida(fecha);
 }
 
