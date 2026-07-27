@@ -13,7 +13,6 @@ class Sintoma extends Model
     protected $fillable = [
         'nombre',
         'activo',
-        'id_tipo'
     ];
 
     protected $casts = [

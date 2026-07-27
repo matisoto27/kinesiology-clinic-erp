@@ -18,9 +18,6 @@ class DatabaseSeeder extends Seeder
             ComboSeeder::class,
             HorarioSeeder::class,
             ObraSocialSeeder::class,
-            PatologiaSeeder::class,
-            TipoSintomaSeeder::class,
-            SintomaSeeder::class,
             ActividadComboSeeder::class,
             HorarioActividadSeeder::class
         ]);

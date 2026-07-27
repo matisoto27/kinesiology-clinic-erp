@@ -1,16 +1,18 @@
 <?php
 
 use App\Models\Paciente;
-use App\Models\Patologia;
-use App\Models\TipoSintoma;
+use App\Livewire\Concerns\ManejaBuscadorPatologias;
+use App\Livewire\Concerns\ManejaBuscadorSintomas;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
 {
+    use ManejaBuscadorPatologias;
+    use ManejaBuscadorSintomas;
+
     public $dni;
     public $nombre;
     public $apellido;
@@ -23,24 +25,10 @@ new class extends Component
     public $vive_solo = true;
     public $vive_con;
     public $contactos = [];
-    public $patologias = [];
-    public $sintomas = [];
-
-    #[Computed]
-    public function todasPatologias()
-    {
-        return Patologia::where('activo', true)->orderBy('nombre')->get();
-    }
-
-    #[Computed]
-    public function tiposSintomas()
-    {
-        return TipoSintoma::where('activo', true)->with('sintomasActivos')->get();
-    }
 
     protected function rules()
     {
-        return [
+        return array_merge([
             'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
@@ -56,11 +44,7 @@ new class extends Component
             'contactos.*.nombre' => 'required_with:contactos|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:100',
             'contactos.*.telefono' => 'required_with:contactos|numeric|digits_between:8,20',
             'contactos.*.vinculo' => 'required_with:contactos|string|in:Cónyuge,Hijo/a,Hermano/a,Otro',
-            'patologias' => 'nullable|array',
-            'patologias.*' => 'numeric|exists:patologias,id',
-            'sintomas' => 'nullable|array',
-            'sintomas.*' => 'numeric|exists:sintomas,id'
-        ];
+        ], $this->reglasPatologiasSeleccionadas(), $this->reglasSintomasSeleccionados());
     }
 
     protected function messages()
@@ -85,7 +69,10 @@ new class extends Component
             'contactos.*.nombre' => 'nombre del contacto',
             'contactos.*.telefono' => 'teléfono del contacto',
             'contactos.*.vinculo' => 'vínculo del contacto',
-            'sintomas' => 'síntomas'
+            'patologiasSeleccionadas' => 'patologías',
+            'patologiasSeleccionadas.*.nombre' => 'nombre de la patología',
+            'sintomasSeleccionados' => 'síntomas',
+            'sintomasSeleccionados.*.nombre' => 'nombre del síntoma',
         ];
     }
 
@@ -141,8 +128,11 @@ new class extends Component
         $this->domicilio = mb_convert_case(mb_strtolower(trim($this->domicilio)), MB_CASE_TITLE, "UTF-8");
         $this->profesion = mb_convert_case(mb_strtolower(trim($this->profesion)), MB_CASE_TITLE, "UTF-8");
 
+        $idsPatologias = $this->persistirPatologiasSeleccionadas();
+        $idsSintomas = $this->persistirSintomasSeleccionados();
+
         try {
-            DB::transaction(function () {
+            DB::transaction(function () use ($idsPatologias, $idsSintomas) {
                 $paciente = Paciente::create([
                     'dni' => $this->dni,
                     'nombre' => $this->nombre,
@@ -169,16 +159,18 @@ new class extends Component
 
                 $ahora = Carbon::now();
 
-                if (!empty($this->patologias)) {
-                    $paciente->patologias()->attach($this->patologias, ['fecha_desde' => $ahora]);
+                if ($idsPatologias !== []) {
+                    $paciente->patologias()->attach($idsPatologias, ['fecha_desde' => $ahora]);
                 }
 
-                if (!empty($this->sintomas)) {
-                    $paciente->sintomas()->attach($this->sintomas, ['fecha_desde' => $ahora]);
+                if ($idsSintomas !== []) {
+                    $paciente->sintomas()->attach($idsSintomas, ['fecha_desde' => $ahora]);
                 }
             });
 
             return redirect()->route('pacientes.inicio')->with('exito', '¡El paciente ha sido registrado con éxito!');
+        } catch (\Illuminate\Validation\ValidationException $ex) {
+            throw $ex;
         } catch (\Throwable $ex) {
             Log::error('[components.pacientes.crear@almacenar] Error al registrar el paciente', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Ocurrió un error inesperado al intentar registrar el paciente.');
@@ -419,40 +411,9 @@ new class extends Component
                 @endif
             </div>
 
-            <div class="columna-campo">
-                <h3 class="mb-2 text-white text-xl font-semibold">Patologías (Opcional)</h3>
-                <div class="space-y-4">
-                    @foreach ($this->todasPatologias as $pat)
-                        <div class="flex items-center gap-2">
-                            <input id="patologia-{{ $pat->id }}" type="checkbox" class="checkbox-formulario" value="{{ $pat->id }}" wire:model="patologias">
-                            <label for="patologia-{{ $pat->id }}" class="text-white">{{ $pat->nombre }}</label>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-            @error('patologias') <div class="text-red-500 text-md">{{ $message }}</div> @enderror
+            <x-pacientes.buscador-patologias />
 
-            <div class="columna-campo">
-                <label class="etiqueta-formulario">¿Cuáles síntomas presenta el paciente? (Opcional)</label>
-                <div class="grid grid-cols-1 gap-4">
-                    @foreach ($this->tiposSintomas as $tipo)
-                        @if (!$tipo->sintomasActivos->isEmpty())
-                            <div class="p-4 bg-[#3A8F8E] rounded-md shadow-lg">
-                                <h3 class="mb-2 text-white text-xl font-semibold">{{ $tipo->nombre }}</h3>
-                                <div class="space-y-4">
-                                    @foreach ($tipo->sintomasActivos as $sintoma)
-                                        <div class="flex items-center gap-2">
-                                            <input id="sintoma-{{ $sintoma->id }}" type="checkbox" class="checkbox-formulario" value="{{ $sintoma->id }}" wire:model="sintomas">
-                                            <label for="sintoma-{{ $sintoma->id }}" class="text-white">{{ $sintoma->nombre }}</label>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            </div>
-                        @endif
-                    @endforeach
-                </div>
-            </div>
-            @error('sintomas') <div class="text-red-500 text-md">{{ $message }}</div> @enderror
+            <x-pacientes.buscador-sintomas />
         </div>
 
         <button type="submit" class="boton-registrar">Registrar</button>
