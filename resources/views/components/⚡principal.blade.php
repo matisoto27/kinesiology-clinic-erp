@@ -91,6 +91,7 @@ new class extends Component
         return Turno::query()
             ->conActPac()
             ->conActividad()
+            ->visiblesEnAgenda()
             ->select([
                 'turnos.id',
                 'turnos.id_act_pac',

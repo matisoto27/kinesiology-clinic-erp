@@ -62,29 +62,29 @@ new class extends Component
     public function turnos()
     {
         return Turno::query()
-            ->with([
-                'actividadPaciente.actividad',
-                'actividadPaciente.pacienteRegular',
-                'actividadPaciente.pacienteCasual',
-                'turnoOriginal',
-                'turnoRecuperacion'
+            ->conActPac()
+            ->visiblesEnAgenda()
+            ->select([
+                'turnos.id',
+                'turnos.id_act_pac',
+                'turnos.nro_turno',
+                'turnos.fecha_hora',
+                'turnos.estado',
+                'turnos.id_turno_original',
             ])
-            ->when($this->idActividad > 0, function($consulta) {
-                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->where('id_actividad', $this->idActividad));
-            })
-            ->when(!empty($this->consultaPaciente), function($consulta) {
-                $consulta->whereHas('actividadPaciente', fn($sc) => $sc->buscarPaciente($this->consultaPaciente));
-            })
-            ->when($this->ocultarTurnosFuturos, fn ($consulta) => $consulta
-                ->where('fecha_hora', '<', now()->startOfDay()->addWeek()))
-            ->where(function ($consulta) {
-                $consulta->whereDoesntHave('turnoRecuperacion')
-                    ->orWhereHas(
-                        'actividadPaciente.actividad',
-                        fn ($sc) => $sc->where('id_tipo_actividad', Actividad::TIPO_GENERAL)
-                    );
-            })
-            ->orderByDesc('fecha_hora')
+            ->with([
+                'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,cant_sesiones',
+                'actividadPaciente.actividad:id,nombre,id_tipo_actividad',
+                'actividadPaciente.pacienteRegular:id,nombre,apellido',
+                'actividadPaciente.pacienteCasual:id,nombre,apellido',
+                'turnoOriginal:id',
+                'turnoRecuperacion:id,id_turno_original',
+            ])
+            ->when($this->idActividad > 0, fn ($q) => $q->deLaActividad($this->idActividad))
+            ->when($this->consultaPaciente !== '', fn ($q) => $q->buscarPaciente($this->consultaPaciente))
+            ->when($this->ocultarTurnosFuturos, fn ($q) => $q
+                ->where('turnos.fecha_hora', '<', now()->startOfDay()->addWeek()))
+            ->orderByDesc('turnos.fecha_hora')
             ->paginate(10);
     }
 

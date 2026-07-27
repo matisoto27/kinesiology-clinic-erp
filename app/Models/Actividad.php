@@ -94,6 +94,7 @@ class Actividad extends Model
 
         $consulta = Turno::conActPac()
             ->deLaActividad($idActividad)
+            ->activosParaCupo()
             ->select('fecha_hora')
             ->entreFechas($comienzo, $fin)
             ->groupBy('fecha_hora')
@@ -159,6 +160,7 @@ class Actividad extends Model
 
             $consulta = Turno::conActPac()
                 ->deLaActividad($idActividad)
+                ->activosParaCupo()
                 ->select('fecha_hora')
                 ->entreFechas($comienzo, $fin)
                 ->groupBy('fecha_hora')
@@ -174,6 +176,7 @@ class Actividad extends Model
                     self::DLM,
                     self::MASAJES
                 ])
+                ->activosParaCupo()
                 ->select('fecha_hora')
                 ->entreFechas($comienzo, $fin)
                 ->groupBy('fecha_hora');

@@ -133,6 +133,7 @@ new class extends Component
         $diaFin = $diaInicio->copy()->addDays(4); // Viernes
 
         $consulta = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.pacienteRegular', 'actividadPaciente.pacienteCasual'])
+            ->visiblesEnAgenda()
             ->whereBetween('fecha_hora', [$diaInicio->startOfDay(), $diaFin->endOfDay()]);
 
         if ($this->idTipoActividad > 0) {

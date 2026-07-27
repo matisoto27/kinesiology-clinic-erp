@@ -140,6 +140,24 @@ class Turno extends Model
         return $consulta->whereBetween('fecha_hora', [$limiteInferior, $limiteSuperior]);
     }
 
+    public function scopeActivosParaCupo(Builder $consulta): Builder
+    {
+        return $consulta
+            ->whereDoesntHave('turnoRecuperacion')
+            ->where('turnos.estado', '!=', 'Ausente avisó');
+    }
+
+    public function scopeVisiblesEnAgenda(Builder $consulta): Builder
+    {
+        return $consulta->where(function (Builder $q) {
+            $q->whereDoesntHave('turnoRecuperacion')
+                ->orWhereHas(
+                    'actividadPaciente.actividad',
+                    fn (Builder $sc) => $sc->where('id_tipo_actividad', Actividad::TIPO_GENERAL)
+                );
+        });
+    }
+
     public function scopeCantidadMayorIgualQue(Builder $consulta, int $cantidad): Builder
     {
         return $consulta->havingRaw('COUNT(*) >= ?', [$cantidad]);
@@ -150,6 +168,7 @@ class Turno extends Model
         return self::conActPac()
             ->delPaciente($idPaciente, $esRegular)
             ->entreFechas($limiteInferior, $limiteSuperior)
+            ->activosParaCupo()
             ->pluck('fecha_hora');
     }
 }
