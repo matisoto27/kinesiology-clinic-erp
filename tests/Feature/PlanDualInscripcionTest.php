@@ -180,6 +180,89 @@ class PlanDualInscripcionTest extends TestCase
         $this->assertSame(1, ActividadPaciente::count());
     }
 
+    public function test_no_inicia_plan_dual_si_paciente_no_tiene_ambas_actividades_disponibles(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearActividadesGeneralesPlanDual(preciosPorFrecuencia: [2 => 20000.00]);
+        $paciente = $this->crearPaciente();
+
+        $gymExistente = ActividadPaciente::create([
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 8,
+            'es_fijo' => false,
+            'total_a_pagar' => 1000,
+            'plan_dual_pendiente' => false,
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $gymExistente->id,
+            'nro_turno' => 1,
+            'fecha_hora' => '2026-06-20 10:00:00',
+        ]);
+
+        try {
+            $this->service->registrar([
+                'plan_dual' => true,
+                'id_actividad' => Actividad::PILATES,
+                'id_paciente' => $paciente->id,
+                'autogenerados' => true,
+                'fecha_ancla' => '2026-06-01',
+                'frecuencia_semanal' => 2,
+                'cant_sesiones' => 8,
+                'turnos' => [
+                    ['dia_semana' => 'Martes', 'hora_inicio' => '10:00:00'],
+                    ['dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+                ],
+            ]);
+            $this->fail('Se esperaba una excepción por no poder iniciar el plan dual.');
+        } catch (Exception $e) {
+            $this->assertSame(PlanDualService::MENSAJE_NO_PUEDE_INICIAR_PLAN_DUAL, $e->getMessage());
+        }
+
+        $this->assertSame(1, ActividadPaciente::count());
+        $this->assertSame(0, ActividadPaciente::where('plan_dual_pendiente', true)->count());
+    }
+
+    public function test_endpoint_actividades_incluye_flag_puede_iniciar_plan_dual(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $paciente = $this->crearPaciente();
+
+        $respuestaOk = $this->withoutMiddleware()
+            ->getJson("/pacientes/{$paciente->id}/actividades-generales-sin-suscripcion");
+
+        $respuestaOk->assertOk()
+            ->assertJsonStructure([
+                'actividades',
+                'puede_iniciar_plan_dual',
+            ])
+            ->assertJsonPath('puede_iniciar_plan_dual', true);
+
+        $gymExistente = ActividadPaciente::create([
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 8,
+            'es_fijo' => false,
+            'total_a_pagar' => 1000,
+            'plan_dual_pendiente' => false,
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $gymExistente->id,
+            'nro_turno' => 1,
+            'fecha_hora' => '2026-06-20 10:00:00',
+        ]);
+
+        $respuestaNo = $this->withoutMiddleware()
+            ->getJson("/pacientes/{$paciente->id}/actividades-generales-sin-suscripcion");
+
+        $respuestaNo->assertOk()
+            ->assertJsonPath('puede_iniciar_plan_dual', false);
+    }
+
     private function payloadPrimeraInscripcionDual(Paciente $paciente, int $frecuenciaSemanal): array
     {
         return [

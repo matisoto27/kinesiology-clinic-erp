@@ -81,6 +81,12 @@ class ActividadPacienteService
             throw new Exception('La frecuencia semanal del plan dual debe estar entre 1 y 4.');
         }
 
+        $paciente = Paciente::findOrFail((int) $validados['id_paciente']);
+
+        if (!$this->planDualService->puedeIniciarPlanDual($paciente)) {
+            throw new Exception(PlanDualService::MENSAJE_NO_PUEDE_INICIAR_PLAN_DUAL);
+        }
+
         $ahora = Carbon::now();
         $validados['cant_sesiones'] = $frecuencia * 4;
         $validados['total_a_pagar'] = 0;

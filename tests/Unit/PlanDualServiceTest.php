@@ -83,17 +83,7 @@ class PlanDualServiceTest extends TestCase
     {
         Carbon::setTestNow('2026-06-01 10:00:00');
 
-        $paciente = Paciente::create([
-            'dni' => (string) random_int(10000000, 99999999),
-            'nombre' => 'Nombre',
-            'apellido' => 'Apellido',
-            'fecha_nac' => '1990-01-01',
-            'domicilio' => 'Calle 123',
-            'telefono' => '1111111111',
-            'profesion' => 'Profesión',
-            'actividad_fisica' => 'Ninguna',
-            'es_adulto_mayor' => false,
-        ]);
+        $paciente = $this->crearPaciente();
 
         $pendiente = ActividadPaciente::create([
             'id_actividad' => Actividad::GIMNASIO,
@@ -120,17 +110,7 @@ class PlanDualServiceTest extends TestCase
     {
         Carbon::setTestNow('2026-06-01 18:00:00');
 
-        $paciente = Paciente::create([
-            'dni' => (string) random_int(10000000, 99999999),
-            'nombre' => 'Nombre',
-            'apellido' => 'Apellido',
-            'fecha_nac' => '1990-01-01',
-            'domicilio' => 'Calle 123',
-            'telefono' => '1111111111',
-            'profesion' => 'Profesión',
-            'actividad_fisica' => 'Ninguna',
-            'es_adulto_mayor' => false,
-        ]);
+        $paciente = $this->crearPaciente();
 
         $pendiente = ActividadPaciente::create([
             'id_actividad' => Actividad::GIMNASIO,
@@ -145,6 +125,103 @@ class PlanDualServiceTest extends TestCase
 
         $this->assertNull($this->service->obtenerDualPendiente($paciente->id));
         $this->assertSame(0, ActividadPaciente::count());
+    }
+
+    public function test_puede_iniciar_plan_dual_cuando_gimnasio_y_pilates_estan_disponibles(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        $paciente = $this->crearPaciente();
+
+        $this->assertTrue($this->service->puedeIniciarPlanDual($paciente));
+    }
+
+    public function test_no_puede_iniciar_plan_dual_si_falta_gimnasio_disponible(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        $paciente = $this->crearPaciente();
+        $this->crearInscripcionConUltimoTurno(
+            $paciente,
+            Actividad::GIMNASIO,
+            '2026-06-20 10:00:00'
+        );
+
+        $disponibles = $paciente->obtenerActividadesGeneralesSinSuscripcion()->pluck('id');
+
+        $this->assertFalse($disponibles->contains(Actividad::GIMNASIO));
+        $this->assertTrue($disponibles->contains(Actividad::PILATES));
+        $this->assertFalse($this->service->puedeIniciarPlanDual($paciente));
+    }
+
+    public function test_no_puede_iniciar_plan_dual_si_falta_pilates_disponible(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        $paciente = $this->crearPaciente();
+        $this->crearInscripcionConUltimoTurno(
+            $paciente,
+            Actividad::PILATES,
+            '2026-06-20 10:00:00'
+        );
+
+        $this->assertFalse($this->service->puedeIniciarPlanDual($paciente));
+    }
+
+    public function test_no_puede_iniciar_plan_dual_con_pendiente_existente(): void
+    {
+        Carbon::setTestNow('2026-06-01 10:00:00');
+
+        $paciente = $this->crearPaciente();
+
+        ActividadPaciente::create([
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 4,
+            'es_fijo' => false,
+            'total_a_pagar' => 0,
+            'plan_dual_pendiente' => true,
+        ]);
+
+        $this->assertFalse($this->service->puedeIniciarPlanDual($paciente));
+    }
+
+    private function crearPaciente(): Paciente
+    {
+        return Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Nombre',
+            'apellido' => 'Apellido',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+    }
+
+    private function crearInscripcionConUltimoTurno(
+        Paciente $paciente,
+        int $idActividad,
+        string $fechaUltimoTurno
+    ): ActividadPaciente {
+        $actPac = ActividadPaciente::create([
+            'id_actividad' => $idActividad,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 8,
+            'es_fijo' => false,
+            'total_a_pagar' => 1000,
+            'plan_dual_pendiente' => false,
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $actPac->id,
+            'nro_turno' => 1,
+            'fecha_hora' => $fechaUltimoTurno,
+        ]);
+
+        return $actPac;
     }
 
     private function crearPreciosMensualesDual(int $frecuenciaTotal, float $precioGym, float $precioPilates): void

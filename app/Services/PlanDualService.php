@@ -19,6 +19,8 @@ class PlanDualService
 
     public const MENSAJE_COMPLETAR_PLAN_DUAL = 'El paciente tiene un plan dual pendiente. Debe completarlo marcando la opción Plan dual.';
 
+    public const MENSAJE_NO_PUEDE_INICIAR_PLAN_DUAL = 'La inscripción dual requiere poder registrar Gimnasio y Pilates. El paciente no tiene ambas actividades disponibles.';
+
     private const DIAS = [
         'Lunes' => Carbon::MONDAY,
         'Martes' => Carbon::TUESDAY,
@@ -49,6 +51,18 @@ class PlanDualService
         }
 
         return $paciente->obtenerActividadesGeneralesSinSuscripcion();
+    }
+
+    public function puedeIniciarPlanDual(Paciente $paciente): bool
+    {
+        if ($this->obtenerDualPendiente($paciente->id) !== null) {
+            return false;
+        }
+
+        $disponibles = $paciente->obtenerActividadesGeneralesSinSuscripcion()->pluck('id');
+
+        return $disponibles->contains(Actividad::GIMNASIO)
+            && $disponibles->contains(Actividad::PILATES);
     }
 
     public function obtenerPendiente(int $idPaciente): ?array

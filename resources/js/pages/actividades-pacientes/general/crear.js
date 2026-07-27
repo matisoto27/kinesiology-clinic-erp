@@ -65,7 +65,6 @@ async function manejarCambioPaciente(e) {
     estado.idActividadCombo = null;
     estado.frecuenciaSemanal = null;
     estado.cantidadSesiones = null;
-    estado.esPlanDual = false;
     estado.planDualPendiente = null;
 
     idPacienteSeleccionado.value = idPaciente;
@@ -157,6 +156,12 @@ async function manejarCambioPlanDual() {
 
     if (estado.planDualPendiente) {
         planDualCheckbox.checked = true;
+        return;
+    }
+
+    if (planDualCheckbox.disabled && planDualCheckbox.checked) {
+        estado.esPlanDual = false;
+        planDualCheckbox.checked = false;
         return;
     }
 
@@ -339,6 +344,9 @@ quitarPacienteButton.addEventListener('click', function() {
 
     limpiarFrecuenciaPrecioTurnos();
     ocultarBanner();
+
+    estado.esPlanDual = false;
+    planDualCheckbox.checked = false;
     planDualCheckbox.disabled = false;
 });
 
@@ -349,7 +357,11 @@ async function cargarActividadesPaciente(idPaciente) {
     actividadSelect.innerHTML = crearOpcionPorDefecto('Cargando actividades...');
 
     try {
-        const actividades = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
+        const respuesta = await apiFetch(`/pacientes/${idPaciente}/actividades-generales-sin-suscripcion`);
+        const actividades = respuesta.actividades ?? [];
+        const puedeIniciar = respuesta.puede_iniciar_plan_dual ?? false;
+
+        await aplicarDisponibilidadPlanDual(puedeIniciar);
 
         if (actividades.length === 0) {
             actividadSelect.innerHTML = crearOpcionPorDefecto('Suscripto a todas');
@@ -366,6 +378,30 @@ async function cargarActividadesPaciente(idPaciente) {
         console.error(error);
         await mostrarAlerta('error', 'Error al cargar las actividades', error.message);
     }
+}
+
+async function aplicarDisponibilidadPlanDual(puedeIniciar) {
+    if (estado.planDualPendiente || !planDualCheckbox) {
+        return;
+    }
+
+    planDualCheckbox.disabled = !puedeIniciar;
+
+    if (!puedeIniciar) {
+        if (planDualCheckbox.checked) {
+            await mostrarAlerta(
+                'error',
+                'No puede registrar una inscripción dual',
+                'La inscripción dual requiere poder registrar Gimnasio y Pilates. El paciente no tiene ambas actividades disponibles.'
+            );
+            estado.esPlanDual = false;
+            planDualCheckbox.checked = false;
+        }
+
+        return;
+    }
+
+    estado.esPlanDual = planDualCheckbox.checked;
 }
 
 // FUNCIONES INSCRIPCIÓN DUAL ========================================================================================================

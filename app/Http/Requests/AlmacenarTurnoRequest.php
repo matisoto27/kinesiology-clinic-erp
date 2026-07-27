@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
+use App\Models\Paciente;
 use App\Services\PlanDualService;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
@@ -155,6 +156,17 @@ class AlmacenarTurnoRequest extends FormRequest
                     'La frecuencia seleccionada no es válida para completar el plan dual.'
                 );
             }
+
+            return;
+        }
+
+        $paciente = Paciente::find($idPaciente);
+
+        if ($paciente && !$planDualService->puedeIniciarPlanDual($paciente)) {
+            $validator->errors()->add(
+                'plan_dual',
+                PlanDualService::MENSAJE_NO_PUEDE_INICIAR_PLAN_DUAL
+            );
 
             return;
         }

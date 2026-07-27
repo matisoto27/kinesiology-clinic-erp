@@ -19,7 +19,10 @@ class PacienteController extends Controller
 
             $actividades = $planDualService->actividadesGeneralesDisponibles($paciente);
 
-            return response()->json($actividades);
+            return response()->json([
+                'actividades' => $actividades,
+                'puede_iniciar_plan_dual' => $planDualService->puedeIniciarPlanDual($paciente),
+            ]);
 
         } catch (ModelNotFoundException $ex) {
 
