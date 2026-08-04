@@ -108,8 +108,8 @@ new class extends Component
 
         $actividad = $this->turnoSeleccionado->actividadPaciente->actividad;
         $idPaciente = $this->turnoSeleccionado->actividadPaciente->id_paciente;
-        $comienzo = $fechaHora->copy()->startOfWeek()->startOfDay();
-        $fin = $comienzo->copy()->addWeek()->addDays(4)->endOfDay();
+        $comienzo = $fechaHora->copy()->startOfWeek()->subWeek()->startOfDay();
+        $fin = $fechaHora->copy()->startOfWeek()->addWeek()->addDays(4)->endOfDay();
 
         $this->turnosTotalesDisponibles = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin))
             ->push($fechaHora->format('Y-m-d H:i:s'))
@@ -117,6 +117,8 @@ new class extends Component
             ->values();
 
         $diasOcupadosInscripcion = $this->turnoSeleccionado->actividadPaciente->turnos()
+            ->whereDoesntHave('turnoRecuperacion')
+            ->where('estado', '!=', 'Ausente avisó')
             ->whereBetween('fecha_hora', [$comienzo, $fin])
             ->where('id', '!=', $this->turnoSeleccionado->id)
             ->pluck('fecha_hora')

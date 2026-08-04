@@ -144,7 +144,7 @@ new class extends Component
             ->get();
 
         return ActividadPaciente::filtrarProximasPagables($inscripciones)
-            ->sortBy(fn ($ap) => $ap->primerTurno->fecha_hora);
+            ->sortBy(fn ($ap) => $ap->primerTurno?->fecha_hora);
     }
 
     #[Computed]

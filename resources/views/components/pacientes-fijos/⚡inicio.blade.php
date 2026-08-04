@@ -42,7 +42,6 @@ new class extends Component
                 'pacientes_fijos.id_pac_fijo_dual',
             ])
             ->principales()
-            ->join('pacientes', 'pacientes.id', '=', 'pacientes_fijos.id_paciente')
             ->with([
                 'actividad:id,nombre',
                 'paciente:id,nombre,apellido',
@@ -62,8 +61,7 @@ new class extends Component
                 ->whereNull('pacientes_fijos.id_pac_fijo_dual'))
             ->when($this->filtroActividad === 'dual', fn ($consulta) => $consulta
                 ->whereNotNull('pacientes_fijos.id_pac_fijo_dual'))
-            ->orderBy('pacientes.apellido')
-            ->orderBy('pacientes.nombre')
+            ->orderByDesc('pacientes_fijos.created_at')
             ->paginate(10);
     }
 
