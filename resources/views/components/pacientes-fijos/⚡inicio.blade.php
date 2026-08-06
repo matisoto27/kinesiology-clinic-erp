@@ -35,32 +35,24 @@ new class extends Component
     public function pacientesFijos()
     {
         return PacienteFijo::query()
-            ->select([
-                'pacientes_fijos.id',
-                'pacientes_fijos.id_actividad',
-                'pacientes_fijos.id_paciente',
-                'pacientes_fijos.id_pac_fijo_dual',
-            ])
-            ->principales()
+            ->select(['pacientes_fijos.id', 'pacientes_fijos.id_paciente', 'pacientes_fijos.created_at'])
             ->with([
-                'actividad:id,nombre',
                 'paciente:id,nombre,apellido',
-                'horarios',
-                'pacFijoDual.actividad:id,nombre',
-                'pacFijoDual.horarios',
+                'horarios.actividad:id,nombre',
             ])
             ->when(!empty($this->consultaPaciente), fn ($consulta) => $consulta->whereHas(
                 'paciente',
                 fn ($subconsulta) => $subconsulta->buscarPorApNom($this->consultaPaciente)
             ))
             ->when($this->filtroActividad === 'gimnasio', fn ($consulta) => $consulta
-                ->where('pacientes_fijos.id_actividad', Actividad::GIMNASIO)
-                ->whereNull('pacientes_fijos.id_pac_fijo_dual'))
+                ->whereHas('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::GIMNASIO))
+                ->whereDoesntHave('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::PILATES)))
             ->when($this->filtroActividad === 'pilates', fn ($consulta) => $consulta
-                ->where('pacientes_fijos.id_actividad', Actividad::PILATES)
-                ->whereNull('pacientes_fijos.id_pac_fijo_dual'))
+                ->whereHas('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::PILATES))
+                ->whereDoesntHave('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::GIMNASIO)))
             ->when($this->filtroActividad === 'dual', fn ($consulta) => $consulta
-                ->whereNotNull('pacientes_fijos.id_pac_fijo_dual'))
+                ->whereHas('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::GIMNASIO))
+                ->whereHas('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::PILATES)))
             ->orderByDesc('pacientes_fijos.created_at')
             ->paginate(10);
     }
@@ -69,16 +61,7 @@ new class extends Component
     {
         try {
             DB::transaction(function () use ($id) {
-                $pacienteFijo = PacienteFijo::with('pacFijoDual')->findOrFail($id);
-                $registros = collect([$pacienteFijo]);
-
-                if ($pacienteFijo->pacFijoDual) {
-                    $registros->push($pacienteFijo->pacFijoDual);
-                }
-
-                foreach ($registros as $registro) {
-                    $registro->update(['id_pac_fijo_dual' => null]);
-                }
+                $pacienteFijo = PacienteFijo::findOrFail($id);
 
                 $inscripciones = ActividadPaciente::query()
                     ->where('id_paciente', $pacienteFijo->id_paciente)
@@ -117,9 +100,7 @@ new class extends Component
                     $par?->delete();
                 }
 
-                foreach ($registros as $registro) {
-                    $registro->delete();
-                }
+                $pacienteFijo->delete();
             });
 
             session()->flash('exito', 'El paciente ha sido eliminado de la lista de pacientes fijos. No se generarán más turnos de forma automática.');
@@ -180,37 +161,26 @@ new class extends Component
                 </thead>
                 <tbody>
                     @forelse($this->pacientesFijos as $pacFijo)
-                        @php($esDualConPareja = $pacFijo->esDual() && $pacFijo->pacFijoDual)
+                        @php($actividadesAgrupadas = $pacFijo->horarios->groupBy(fn ($hor) => $hor->actividad->nombre))
+                        @php($esDualConPareja = $actividadesAgrupadas->count() > 1)
                         <tr class="group tabla-listado__fila" wire:key="paciente-fijo-{{ $pacFijo->id }}">
                             <td>{{ $pacFijo->paciente->apellido_nombre }}</td>
                             <td>
                                 @if($esDualConPareja)
                                     Inscripción Dual (Gym + Pilates)
                                 @else
-                                    {{ $pacFijo->actividad->nombre }}
+                                    {{ $actividadesAgrupadas->keys()->first() }}
                                 @endif
                             </td>
                             <td>
                                 <div class="flex flex-col gap-3">
-                                    <div>
-                                        @if($esDualConPareja)
-                                            <span class="block text-xs uppercase text-gray-400 mb-1">{{ $pacFijo->actividad->nombre }}</span>
-                                        @endif
-                                        <div class="flex flex-wrap justify-center gap-2">
-                                            @foreach ($pacFijo->horarios as $hor)
-                                                <span class="px-2 py-1 inline-flex items-center bg-white/10 group-hover:bg-[#014745]/10 border-white/20 group-hover:border-[#014745]/20 border rounded text-xs">
-                                                    <span class="font-black uppercase mr-1.5">{{ $hor->nombre_dia }}</span>
-                                                    {{ Carbon::parse($hor->hora_inicio)->format('H:i') }}
-                                                </span>
-                                            @endforeach
-                                        </div>
-                                    </div>
-
-                                    @if($esDualConPareja)
+                                    @foreach ($actividadesAgrupadas as $nombreActividad => $horariosDeActividad)
                                         <div>
-                                            <span class="block text-xs uppercase text-gray-400 mb-1">{{ $pacFijo->pacFijoDual->actividad->nombre }}</span>
+                                            @if($esDualConPareja)
+                                                <span class="block text-xs uppercase text-gray-400 mb-1">{{ $nombreActividad }}</span>
+                                            @endif
                                             <div class="flex flex-wrap justify-center gap-2">
-                                                @foreach ($pacFijo->pacFijoDual->horarios as $hor)
+                                                @foreach ($horariosDeActividad as $hor)
                                                     <span class="px-2 py-1 inline-flex items-center bg-white/10 group-hover:bg-[#014745]/10 border-white/20 group-hover:border-[#014745]/20 border rounded text-xs">
                                                         <span class="font-black uppercase mr-1.5">{{ $hor->nombre_dia }}</span>
                                                         {{ Carbon::parse($hor->hora_inicio)->format('H:i') }}
@@ -218,7 +188,7 @@ new class extends Component
                                                 @endforeach
                                             </div>
                                         </div>
-                                    @endif
+                                    @endforeach
                                 </div>
                             </td>
                             <td>

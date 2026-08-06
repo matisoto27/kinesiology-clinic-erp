@@ -11,6 +11,7 @@ use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -27,35 +28,35 @@ class GenerarTurnosMensuales extends Command
         PlanDualService $planDualService
     ): void {
         $consulta = PacienteFijo::query()
-            ->select('id', 'id_actividad', 'id_paciente', 'id_pac_fijo_dual')
-            ->with([
-                'horarios:id_paciente_fijo,dia_semana,hora_inicio',
-                'pacFijoDual:id,id_actividad,id_paciente,id_pac_fijo_dual',
-                'pacFijoDual.horarios:id_paciente_fijo,dia_semana,hora_inicio',
-            ]);
+            ->select('id', 'id_paciente')
+            ->with(['horarios:id,id_paciente_fijo,id_actividad,dia_semana,hora_inicio']);
 
         if ($id = $this->option('id_paciente_fijo')) {
             $consulta->where('id', $id);
-        } else {
-            $consulta->principales();
         }
 
         foreach ($consulta->get() as $pacFijo) {
-            if ($pacFijo->esDual() && $pacFijo->pacFijoDual) {
-                $this->procesarParDual($pacFijo, $pacFijo->pacFijoDual, $turnoService, $expansorTurnosPatron, $planDualService);
+            $horariosPorActividad = $pacFijo->horarios->groupBy(fn ($horario) => (int) $horario->id_actividad);
+
+            if ($horariosPorActividad->count() > 1) {
+                $this->procesarPatronDual($pacFijo, $horariosPorActividad, $turnoService, $expansorTurnosPatron, $planDualService);
                 continue;
             }
 
-            $this->procesarPacienteFijoSimple($pacFijo, $turnoService, $expansorTurnosPatron);
+            foreach ($horariosPorActividad as $idActividad => $horarios) {
+                $this->procesarPacienteFijoSimple($pacFijo, (int) $idActividad, $horarios, $turnoService, $expansorTurnosPatron);
+            }
         }
     }
 
     private function procesarPacienteFijoSimple(
         PacienteFijo $pacFijo,
+        int $idActividad,
+        Collection $horarios,
         TurnoService $turnoService,
         ExpansorTurnosPatron $expansorTurnosPatron
     ): void {
-        $actPac = $this->obtenerUltimaInscripcion($pacFijo->id_actividad, $pacFijo->id_paciente);
+        $actPac = $this->obtenerUltimaInscripcion($idActividad, $pacFijo->id_paciente);
 
         if (!$actPac) {
             return;
@@ -73,13 +74,14 @@ class GenerarTurnosMensuales extends Command
             return;
         }
 
-        $horariosPaciente = $this->formatearHorariosPacienteFijo($pacFijo);
+        $horariosPaciente = $this->formatearHorarios($horarios);
 
         while ($fechaReferencia->lessThan($fechaObjetivo)) {
             try {
                 DB::transaction(function () use (
                     &$actPac,
                     &$fechaReferencia,
+                    $idActividad,
                     $pacFijo,
                     $turnoService,
                     $expansorTurnosPatron,
@@ -100,24 +102,34 @@ class GenerarTurnosMensuales extends Command
                     $actPac = $nuevoActPac;
                 });
             } catch (Throwable $ex) {
-                $this->registrarError($ex, $pacFijo->id_actividad, $pacFijo->id_paciente);
+                $this->registrarError($ex, $idActividad, $pacFijo->id_paciente);
                 break;
             }
         }
     }
 
-    private function procesarParDual(
-        PacienteFijo $pacFijoA,
-        PacienteFijo $pacFijoB,
+    private function procesarPatronDual(
+        PacienteFijo $pacFijo,
+        Collection $horariosPorActividad,
         TurnoService $turnoService,
         ExpansorTurnosPatron $expansorTurnosPatron,
         PlanDualService $planDualService
     ): void {
-        $pacFijoGym = (int) $pacFijoA->id_actividad === Actividad::GIMNASIO ? $pacFijoA : $pacFijoB;
-        $pacFijoPilates = (int) $pacFijoGym->id === (int) $pacFijoA->id ? $pacFijoB : $pacFijoA;
+        $horariosGym = $horariosPorActividad->get(Actividad::GIMNASIO);
+        $horariosPilates = $horariosPorActividad->get(Actividad::PILATES);
 
-        $actPacGym = $this->obtenerUltimaInscripcionDual(Actividad::GIMNASIO, $pacFijoGym->id_paciente);
-        $actPacPilates = $this->obtenerUltimaInscripcionDual(Actividad::PILATES, $pacFijoPilates->id_paciente);
+        if (!$horariosGym || !$horariosPilates || $horariosPorActividad->count() > 2) {
+            Log::error('[(Command) GenerarTurnosMensuales@procesarPatronDual] Combinación de actividades no soportada por el plan dual actual.', [
+                'id_paciente_fijo' => $pacFijo->id,
+                'id_paciente' => $pacFijo->id_paciente,
+                'actividades' => $horariosPorActividad->keys()->all(),
+            ]);
+
+            return;
+        }
+
+        $actPacGym = $this->obtenerUltimaInscripcionDual(Actividad::GIMNASIO, $pacFijo->id_paciente);
+        $actPacPilates = $this->obtenerUltimaInscripcionDual(Actividad::PILATES, $pacFijo->id_paciente);
 
         if (!$actPacGym || !$actPacPilates) {
             return;
@@ -138,8 +150,8 @@ class GenerarTurnosMensuales extends Command
             return;
         }
 
-        $horariosGym = $this->formatearHorariosPacienteFijo($pacFijoGym);
-        $horariosPilates = $this->formatearHorariosPacienteFijo($pacFijoPilates);
+        $horariosGymFormateados = $this->formatearHorarios($horariosGym);
+        $horariosPilatesFormateados = $this->formatearHorarios($horariosPilates);
 
         while (min($fechaReferenciaGym->timestamp, $fechaReferenciaPilates->timestamp) < $fechaObjetivo->timestamp) {
             try {
@@ -148,21 +160,20 @@ class GenerarTurnosMensuales extends Command
                     &$actPacPilates,
                     &$fechaReferenciaGym,
                     &$fechaReferenciaPilates,
-                    $pacFijoGym,
                     $turnoService,
                     $expansorTurnosPatron,
                     $planDualService,
-                    $horariosGym,
-                    $horariosPilates
+                    $horariosGymFormateados,
+                    $horariosPilatesFormateados
                 ) {
                     [$nuevoGym, $nuevoPilates] = $this->renovarInscripcionesDual(
                         $actPacGym,
                         $actPacPilates,
-                        $pacFijoGym->id_paciente,
+                        $actPacGym->id_paciente,
                         $fechaReferenciaGym,
                         $fechaReferenciaPilates,
-                        $horariosGym,
-                        $horariosPilates,
+                        $horariosGymFormateados,
+                        $horariosPilatesFormateados,
                         $turnoService,
                         $expansorTurnosPatron,
                         $planDualService
@@ -180,7 +191,7 @@ class GenerarTurnosMensuales extends Command
                     $actPacPilates = $nuevoPilates;
                 });
             } catch (Throwable $ex) {
-                $this->registrarError($ex, $pacFijoGym->id_actividad, $pacFijoGym->id_paciente);
+                $this->registrarError($ex, Actividad::GIMNASIO, $pacFijo->id_paciente);
                 break;
             }
         }
@@ -191,7 +202,7 @@ class GenerarTurnosMensuales extends Command
         return ActividadPaciente::query()
             ->select('id', 'id_actividad', 'id_paciente', 'cant_sesiones', 'frecuencia_total_dual')
             ->with([
-                'actividad:id,nombre',
+                'actividad:id,nombre,id_tipo_actividad',
                 'actividad.actividadCombos.precioVigente',
                 'actividad.combos',
                 'ultimoTurno:turnos.id_act_pac,turnos.fecha_hora',
@@ -208,7 +219,7 @@ class GenerarTurnosMensuales extends Command
         return ActividadPaciente::query()
             ->select('id', 'id_actividad', 'id_paciente', 'cant_sesiones', 'frecuencia_total_dual')
             ->with([
-                'actividad:id,nombre',
+                'actividad:id,nombre,id_tipo_actividad',
                 'ultimoTurno:turnos.id_act_pac,turnos.fecha_hora',
             ])
             ->where('id_actividad', $idActividad)
@@ -218,13 +229,14 @@ class GenerarTurnosMensuales extends Command
             ->first();
     }
 
-    private function formatearHorariosPacienteFijo(PacienteFijo $pacFijo): array
+    private function formatearHorarios(Collection $horarios): array
     {
-        return $pacFijo->horarios
+        return $horarios
             ->map(fn ($horario) => [
                 'dia_semana' => $horario->dia_semana,
                 'hora_inicio' => $horario->hora_inicio,
             ])
+            ->values()
             ->all();
     }
 

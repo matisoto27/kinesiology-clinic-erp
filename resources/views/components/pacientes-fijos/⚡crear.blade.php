@@ -2,6 +2,7 @@
 
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
+use App\Models\HorarioPacienteFijo;
 use App\Models\PacienteFijo;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -256,14 +257,18 @@ new class extends Component
         }
 
         $idPacienteFijo = null;
+        $idsHorariosCreados = [];
 
         try {
-            $idPacienteFijo = DB::transaction(function () use ($inscripcion) {
-                $pacienteFijo = PacienteFijo::create([
-                    'id_actividad' => $inscripcion->id_actividad,
-                    'id_paciente' => $inscripcion->id_paciente,
-                ]);
-                $pacienteFijo->horarios()->createMany($this->turnos);
+            $idPacienteFijo = DB::transaction(function () use ($inscripcion, &$idsHorariosCreados) {
+                $pacienteFijo = PacienteFijo::firstOrCreate(['id_paciente' => $inscripcion->id_paciente]);
+
+                $horariosCreados = $pacienteFijo->horarios()->createMany(
+                    collect($this->turnos)
+                        ->map(fn (array $turno) => [...$turno, 'id_actividad' => $inscripcion->id_actividad])
+                        ->all()
+                );
+                $idsHorariosCreados = $horariosCreados->pluck('id')->all();
 
                 return $pacienteFijo->id;
             });
@@ -276,9 +281,7 @@ new class extends Component
         } catch (\Throwable $ex) {
             Log::error('[(ComponenteLivewire)PacienteFijo@almacenarSimple] Error al marcar el paciente como paciente fijo.', ['excepcion' => $ex->getMessage()]);
 
-            if ($idPacienteFijo) {
-                PacienteFijo::find($idPacienteFijo)?->delete();
-            }
+            $this->revertirAltaFallida($idPacienteFijo, $idsHorariosCreados);
 
             session()->flash('error', 'No pudimos procesar la solicitud. Por favor, intente de nuevo más tarde o contacte al equipo de soporte (Matías).');
         }
@@ -312,44 +315,55 @@ new class extends Component
             return;
         }
 
-        $idsPacientesFijos = [];
+        $idPacienteFijo = null;
+        $idsHorariosCreados = [];
 
         try {
-            $idLider = DB::transaction(function () use ($inscripcionGym, $inscripcionPilates, &$idsPacientesFijos) {
-                $pacienteFijoGym = PacienteFijo::create([
-                    'id_actividad' => $inscripcionGym->id_actividad,
-                    'id_paciente' => $inscripcionGym->id_paciente,
-                ]);
-                $pacienteFijoGym->horarios()->createMany($this->turnos);
+            $idPacienteFijo = DB::transaction(function () use ($inscripcionGym, $inscripcionPilates, &$idsHorariosCreados) {
+                $pacienteFijo = PacienteFijo::firstOrCreate(['id_paciente' => $inscripcionGym->id_paciente]);
 
-                $pacienteFijoPilates = PacienteFijo::create([
-                    'id_actividad' => $inscripcionPilates->id_actividad,
-                    'id_paciente' => $inscripcionPilates->id_paciente,
-                ]);
-                $pacienteFijoPilates->horarios()->createMany($this->turnosPilates);
+                $horariosGym = collect($this->turnos)
+                    ->map(fn (array $turno) => [...$turno, 'id_actividad' => $inscripcionGym->id_actividad]);
+                $horariosPilates = collect($this->turnosPilates)
+                    ->map(fn (array $turno) => [...$turno, 'id_actividad' => $inscripcionPilates->id_actividad]);
 
-                $pacienteFijoGym->update(['id_pac_fijo_dual' => $pacienteFijoPilates->id]);
-                $pacienteFijoPilates->update(['id_pac_fijo_dual' => $pacienteFijoGym->id]);
+                $horariosCreados = $pacienteFijo->horarios()->createMany(
+                    $horariosGym->concat($horariosPilates)->all()
+                );
+                $idsHorariosCreados = $horariosCreados->pluck('id')->all();
 
-                $idsPacientesFijos = [$pacienteFijoGym->id, $pacienteFijoPilates->id];
-
-                return min($pacienteFijoGym->id, $pacienteFijoPilates->id);
+                return $pacienteFijo->id;
             });
 
             Artisan::call('app:generar-turnos-mensuales', [
-                '--id_paciente_fijo' => $idLider,
+                '--id_paciente_fijo' => $idPacienteFijo,
             ]);
 
             return redirect()->route('inicio')->with('exito', 'La inscripción dual del paciente ha sido registrada como recurrente. A partir de ahora, los turnos mensuales se generarán automáticamente.');
         } catch (\Throwable $ex) {
             Log::error('[(ComponenteLivewire)PacienteFijo@almacenarDual] Error al marcar el plan dual como paciente fijo.', ['excepcion' => $ex->getMessage()]);
 
-            DB::transaction(function () use ($idsPacientesFijos) {
-                PacienteFijo::whereIn('id', $idsPacientesFijos)->delete();
-            });
+            $this->revertirAltaFallida($idPacienteFijo, $idsHorariosCreados);
 
             session()->flash('error', 'No pudimos procesar la solicitud. Por favor, intente de nuevo más tarde o contacte al equipo de soporte (Matías).');
         }
+    }
+
+    private function revertirAltaFallida(?int $idPacienteFijo, array $idsHorariosCreados): void
+    {
+        if ($idsHorariosCreados === []) {
+            return;
+        }
+
+        DB::transaction(function () use ($idPacienteFijo, $idsHorariosCreados) {
+            HorarioPacienteFijo::whereIn('id', $idsHorariosCreados)->delete();
+
+            $pacienteFijo = PacienteFijo::find($idPacienteFijo);
+
+            if ($pacienteFijo && $pacienteFijo->horarios()->doesntExist()) {
+                $pacienteFijo->delete();
+            }
+        });
     }
 
     private function configurarSeleccionSimple(): void

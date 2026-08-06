@@ -13,12 +13,9 @@ return new class extends Migration
     {
         Schema::create('pacientes_fijos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('id_actividad')->constrained(table: 'actividades');
-            $table->foreignId('id_paciente')->constrained(table: 'pacientes');
+            $table->foreignId('id_paciente')->unique()->constrained(table: 'pacientes');
 
             $table->timestamps();
-
-            $table->unique(['id_actividad', 'id_paciente']);
         });
     }
 

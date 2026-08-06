@@ -29,7 +29,7 @@ class PacienteFijoDualTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_registrar_paciente_fijo_dual_crea_dos_filas_enlazadas(): void
+    public function test_registrar_paciente_fijo_dual_crea_una_fila_con_horarios_de_ambas_actividades(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
 
@@ -40,11 +40,12 @@ class PacienteFijoDualTest extends TestCase
         ]);
 
         $paciente = $this->crearPaciente();
-        $pareja = $this->crearInscripcionesYPacienteFijoDual($paciente);
+        $pacienteFijo = $this->crearInscripcionesYPacienteFijoDual($paciente);
 
-        $this->assertSame($pareja['pilates']->id, $pareja['gym']->id_pac_fijo_dual);
-        $this->assertSame($pareja['gym']->id, $pareja['pilates']->id_pac_fijo_dual);
-        $this->assertSame(2, PacienteFijo::count());
+        $this->assertSame(1, PacienteFijo::count());
+        $this->assertTrue($pacienteFijo->esDual());
+        $this->assertSame(2, $pacienteFijo->horarios->where('id_actividad', Actividad::GIMNASIO)->count());
+        $this->assertSame(1, $pacienteFijo->horarios->where('id_actividad', Actividad::PILATES)->count());
     }
 
     public function test_generador_mensual_renova_par_dual_de_forma_atomica(): void
@@ -58,14 +59,14 @@ class PacienteFijoDualTest extends TestCase
         ]);
 
         $paciente = $this->crearPaciente();
-        $pareja = $this->crearInscripcionesYPacienteFijoDual($paciente);
+        $pacienteFijo = $this->crearInscripcionesYPacienteFijoDual($paciente);
 
         $inscripcionesIniciales = ActividadPaciente::count();
         $turnosIniciales = Turno::count();
 
         $this->mockTurnoServiceParaUnaRenovacionDual();
 
-        $this->ejecutarGeneradorTurnosMensuales($pareja['gym']->id);
+        $this->ejecutarGeneradorTurnosMensuales($pacienteFijo->id);
 
         $this->assertSame($inscripcionesIniciales + 2, ActividadPaciente::count());
         $this->assertSame($turnosIniciales + 8 + 4, Turno::count());
@@ -108,22 +109,19 @@ class PacienteFijoDualTest extends TestCase
         ]);
 
         $paciente = $this->crearPaciente();
-        $pareja = $this->crearInscripcionesYPacienteFijoDual($paciente, coberturaExtendida: true);
+        $pacienteFijo = $this->crearInscripcionesYPacienteFijoDual($paciente, coberturaExtendida: true);
 
         $inscripcionesIniciales = ActividadPaciente::count();
         $turnosIniciales = Turno::count();
 
         $this->mockTurnoServiceParaUnaRenovacionDual();
-        $this->ejecutarGeneradorTurnosMensuales($pareja['gym']->id);
+        $this->ejecutarGeneradorTurnosMensuales($pacienteFijo->id);
 
         $this->assertSame($inscripcionesIniciales, ActividadPaciente::count());
         $this->assertSame($turnosIniciales, Turno::count());
     }
 
-    /**
-     * @return array{gym: PacienteFijo, pilates: PacienteFijo}
-     */
-    private function crearInscripcionesYPacienteFijoDual(Paciente $paciente, bool $coberturaExtendida = false): array
+    private function crearInscripcionesYPacienteFijoDual(Paciente $paciente, bool $coberturaExtendida = false): PacienteFijo
     {
         $service = app(ActividadPacienteService::class);
 
@@ -156,30 +154,14 @@ class PacienteFijoDualTest extends TestCase
             'turnos' => $turnosPilates,
         ]);
 
-        $pacienteFijoGym = PacienteFijo::create([
-            'id_actividad' => Actividad::GIMNASIO,
-            'id_paciente' => $paciente->id,
-        ]);
-        $pacienteFijoGym->horarios()->createMany([
-            ['dia_semana' => 1, 'hora_inicio' => '10:00:00'],
-            ['dia_semana' => 3, 'hora_inicio' => '10:00:00'],
+        $pacienteFijo = PacienteFijo::create(['id_paciente' => $paciente->id]);
+        $pacienteFijo->horarios()->createMany([
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 1, 'hora_inicio' => '10:00:00'],
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 3, 'hora_inicio' => '10:00:00'],
+            ['id_actividad' => Actividad::PILATES, 'dia_semana' => 5, 'hora_inicio' => '10:00:00'],
         ]);
 
-        $pacienteFijoPilates = PacienteFijo::create([
-            'id_actividad' => Actividad::PILATES,
-            'id_paciente' => $paciente->id,
-        ]);
-        $pacienteFijoPilates->horarios()->createMany([
-            ['dia_semana' => 5, 'hora_inicio' => '10:00:00'],
-        ]);
-
-        $pacienteFijoGym->update(['id_pac_fijo_dual' => $pacienteFijoPilates->id]);
-        $pacienteFijoPilates->update(['id_pac_fijo_dual' => $pacienteFijoGym->id]);
-
-        return [
-            'gym' => $pacienteFijoGym->refresh(),
-            'pilates' => $pacienteFijoPilates->refresh(),
-        ];
+        return $pacienteFijo->refresh()->load('horarios');
     }
 
     private function crearActividadesGeneralesPlanDual(array $preciosPorFrecuencia): void

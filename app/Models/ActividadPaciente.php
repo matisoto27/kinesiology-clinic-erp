@@ -117,8 +117,7 @@ class ActividadPaciente extends Model
 
     public function pacienteFijo(): HasOne
     {
-        return $this->hasOne(PacienteFijo::class, 'id_paciente', 'id_paciente')
-            ->whereColumn('id_actividad', 'actividades_pacientes.id_actividad');
+        return $this->hasOne(PacienteFijo::class, 'id_paciente', 'id_paciente');
     }
 
     public function pagos(): HasMany

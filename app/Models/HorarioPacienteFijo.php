@@ -13,6 +13,7 @@ class HorarioPacienteFijo extends Model
 
     protected $fillable = [
         'id_paciente_fijo',
+        'id_actividad',
         'dia_semana',
         'hora_inicio'
     ];
@@ -20,6 +21,11 @@ class HorarioPacienteFijo extends Model
     public function pacienteFijo(): BelongsTo
     {
         return $this->belongsTo(PacienteFijo::class, 'id_paciente_fijo');
+    }
+
+    public function actividad(): BelongsTo
+    {
+        return $this->belongsTo(Actividad::class, 'id_actividad');
     }
 
     public function getNombreDiaAttribute(): string

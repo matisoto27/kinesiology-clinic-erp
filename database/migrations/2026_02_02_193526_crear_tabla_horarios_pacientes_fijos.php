@@ -20,6 +20,7 @@ return new class extends Migration
             $table->foreignId('id_paciente_fijo')
                 ->constrained(table: 'pacientes_fijos')
                 ->onDelete('cascade');
+            $table->foreignId('id_actividad')->constrained(table: 'actividades');
 
             $table->timestamps();
 
