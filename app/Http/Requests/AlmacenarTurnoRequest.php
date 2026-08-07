@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Models\Actividad;
-use App\Models\ActividadCombo;
 use App\Models\Paciente;
 use App\Services\PlanDualService;
 use Closure;
@@ -50,26 +49,6 @@ class AlmacenarTurnoRequest extends FormRequest
             'dia' => [Rule::requiredIf($esConOrden), 'integer', 'min:1', 'max:31'],
 
             'cant_sesiones' => [Rule::requiredIf(!$esConOrden), 'integer', 'min:1', 'max:20'],
-            'id_actividad_combo' => [
-                Rule::requiredIf($this->esActividadGeneral() && !$esPlanDual),
-                'nullable',
-                'integer',
-                'exists:actividades_combos,id',
-                function (string $attribute, mixed $value, Closure $fail) {
-                    if ($value === null) {
-                        return;
-                    }
-
-                    $pertenece = ActividadCombo::activo()
-                        ->where('id', $value)
-                        ->where('id_actividad', $this->input('id_actividad'))
-                        ->exists();
-
-                    if (!$pertenece) {
-                        $fail('El combo seleccionado no pertenece a la actividad indicada.');
-                    }
-                },
-            ],
 
             'turnos' => [
                 'required',
@@ -195,7 +174,6 @@ class AlmacenarTurnoRequest extends FormRequest
             'id_actividad' => 'actividad',
             'id_paciente' => 'paciente',
             'cant_sesiones' => 'cantidad de sesiones',
-            'id_actividad_combo' => 'combo de la actividad',
             'plan_dual' => 'inscripción dual',
         ];
     }

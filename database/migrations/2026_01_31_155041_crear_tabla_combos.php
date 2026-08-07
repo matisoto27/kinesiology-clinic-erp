@@ -16,7 +16,6 @@ return new class extends Migration
 
             $table->string('nombre', length: 30)->unique();
             $table->unsignedTinyInteger('cantidad_sesiones');
-            $table->boolean('es_mensual');
         });
     }
 

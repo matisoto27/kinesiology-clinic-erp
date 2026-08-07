@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
-use App\Services\PlanDualService;
+use App\Models\PrecioMensual;
 use App\Services\TurnoService;
 use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
@@ -24,8 +24,7 @@ class GenerarTurnosMensuales extends Command
 
     public function handle(
         TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron,
-        PlanDualService $planDualService
+        ExpansorTurnosPatron $expansorTurnosPatron
     ): void {
         $consulta = PacienteFijo::query()
             ->select('id', 'id_paciente')
@@ -39,7 +38,7 @@ class GenerarTurnosMensuales extends Command
             $horariosPorActividad = $pacFijo->horarios->groupBy(fn ($horario) => (int) $horario->id_actividad);
 
             if ($horariosPorActividad->count() > 1) {
-                $this->procesarPatronDual($pacFijo, $horariosPorActividad, $turnoService, $expansorTurnosPatron, $planDualService);
+                $this->procesarPatronDual($pacFijo, $horariosPorActividad, $turnoService, $expansorTurnosPatron);
                 continue;
             }
 
@@ -112,8 +111,7 @@ class GenerarTurnosMensuales extends Command
         PacienteFijo $pacFijo,
         Collection $horariosPorActividad,
         TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron,
-        PlanDualService $planDualService
+        ExpansorTurnosPatron $expansorTurnosPatron
     ): void {
         $horariosGym = $horariosPorActividad->get(Actividad::GIMNASIO);
         $horariosPilates = $horariosPorActividad->get(Actividad::PILATES);
@@ -162,7 +160,6 @@ class GenerarTurnosMensuales extends Command
                     &$fechaReferenciaPilates,
                     $turnoService,
                     $expansorTurnosPatron,
-                    $planDualService,
                     $horariosGymFormateados,
                     $horariosPilatesFormateados
                 ) {
@@ -175,8 +172,7 @@ class GenerarTurnosMensuales extends Command
                         $horariosGymFormateados,
                         $horariosPilatesFormateados,
                         $turnoService,
-                        $expansorTurnosPatron,
-                        $planDualService
+                        $expansorTurnosPatron
                     );
 
                     $ultimoGym = $nuevoGym->turnos()->orderByDesc('fecha_hora')->first();
@@ -203,8 +199,6 @@ class GenerarTurnosMensuales extends Command
             ->select('id', 'id_actividad', 'id_paciente', 'cant_sesiones', 'frecuencia_total_dual')
             ->with([
                 'actividad:id,nombre,id_tipo_actividad',
-                'actividad.actividadCombos.precioVigente',
-                'actividad.combos',
                 'ultimoTurno:turnos.id_act_pac,turnos.fecha_hora',
             ])
             ->where('id_actividad', $idActividad)
@@ -215,7 +209,6 @@ class GenerarTurnosMensuales extends Command
 
     private function obtenerUltimaInscripcionDual(int $idActividad, int $idPaciente): ?ActividadPaciente
     {
-        // No carga los combos porque recibe el precio ya calculado por PlanDualService
         return ActividadPaciente::query()
             ->select('id', 'id_actividad', 'id_paciente', 'cant_sesiones', 'frecuencia_total_dual')
             ->with([
@@ -275,28 +268,14 @@ class GenerarTurnosMensuales extends Command
             $expansion['semanas']
         );
 
-        $combo = $actPac->actividad->combos
-            ->where('cantidad_sesiones', $cantidadSesiones)
-            ->first();
-
-        if (!$combo) {
-            throw new Exception("No existe un combo configurado para {$cantidadSesiones} sesiones mensuales en la actividad: {$actPac->nombre_actividad}");
-        }
-
-        $actCombo = $actPac->actividad->actividadCombos
-            ->where('id_combo', $combo->id)
-            ->first();
-
-        if (!$actCombo || !$actCombo->precioVigente) {
-            throw new Exception("El combo de {$cantidadSesiones} sesiones mensuales de la actividad {$actPac->nombre_actividad} no tiene un precio vigente definido.");
-        }
+        $totalAPagar = PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaSemanal);
 
         $nuevoActPac = ActividadPaciente::create([
             'id_actividad' => $actPac->id_actividad,
             'id_paciente' => $idPaciente,
             'cant_sesiones' => $cantidadSesiones,
             'es_fijo' => true,
-            'total_a_pagar' => $actCombo->precioVigente->valor,
+            'total_a_pagar' => $totalAPagar,
         ]);
         $nuevoActPac->turnos()->createMany($turnosValidados);
 
@@ -315,8 +294,7 @@ class GenerarTurnosMensuales extends Command
         array $horariosGym,
         array $horariosPilates,
         TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron,
-        PlanDualService $planDualService
+        ExpansorTurnosPatron $expansorTurnosPatron
     ): array {
         $frecuenciaTotal = (int) $actPacGym->frecuencia_total_dual;
 
@@ -324,7 +302,7 @@ class GenerarTurnosMensuales extends Command
             throw new Exception('La inscripción dual no tiene una frecuencia total válida para renovar.');
         }
 
-        $precioPlan = $planDualService->obtenerPrecioPlan($frecuenciaTotal);
+        $precioPlan = PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaTotal);
 
         $nuevoGym = $this->renovarInscripcionDualPorActividad(
             $actPacGym,

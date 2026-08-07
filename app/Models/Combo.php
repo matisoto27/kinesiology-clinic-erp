@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Combo extends Model
 {
-    public const CLASE_PRUEBA = 10;
+    public const CLASE_PRUEBA = 5;
 
     protected $table = 'combos';
 
@@ -15,10 +15,5 @@ class Combo extends Model
     protected $fillable = [
         'nombre',
         'cantidad_sesiones',
-        'es_mensual'
-    ];
-
-    protected $casts = [
-        'es_mensual' => 'boolean'
     ];
 }
