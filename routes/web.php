@@ -27,7 +27,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::post('/actividades-pacientes', 'store')->name('actividades-pacientes.store');
     });
 
-    Route::view('/actividades-pacientes/general/crear', 'actividades-pacientes.general.crear')->name('actividades-pacientes.general.crear');
+    Route::livewire('/actividades-pacientes/general/crear', 'actividades-pacientes.general.crear')->name('actividades-pacientes.general.crear');
     Route::view('/actividades-pacientes/kinesiologia/orden/crear', 'actividades-pacientes.kinesiologia.con-orden.crear')->name('actividades-pacientes.kinesiologia.con-orden.crear');
     Route::view('/actividades-pacientes/kinesiologia/sin-orden/crear', 'actividades-pacientes.kinesiologia.sin-orden.crear')->name('actividades-pacientes.kinesiologia.sin-orden.crear');
 
@@ -46,9 +46,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::controller(PacienteController::class)->group(function () {
         Route::view('/pacientes', 'pacientes.inicio')->name('pacientes.inicio');
         Route::get('/buscar-pacientes', 'buscarPorNombre');
-        Route::get('/pacientes/{id}/actividades-generales-sin-suscripcion', 'obtenerActividadesGeneralesSinSuscripcion');
-        Route::get('/pacientes/{id}/inscripcion-dual/pendiente', 'obtenerInscripcionDualPendiente');
-        Route::get('/pacientes/{id}/inscripcion-dual/preview', 'obtenerPreviewInscripcionDual');
         Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
     });
     Route::livewire('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
@@ -60,7 +57,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::livewire('/pacientes-casuales/turnos/crear', 'pacientes-casuales.turnos.crear')->name('pacientes-casuales.turnos.crear');
 
     Route::livewire('/pacientes-fijos', 'pacientes-fijos.inicio')->name('pacientes-fijos.inicio');
-    Route::livewire('/pacientes-fijos/crear', 'pacientes-fijos.crear')->name('pacientes-fijos.crear');
+    Route::livewire('/pacientes-fijos/{id}/editar', 'pacientes-fijos.editar')->name('pacientes-fijos.editar');
 
     Route::livewire('/pagos/crear', 'pagos.crear')->name('pagos.crear');
     Route::livewire('/actividades-pacientes/{id}/pagos/crear', 'pagos.crear')->name('actividades-pacientes.pagos.crear');

@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class Paciente extends Model
@@ -79,6 +78,11 @@ class Paciente extends Model
         return $this->hasMany(ContactoEmergencia::class, 'id_paciente');
     }
 
+    public function pacienteFijo(): HasOne
+    {
+        return $this->hasOne(PacienteFijo::class, 'id_paciente');
+    }
+
     public function patologias(): BelongsToMany
     {
         return $this->belongsToMany(Patologia::class, 'antecedentes_patologicos', 'id_paciente', 'id_patologia')
@@ -128,36 +132,4 @@ class Paciente extends Model
         });
     }
 
-    public const DIAS_VENTANA_INSCRIPCION = 7;
-
-    public function obtenerActividadesGeneralesSinSuscripcion(): Collection
-    {
-        return Actividad::query()
-            ->where('actividades.id_tipo_actividad', Actividad::TIPO_GENERAL)
-            ->get()
-            ->filter(fn (Actividad $actividad) => $this->cumpleVentanaInscripcionGeneral((int) $actividad->id))
-            ->values();
-    }
-
-    public function cumpleVentanaInscripcionGeneral(int $idActividad): bool
-    {
-        $maxFechaHora = $this->maxFechaHoraTurnoPorActividad($idActividad);
-
-        if ($maxFechaHora === null) {
-            return true;
-        }
-
-        return Carbon::now()->diffInDays($maxFechaHora, false) <= self::DIAS_VENTANA_INSCRIPCION;
-    }
-
-    private function maxFechaHoraTurnoPorActividad(int $idActividad): ?Carbon
-    {
-        $max = ActividadPaciente::query()
-            ->join('turnos AS tur', 'actividades_pacientes.id', '=', 'tur.id_act_pac')
-            ->where('actividades_pacientes.id_paciente', $this->id)
-            ->where('actividades_pacientes.id_actividad', $idActividad)
-            ->max('tur.fecha_hora');
-
-        return $max !== null ? Carbon::parse($max) : null;
-    }
 }

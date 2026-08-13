@@ -14,7 +14,6 @@ return new class extends Migration
         Schema::create('turnos', function (Blueprint $table) {
             $table->id();
 
-            $table->unsignedTinyInteger('nro_turno');
             $table->datetime('fecha_hora');
             $table->string('estado', length: 20)->default('Ausente'); // Ausente - Ausente avisó - Presente
 

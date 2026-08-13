@@ -71,8 +71,7 @@
                             <x-iconos.flecha-abajo />
                         </button>
                         <ul>
-                            <li><a href="{{ route('pacientes-fijos.inicio') }}">Lista de pacientes fijos</a></li>
-                            <li><a href="{{ route('pacientes-fijos.crear') }}">Registrar paciente fijo</a></li>
+                            <li><a href="{{ route('pacientes-fijos.inicio') }}">Inscripciones mensuales</a></li>
                         </ul>
                     </li>
 

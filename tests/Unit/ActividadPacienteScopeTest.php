@@ -60,22 +60,9 @@ class ActividadPacienteScopeTest extends TestCase
 
         $this->assertTrue($primera->esPrimeraDual());
         $this->assertFalse($primera->esSegundaDual());
-        $this->assertTrue($primera->pertenecePlanDual());
 
         $this->assertTrue($segunda->esSegundaDual());
         $this->assertFalse($segunda->esPrimeraDual());
-        $this->assertTrue($segunda->pertenecePlanDual());
-    }
-
-    public function test_dual_incompleto_es_primera_dual_y_no_segunda_dual(): void
-    {
-        $inscripcion = new ActividadPaciente([
-            'plan_dual_pendiente' => true,
-        ]);
-
-        $this->assertTrue($inscripcion->pertenecePlanDual());
-        $this->assertTrue($inscripcion->esPrimeraDual());
-        $this->assertFalse($inscripcion->esSegundaDual());
     }
 
     public function test_filtrar_proximas_pagables_deja_solo_la_inscripcion_mas_antigua_por_paciente_y_actividad(): void
@@ -101,7 +88,6 @@ class ActividadPacienteScopeTest extends TestCase
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 8,
-            'es_fijo' => true,
             'total_a_pagar' => 20000,
         ]);
 
@@ -109,7 +95,6 @@ class ActividadPacienteScopeTest extends TestCase
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 8,
-            'es_fijo' => true,
             'total_a_pagar' => 20000,
         ]);
 
@@ -117,7 +102,6 @@ class ActividadPacienteScopeTest extends TestCase
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 8,
-            'es_fijo' => true,
             'total_a_pagar' => 20000,
         ]);
 
@@ -162,21 +146,17 @@ class ActividadPacienteScopeTest extends TestCase
             'id_actividad' => $gimnasio->id,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 8,
-            'es_fijo' => false,
             'total_a_pagar' => 30000,
             'frecuencia_total_dual' => 3,
-            'plan_dual_pendiente' => false,
         ]);
 
         $segunda = ActividadPaciente::create([
             'id_actividad' => $pilates->id,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 4,
-            'es_fijo' => false,
             'total_a_pagar' => 0,
             'pago_completado' => true,
             'frecuencia_total_dual' => 3,
-            'plan_dual_pendiente' => false,
         ]);
 
         $primera->update(['id_act_pac_dual' => $segunda->id]);
@@ -208,19 +188,16 @@ class ActividadPacienteScopeTest extends TestCase
             'id_actividad' => $actividad->id,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 4,
-            'es_fijo' => false,
             'total_a_pagar' => 1000,
         ]);
 
         Turno::create([
             'id_act_pac' => $actPac->id,
-            'nro_turno' => 1,
             'fecha_hora' => '2026-04-08 09:00:00',
         ]);
 
         Turno::create([
             'id_act_pac' => $actPac->id,
-            'nro_turno' => 2,
             'fecha_hora' => $fechaUltimoTurno,
         ]);
 

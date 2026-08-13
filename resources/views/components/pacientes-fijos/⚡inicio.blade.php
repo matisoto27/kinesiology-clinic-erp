@@ -1,10 +1,9 @@
 <?php
 
 use App\Models\Actividad;
-use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
+use App\Services\PacienteFijoService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -60,63 +59,20 @@ new class extends Component
     public function eliminar($id)
     {
         try {
-            DB::transaction(function () use ($id) {
-                $pacienteFijo = PacienteFijo::findOrFail($id);
+            $pacienteFijo = PacienteFijo::findOrFail($id);
+            $resultado = app(PacienteFijoService::class)->eliminar($pacienteFijo);
 
-                $inscripciones = ActividadPaciente::query()
-                    ->where('id_paciente', $pacienteFijo->id_paciente)
-                    ->where('es_fijo', true)
-                    ->withCount('pagos')
-                    ->get();
+            $mensaje = 'El paciente fue eliminado de fijos. No se generarán más turnos automáticos.';
 
-                $yaVistas = [];
+            if ($resultado['conservadas'] > 0) {
+                $mensaje .= ' Quedaron inscripciones con pagos o asistencia (Presente) que no se borraron.';
+            }
 
-                foreach ($inscripciones as $inscripcion) {
-                    if (isset($yaVistas[$inscripcion->id])) {
-                        continue;
-                    }
-
-                    $par = $inscripcion->id_act_pac_dual
-                        ? $inscripciones->firstWhere('id', $inscripcion->id_act_pac_dual)
-                        : null;
-
-                    $yaVistas[$inscripcion->id] = true;
-
-                    if ($par) {
-                        $yaVistas[$par->id] = true;
-                    }
-
-                    $bloqueada = $this->inscripcionNoEliminable($inscripcion)
-                        || ($par && $this->inscripcionNoEliminable($par));
-
-                    if ($bloqueada) {
-                        continue;
-                    }
-
-                    $inscripcion->update(['id_act_pac_dual' => null]);
-                    $par?->update(['id_act_pac_dual' => null]);
-
-                    $inscripcion->delete();
-                    $par?->delete();
-                }
-
-                $pacienteFijo->delete();
-            });
-
-            session()->flash('exito', 'El paciente ha sido eliminado de la lista de pacientes fijos. No se generarán más turnos de forma automática.');
+            session()->flash('exito', $mensaje);
         } catch (\Throwable $ex) {
             Log::error('[(Livewire) pacientes-fijos.inicio@eliminar] Error al eliminar el paciente fijo.', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Ocurrió un error al intentar eliminar el paciente fijo de los registros.');
         }
-    }
-
-    private function inscripcionNoEliminable(ActividadPaciente $inscripcion): bool
-    {
-        if ($inscripcion->pagos_count > 0) {
-            return true;
-        }
-
-        return $inscripcion->turnos()->where('estado', 'Presente')->exists();
     }
 };
 ?>
@@ -163,6 +119,7 @@ new class extends Component
                     @forelse($this->pacientesFijos as $pacFijo)
                         @php($actividadesAgrupadas = $pacFijo->horarios->groupBy(fn ($hor) => $hor->actividad->nombre))
                         @php($esDualConPareja = $actividadesAgrupadas->count() > 1)
+                        @php($puedeEditar = $pacFijo->estaCursandoInscripcion())
                         <tr class="group tabla-listado__fila" wire:key="paciente-fijo-{{ $pacFijo->id }}">
                             <td>{{ $pacFijo->paciente->apellido_nombre }}</td>
                             <td>
@@ -191,12 +148,28 @@ new class extends Component
                                     @endforeach
                                 </div>
                             </td>
-                            <td>
+                            <td class="flex items-center justify-center gap-3">
+                                @if ($puedeEditar)
+                                    <a
+                                        href="{{ route('pacientes-fijos.editar', ['id' => $pacFijo->id]) }}"
+                                        class="text-white hover:text-emerald-300 transition-colors duration-200"
+                                        title="Editar horarios"
+                                    >
+                                        <x-iconos.lapiz />
+                                    </a>
+                                @else
+                                    <span
+                                        class="text-white/30 cursor-not-allowed"
+                                        title="No se puede editar: el paciente no está cursando una inscripción. Eliminalo y registralo de nuevo."
+                                    >
+                                        <x-iconos.lapiz />
+                                    </span>
+                                @endif
                                 <button
                                     type="button"
                                     class="text-white hover:text-red-400 transition-colors duration-200"
                                     wire:click="eliminar({{ $pacFijo->id }})"
-                                    wire:confirm="{{ $esDualConPareja ? '¿Eliminar la inscripción dual recurrente por completo? Esta acción es permanente y no se generarán más turnos automáticos.' : '¿Estás seguro de que deseas eliminar al paciente del registro de pacientes fijos? Esta acción es permanente y no se generarán más turnos.' }}">
+                                    wire:confirm="{{ $esDualConPareja ? '¿Dar de baja la inscripción dual fija? Se eliminarán turnos futuros sin pagos ni asistencia Presente. El historial se conserva.' : '¿Dar de baja al paciente fijo? Se eliminarán turnos futuros sin pagos ni asistencia Presente. El historial se conserva.' }}">
                                     <x-iconos.basura />
                                 </button>
                             </td>

@@ -42,24 +42,14 @@ class TurnoService
 
         sort($turnosValidados);
 
-        return array_map(function ($fecha, $indice) {
-            return [
-                'nro_turno'  => $indice + 1,
-                'fecha_hora' => $fecha
-            ];
-        }, $turnosValidados, array_keys($turnosValidados));
+        return array_map(fn ($fecha) => ['fecha_hora' => $fecha], $turnosValidados);
     }
 
     public function prepararTurnosManuales(array $turnos): array
     {
         sort($turnos);
 
-        return array_map(function ($fecha, $indice) {
-            return [
-                'nro_turno'  => $indice + 1,
-                'fecha_hora' => $fecha
-            ];
-        }, $turnos, array_keys($turnos));
+        return array_map(fn ($fecha) => ['fecha_hora' => $fecha], $turnos);
     }
 
     public function validarCuposTurnosCasuales(
@@ -109,7 +99,6 @@ class TurnoService
 
             return Turno::create([
                 'id_act_pac' => $turnoOriginal->id_act_pac,
-                'nro_turno' => $turnoOriginal->nro_turno,
                 'fecha_hora' => $nuevaFechaHora,
                 'id_turno_original' => $turnoOriginal->id,
             ]);

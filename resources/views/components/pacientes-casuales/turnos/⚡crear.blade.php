@@ -162,16 +162,14 @@ new class extends Component
 
                 $actividadPaciente = ActividadPaciente::create([
                     'cant_sesiones' => count($this->turnosSeleccionados),
-                    'es_fijo' => false,
                     'total_a_pagar' => $totalAPagar,
                     'pago_completado' => $esGympass,
                     'id_actividad' => $idActividad,
                     'id_paciente_casual' => $this->idPacienteSeleccionado
                 ]);
 
-                foreach ($turnosOrdenados as $indice => $datosTurno) {
+                foreach ($turnosOrdenados as $datosTurno) {
                     $actividadPaciente->turnos()->create([
-                        'nro_turno' => $indice + 1,
                         'fecha_hora' => Carbon::parse($datosTurno['fecha'] . ' ' . $datosTurno['hora'])
                     ]);
                 }

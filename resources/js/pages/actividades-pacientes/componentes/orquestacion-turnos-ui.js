@@ -7,6 +7,7 @@ import {
     OFFSET_DIAS
 } from '@compartido/general.js';
 import {
+    checkboxes,
     diasContainer,
     inicioContainer,
     radioActual,
@@ -16,12 +17,6 @@ import {
     turnosContainer
 } from './dom-turnos.js';
 import { estado } from './estado-formulario.js';
-import {
-    esSegundoPaso,
-    sincronizarCheckboxesDiasSemana,
-    configurarRadiosSemanaInicioDual,
-    obtenerFechasValidasPrimerTurnoSegundaPierna
-} from './logica-dual-calendario.js';
 import { manejarTurnosAutogenerados, obtenerDiasSeleccionados } from './logica-turnos-autogenerados.js';
 import { frecuenciaAlcanzada, obtenerSemanaSeleccionada, tieneSemanaSeleccionada } from './reglas-turnos.js';
 import { actualizarDiasCheckBoxes, ocultarSemanasButtons } from './ui-turnos.js';
@@ -69,17 +64,27 @@ export async function manejarCambioDiaTurnos() {
     }
 }
 
+function sincronizarCheckboxesDiasSemana() {
+
+    if (estado.frecuenciaSemanal === null) {
+        return;
+    }
+
+    const cantidadSeleccionados = Array.from(checkboxes).filter(c => c.checked).length;
+
+    checkboxes.forEach(cb => {
+        if (cantidadSeleccionados >= estado.frecuenciaSemanal) {
+            cb.disabled = !cb.checked;
+            return;
+        }
+
+        cb.disabled = false;
+    });
+}
+
 async function configurarSemanaInicio() {
 
     const diasSeleccionados = obtenerDiasSeleccionados();
-
-    if (esSegundoPaso()) {
-        await configurarRadiosSemanaInicioDual(diasSeleccionados, { radioActual, radioSiguiente });
-        if (radioActual.checked || radioSiguiente.checked) {
-            await actualizarPrimerTurnoSelect();
-        }
-        return;
-    }
 
     if (debeForzarSemanaSiguiente(diasSeleccionados)) {
 
@@ -132,28 +137,6 @@ async function actualizarPrimerTurnoSelect() {
     const tipoSemana = semanaSeleccionada.value;
 
     primerTurnoSelect.innerHTML = crearOpcionPorDefecto('Seleccione una fecha');
-
-    if (esSegundoPaso()) {
-        const fechasValidas = obtenerFechasValidasPrimerTurnoSegundaPierna(diasSeleccionados, tipoSemana);
-
-        fechasValidas.forEach(fechaIso => {
-            agregarOpcion(
-                primerTurnoSelect,
-                fechaIso,
-                convertirFechaParaMostrar(fechaIso)
-            );
-        });
-
-        if (primerTurnoSelect.options.length === 2) {
-            primerTurnoSelect.selectedIndex = 1;
-            primerTurnoSelect.disabled = true;
-            await manejarTurnosAutogenerados();
-        } else {
-            primerTurnoSelect.disabled = fechasValidas.length === 0;
-        }
-
-        return;
-    }
 
     diasSeleccionados.forEach(dia => {
         const fecha = fechaDeSemana(dia, tipoSemana);

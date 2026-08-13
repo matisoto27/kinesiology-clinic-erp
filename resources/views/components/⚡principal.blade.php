@@ -87,7 +87,7 @@ new class extends Component
         $ahora = Carbon::now();
 
         return ActividadPaciente::query()
-            ->where('es_fijo', true)
+            ->whereHas('pacienteFijo')
             ->where('total_a_pagar', '>', 0)
             ->whereHas('pacienteFijo')
             ->whereDoesntHave('pagos')
@@ -163,7 +163,6 @@ new class extends Component
             ->select([
                 'turnos.id',
                 'turnos.id_act_pac',
-                'turnos.nro_turno',
                 'turnos.fecha_hora',
                 'turnos.estado',
                 'turnos.id_turno_original',

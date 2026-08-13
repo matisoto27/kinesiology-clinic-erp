@@ -13,11 +13,8 @@ export function faltanDatosTurnos() {
 export function resetearEstado() {
     estado.idPaciente = null;
     estado.idActividad = null;
-    estado.idActividadCombo = null;
     estado.frecuenciaSemanal = null;
     estado.cantidadSesiones = null;
-    estado.esPlanDual = false;
-    estado.planDualPendiente = null;
     estado.dias = [];
     estado.semanaInicio = null;
     estado.primerTurno = null;
@@ -26,12 +23,9 @@ export function resetearEstado() {
 export const estado = {
     idPaciente: null,
     idActividad: null,
-    idActividadCombo: null,
     frecuenciaSemanal: null,
     cantidadSesiones: null,
     turnosAutogenerados: true,
-    esPlanDual: false,
-    planDualPendiente: null,
     dias: [],
     semanaInicio: null,
     primerTurno: null

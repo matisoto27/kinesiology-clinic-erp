@@ -24,8 +24,10 @@ return new class extends Migration
             $table->unique(['frecuencia_semanal', 'fecha_desde']);
         });
 
-        DB::statement('ALTER TABLE precios_mensuales ADD CONSTRAINT chk_frecuencia_semanal CHECK (frecuencia_semanal BETWEEN 1 AND 5)');
-        DB::statement('ALTER TABLE precios_mensuales ADD CONSTRAINT chk_valor_positivo CHECK (valor > 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE precios_mensuales ADD CONSTRAINT chk_frecuencia_semanal CHECK (frecuencia_semanal BETWEEN 1 AND 5)');
+            DB::statement('ALTER TABLE precios_mensuales ADD CONSTRAINT chk_valor_positivo CHECK (valor > 0)');
+        }
     }
 
     /**

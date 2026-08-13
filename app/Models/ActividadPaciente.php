@@ -18,7 +18,6 @@ class ActividadPaciente extends Model
 
     protected $fillable = [
         'cant_sesiones',
-        'es_fijo',
         'total_a_pagar',
         'pago_completado',
         'fecha_emision_ord',
@@ -30,14 +29,11 @@ class ActividadPaciente extends Model
         'id_paciente_casual', // Puede ser null
         'frecuencia_total_dual',
         'id_act_pac_dual',
-        'plan_dual_pendiente',
     ];
 
     protected $casts = [
         'cant_sesiones' => 'integer',
         'frecuencia_total_dual' => 'integer',
-        'plan_dual_pendiente' => 'boolean',
-        'es_fijo' => 'boolean',
         'total_a_pagar' => 'decimal:2',
         'pago_completado' => 'boolean',
         'fecha_emision_ord' => 'date',
@@ -105,14 +101,14 @@ class ActividadPaciente extends Model
     {
         return $this->hasOne(Turno::class, 'id_act_pac')
             ->whereNull('id_turno_original')
-            ->orderBy('nro_turno');
+            ->orderBy('fecha_hora');
     }
 
     public function ultimoTurno(): HasOne
     {
         return $this->hasOne(Turno::class, 'id_act_pac')
             ->whereNull('id_turno_original')
-            ->orderByDesc('nro_turno');
+            ->orderByDesc('fecha_hora');
     }
 
     public function pacienteFijo(): HasOne
@@ -130,37 +126,25 @@ class ActividadPaciente extends Model
         return $this->belongsTo(self::class, 'id_act_pac_dual');
     }
 
-    public function pertenecePlanDual(): bool
-    {
-        return $this->esDualPendiente() || $this->esDualCompleto();
-    }
-
-    public function esDualPendiente(): bool
-    {
-        return $this->plan_dual_pendiente;
-    }
-
     public function esDualCompleto(): bool
     {
-        return !$this->plan_dual_pendiente
-            && $this->id_act_pac_dual !== null
+        return $this->id_act_pac_dual !== null
             && $this->frecuencia_total_dual !== null;
     }
 
     public function esPrimeraDual(): bool
     {
-        return $this->esDualPendiente() || ($this->esDualCompleto() && (int) $this->id < (int) $this->id_act_pac_dual);
+        return $this->esDualCompleto() && (int) $this->id < (int) $this->id_act_pac_dual;
     }
 
     public function esSegundaDual(): bool
     {
-        return $this->pertenecePlanDual() && !$this->esPrimeraDual();
+        return $this->esDualCompleto() && !$this->esPrimeraDual();
     }
 
     public function scopeDualCompleto(Builder $consulta): Builder
     {
-        return $consulta->where('plan_dual_pendiente', false)
-            ->whereNotNull('id_act_pac_dual')
+        return $consulta->whereNotNull('id_act_pac_dual')
             ->whereNotNull('frecuencia_total_dual');
     }
 
@@ -219,9 +203,39 @@ class ActividadPaciente extends Model
         return $this->esCasual() && $this->id_actividad === Actividad::PILATES;
     }
 
+    public function esPrimeraInscripcion(): bool
+    {
+        if ($this->id_paciente === null) {
+            return false;
+        }
+
+        if (!in_array((int) $this->id_actividad, [Actividad::GIMNASIO, Actividad::PILATES], true)) {
+            return false;
+        }
+
+        return !self::query()
+            ->where('id_paciente', $this->id_paciente)
+            ->where('id_actividad', $this->id_actividad)
+            ->where('id', '<', $this->id)
+            ->exists();
+    }
+
+    public function perteneceAPacienteFijo(): bool
+    {
+        if ($this->id_paciente === null) {
+            return false;
+        }
+
+        if ($this->relationLoaded('pacienteFijo')) {
+            return $this->pacienteFijo !== null;
+        }
+
+        return $this->pacienteFijo()->exists();
+    }
+
     public function frecuenciaSemanal(): int
     {
-        // OJO: Solo tiene sentido para actividas generales (Gimnasio y Pilates)
+        // OJO: La frecuencia operativa sale de HorarioPacienteFijo.
         return (int) ($this->cant_sesiones / 4);
     }
 

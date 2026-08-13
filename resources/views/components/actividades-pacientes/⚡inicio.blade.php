@@ -51,7 +51,6 @@ new class extends Component
                 'actividades_pacientes.id_paciente',
                 'actividades_pacientes.id_paciente_casual',
                 'actividades_pacientes.cant_sesiones',
-                'actividades_pacientes.es_fijo',
                 'actividades_pacientes.total_a_pagar',
                 'actividades_pacientes.pago_completado',
                 'actividades_pacientes.fecha_emision_ord',
@@ -59,13 +58,13 @@ new class extends Component
                 'actividades_pacientes.porcentaje_recargo',
                 'actividades_pacientes.monto_recargo',
                 'actividades_pacientes.frecuencia_total_dual',
-                'actividades_pacientes.plan_dual_pendiente',
                 'actividades_pacientes.created_at',
             ])
             ->with([
                 'actividad:id,nombre,id_tipo_actividad',
                 'pacienteRegular:id,nombre,apellido',
                 'pacienteCasual:id,nombre,apellido',
+                'pacienteFijo:id,id_paciente',
             ])
             ->withSum('pagos', 'monto')
             ->addSelect(DB::raw('
@@ -110,8 +109,8 @@ new class extends Component
                 ? ActividadPaciente::withCount('pagos')->find($inscripcion->id_act_pac_dual)
                 : null;
 
-            if ($inscripcion->es_fijo || ($parDual && $parDual->es_fijo)) {
-                session()->flash('error', 'Las inscripciones autogeneradas no se pueden eliminar desde aquí. Debe dar de baja al paciente desde el listado de Pacientes fijos.');
+            if ($inscripcion->perteneceAPacienteFijo() || ($parDual && $parDual->perteneceAPacienteFijo())) {
+                session()->flash('error', 'Las inscripciones de pacientes fijos no se pueden eliminar desde aquí. Debe dar de baja al paciente desde el listado de Pacientes fijos.');
                 return;
             }
 
@@ -207,13 +206,9 @@ new class extends Component
                 <tr class="tabla-listado__fila h-28" wire:key="inscripcion-{{ $actPac->id }}">
                     <td colspan="2">
                         @if ($actPac->esRegular())
-                            @if ($actPac->pertenecePlanDual())
+                            @if ($actPac->esDualCompleto())
                                 <span class="badge bg-indigo-600">
-                                    @if ($actPac->esDualPendiente())
-                                        Dual (incompleto)
-                                    @else
-                                        Dual (x{{ $actPac->frecuencia_total_dual }})
-                                    @endif
+                                    Dual (x{{ $actPac->frecuencia_total_dual }})
                                 </span>
                             @endif
                             {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
@@ -227,8 +222,8 @@ new class extends Component
                     </td>
                     <td>
                         {{ $actPac->created_at->format('d/m/Y H:i') }}
-                        @if ($actPac->es_fijo)
-                            <span class="badge bg-slate-500 text-xs">Autogenerado</span>
+                        @if ($actPac->esRegular() && $actPac->esPrimeraInscripcion())
+                            <span class="badge bg-slate-500 text-xs">Primera inscripción</span>
                         @endif
                     </td>
                     <td>
@@ -248,9 +243,7 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esDualPendiente())
-                            <span class="text-gray-400 italic">INC</span>
-                        @elseif ($actPac->esSegundaDual())
+                        @if ($actPac->esSegundaDual())
                             <span class="text-gray-400 italic">N/A</span>
                         @elseif ($actPac->esRegular() || $actPac->esPruebaPilates())
                             <div class="flex flex-col">
@@ -281,9 +274,7 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esDualPendiente())
-                            <span class="text-gray-400 italic">INC</span>
-                        @elseif ($actPac->esSegundaDual())
+                        @if ($actPac->esSegundaDual())
                             <span class="text-gray-400 italic">N/A</span>
                         @elseif($actPac->pago_completado)
                             <span class="px-3 py-1 inline-flex items-center bg-emerald-500 rounded text-sm font-semibold">
@@ -296,9 +287,7 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esDualPendiente())
-                            <span class="text-gray-400 italic">INC</span>
-                        @elseif($actPac->deuda > 0)
+                        @if($actPac->deuda > 0)
                             <span class="px-3 py-1 inline-flex items-center bg-red-500 rounded text-sm font-semibold">
                                 ${{ number_format($actPac->deuda, 2, ',', '.') }}
                             </span>
@@ -316,7 +305,7 @@ new class extends Component
                         </div>
                     </td>
                     <td>
-                        @unless ($actPac->es_fijo)
+                        @unless ($actPac->perteneceAPacienteFijo())
                             <button
                                 type="button"
                                 class="text-white hover:text-red-400 transition-colors duration-200"
@@ -358,13 +347,6 @@ new class extends Component
                 </h2>
 
                 <div class="space-y-3">
-                    @if ($inscripcionSeleccionada->actividad->esActividadGeneral() && $inscripcionSeleccionada->esRegular())
-                        <div class="modal-informativo__seccion">
-                            <p class="modal-informativo__etiqueta">Autogenerado</p>
-                            <p class="modal-informativo__valor">{{ $inscripcionSeleccionada->es_fijo ? 'Si' : 'No' }}</p>
-                        </div>
-                    @endif
-
                     @if (!$inscripcionSeleccionada->actividad->esActividadGeneral())
                         <div class="modal-informativo__seccion">
                             <p class="modal-informativo__etiqueta">Orden Médica</p>

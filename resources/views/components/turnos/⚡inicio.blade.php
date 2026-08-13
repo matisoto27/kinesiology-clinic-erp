@@ -67,7 +67,6 @@ new class extends Component
             ->select([
                 'turnos.id',
                 'turnos.id_act_pac',
-                'turnos.nro_turno',
                 'turnos.fecha_hora',
                 'turnos.estado',
                 'turnos.id_turno_original',

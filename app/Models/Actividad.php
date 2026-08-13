@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class Actividad extends Model
 {
@@ -18,6 +19,14 @@ class Actividad extends Model
 
     public const GIMNASIO = 1;
     public const PILATES = 2;
+
+    private const DIAS_SEMANA_A_INT = [
+        'Lunes' => 1,
+        'Martes' => 2,
+        'Miércoles' => 3,
+        'Jueves' => 4,
+        'Viernes' => 5,
+    ];
     public const KINESIOLOGIA_CONVENCIONAL = 3;
     public const QUIROPRAXIA = 4;
     public const RPG = 5;
@@ -58,6 +67,25 @@ class Actividad extends Model
     public function esActividadGeneral(): bool
     {
         return (int) $this->id_tipo_actividad === self::TIPO_GENERAL;
+    }
+
+    public static function diaSemanaAEntero(string $diaSemana): int
+    {
+        return self::DIAS_SEMANA_A_INT[$diaSemana]
+            ?? throw new \InvalidArgumentException("Día de semana inválido: {$diaSemana}");
+    }
+
+    public static function enteroADiaSemana(int $diaSemana): string
+    {
+        $mapa = array_flip(self::DIAS_SEMANA_A_INT);
+
+        return $mapa[$diaSemana]
+            ?? throw new \InvalidArgumentException("Día de semana inválido: {$diaSemana}");
+    }
+
+    public static function diasSemanaDisponibles(): array
+    {
+        return array_keys(self::DIAS_SEMANA_A_INT);
     }
 
     public function scopePorTipo(Builder $consulta, int $idTipoActividad): Builder
@@ -147,6 +175,74 @@ class Actividad extends Model
         }
 
         return $turnosDisponibles;
+    }
+
+    public function horariosEstructuralesDisponibles(array $diasSemana): array
+    {
+        if (!$this->esActividadGeneral()) {
+            return [];
+        }
+
+        $idActividad = (int) $this->id;
+        $cantidadMaxima = $this->cupoMaximoEstructural();
+
+        $diasSolicitados = array_intersect_key(self::DIAS_SEMANA_A_INT, array_flip($diasSemana));
+
+        $horasInicio = $this->obtenerHorasDeInicio()
+            ->map(fn ($hora) => substr($hora, 0, 5))
+            ->values();
+
+        $ocupacionPorDia = HorarioPacienteFijo::where('id_actividad', $idActividad)
+            ->whereIn('dia_semana', array_values($diasSolicitados))
+            ->select('dia_semana', 'hora_inicio', DB::raw('count(*) as cantidad'))
+            ->groupBy('dia_semana', 'hora_inicio')
+            ->get()
+            ->groupBy('dia_semana')
+            ->map(fn (Collection $grupo) => $grupo->mapWithKeys(
+                fn ($fila) => [substr($fila->hora_inicio, 0, 5) => (int) $fila->cantidad]
+            ));
+
+        $resultado = [];
+
+        foreach ($diasSolicitados as $dia => $diaInt) {
+            $ocupacionDelDia = $ocupacionPorDia->get($diaInt, collect());
+
+            $resultado[$dia] = $horasInicio
+                ->filter(fn ($hora) => ($ocupacionDelDia[$hora] ?? 0) < $cantidadMaxima)
+                ->values()
+                ->all();
+        }
+
+        return $resultado;
+    }
+
+    public function cupoMaximoEstructural(): int
+    {
+        return (int) $this->id === self::GIMNASIO
+            ? (int) config('app.max_turnos_gimnasio')
+            : (int) config('app.max_turnos_pilates');
+    }
+
+    public function tieneCupoEstructural(string $diaSemana, string $horaInicio): bool
+    {
+        $horaCorta = substr($horaInicio, 0, 5);
+        $diaInt = self::diaSemanaAEntero($diaSemana);
+
+        $horaValida = $this->obtenerHorasDeInicio()
+            ->map(fn ($hora) => substr((string) $hora, 0, 5))
+            ->contains($horaCorta);
+
+        if (!$horaValida) {
+            return false;
+        }
+
+        $ocupados = HorarioPacienteFijo::query()
+            ->where('id_actividad', $this->id)
+            ->where('dia_semana', $diaInt)
+            ->whereTime('hora_inicio', $horaInicio)
+            ->count();
+
+        return $ocupados < $this->cupoMaximoEstructural();
     }
 
     public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin, bool $esPacienteRegular = true): array

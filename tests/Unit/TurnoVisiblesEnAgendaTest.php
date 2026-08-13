@@ -20,14 +20,12 @@ class TurnoVisiblesEnAgendaTest extends TestCase
 
         $original = Turno::create([
             'id_act_pac' => $actPac->id,
-            'nro_turno' => 1,
             'fecha_hora' => '2026-06-03 10:00:00',
             'estado' => 'Ausente',
         ]);
 
         $vigente = Turno::create([
             'id_act_pac' => $actPac->id,
-            'nro_turno' => 1,
             'fecha_hora' => '2026-06-04 10:00:00',
             'estado' => 'Ausente',
             'id_turno_original' => $original->id,
@@ -46,14 +44,12 @@ class TurnoVisiblesEnAgendaTest extends TestCase
 
         $original = Turno::create([
             'id_act_pac' => $actPac->id,
-            'nro_turno' => 1,
             'fecha_hora' => '2026-06-03 10:00:00',
             'estado' => 'Ausente avisó',
         ]);
 
         $recuperacion = Turno::create([
             'id_act_pac' => $actPac->id,
-            'nro_turno' => 1,
             'fecha_hora' => '2026-06-04 10:00:00',
             'estado' => 'Ausente',
             'id_turno_original' => $original->id,
@@ -86,9 +82,7 @@ class TurnoVisiblesEnAgendaTest extends TestCase
             'id_actividad' => $idActividad,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 4,
-            'es_fijo' => false,
             'total_a_pagar' => 0,
-            'plan_dual_pendiente' => false,
         ]);
     }
 }

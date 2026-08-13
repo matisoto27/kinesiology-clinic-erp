@@ -81,41 +81,6 @@ export function recolectarTurnosManuales(turnosContainer, cantidadEsperada) {
     return turnos;
 }
 
-export function construirPayloadRegistro({
-    idActividad,
-    idPaciente,
-    idActividadCombo,
-    frecuenciaSemanal,
-    autogenerados,
-    turnos,
-    fechaAncla,
-    esPlanDual = false
-}) {
-    const payload = {
-        id_actividad: idActividad,
-        id_paciente: idPaciente,
-        cant_sesiones: frecuenciaSemanal * 4,
-        autogenerados,
-        frecuencia_semanal: frecuenciaSemanal,
-        turnos,
-        plan_dual: esPlanDual
-    };
-
-    if (!esPlanDual && idActividadCombo !== null) {
-        payload.id_actividad_combo = idActividadCombo;
-    }
-
-    if (autogenerados) {
-        if (!fechaAncla) {
-            throw new Error('Por favor, seleccione la fecha de la primera clase.');
-        }
-
-        payload.fecha_ancla = fechaAncla;
-    }
-
-    return payload;
-}
-
 export function construirPayloadKineConOrden({
     idActividad,
     idPaciente,

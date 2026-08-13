@@ -18,7 +18,6 @@ class Turno extends Model
 
     protected $fillable = [
         'id_act_pac',
-        'nro_turno',
         'fecha_hora',
         'estado',
         'id_turno_original'
@@ -49,6 +48,27 @@ class Turno extends Model
     {
         return Attribute::make(
             get: fn() => $this->actividadPaciente->ap_nom_paciente
+        );
+    }
+
+    protected function nroTurno(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                $fechaReferencia = $this->id_turno_original !== null
+                    ? $this->turnoOriginal?->fecha_hora
+                    : $this->fecha_hora;
+
+                if ($fechaReferencia === null) {
+                    return null;
+                }
+
+                return self::query()
+                    ->where('id_act_pac', $this->id_act_pac)
+                    ->whereNull('id_turno_original')
+                    ->where('fecha_hora', '<=', $fechaReferencia)
+                    ->count();
+            }
         );
     }
 

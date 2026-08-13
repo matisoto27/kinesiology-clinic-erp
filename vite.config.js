@@ -10,7 +10,6 @@ export default defineConfig({
             input: [
                 'resources/css/app.css',
                 'resources/js/app.js',
-                'resources/js/pages/actividades-pacientes/general/crear.js',
                 'resources/js/pages/actividades-pacientes/kinesiologia/con-orden/crear.js',
                 'resources/js/pages/actividades-pacientes/kinesiologia/sin-orden/crear.js',
                 'resources/js/pages/obras-sociales-pacientes/crear.js',
