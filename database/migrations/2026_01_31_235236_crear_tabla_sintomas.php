@@ -16,8 +16,6 @@ return new class extends Migration
 
             $table->string('nombre', length: 50)->unique();
             $table->boolean('activo')->default(true);
-
-            $table->foreignId('id_tipo')->constrained(table: 'tipos_sintoma');
         });
     }
 
