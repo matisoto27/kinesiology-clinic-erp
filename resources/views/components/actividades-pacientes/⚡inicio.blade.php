@@ -65,25 +65,57 @@ new class extends Component
                 'pacienteRegular:id,nombre,apellido',
                 'pacienteCasual:id,nombre,apellido',
                 'pacienteFijo:id,id_paciente',
+                'primerTurno:id,id_act_pac,fecha_hora',
+                'actPacDual' => fn ($q) => $q->withSum('pagos', 'monto'),
+                'actPacDual.actividad:id,nombre,id_tipo_actividad',
+                'actPacDual.primerTurno:id,id_act_pac,fecha_hora',
             ])
             ->withSum('pagos', 'monto')
+            ->where(function ($q) {
+                $q->whereNull('actividades_pacientes.id_act_pac_dual')
+                    ->orWhereNull('actividades_pacientes.frecuencia_total_dual')
+                    ->orWhereColumn('actividades_pacientes.id', '<', 'actividades_pacientes.id_act_pac_dual');
+            })
             ->addSelect(DB::raw('
                 GREATEST(
                     actividades_pacientes.id,
                     COALESCE(actividades_pacientes.id_act_pac_dual, actividades_pacientes.id)
                 ) as dual_group_key
             '))
-            ->when($this->filtroPago === 'completado', fn ($q) => $q
-                ->where('actividades_pacientes.pago_completado', true)
-                ->where('actividades_pacientes.total_a_pagar', '>', 0))
-            ->when($this->filtroPago === 'pendiente', fn ($q) => $q
-                ->where('actividades_pacientes.pago_completado', false)
-                ->where('actividades_pacientes.total_a_pagar', '>', 0))
+            ->addSelect(DB::raw('
+                (
+                    SELECT MIN(t.fecha_hora)
+                    FROM turnos t
+                    WHERE t.id_turno_original IS NULL
+                      AND t.id_act_pac IN (
+                          actividades_pacientes.id,
+                          COALESCE(actividades_pacientes.id_act_pac_dual, actividades_pacientes.id)
+                      )
+                ) as ancla_ciclo
+            '))
+            ->when($this->filtroPago === 'completado', fn ($q) => $q->where(function ($q) {
+                $q->where(fn ($q) => $q
+                        ->where('actividades_pacientes.pago_completado', true)
+                        ->where('actividades_pacientes.total_a_pagar', '>', 0))
+                    ->orWhereHas('actPacDual', fn ($q) => $q
+                        ->where('pago_completado', true)
+                        ->where('total_a_pagar', '>', 0));
+            }))
+            ->when($this->filtroPago === 'pendiente', fn ($q) => $q->where(function ($q) {
+                $q->where(fn ($q) => $q
+                        ->where('actividades_pacientes.pago_completado', false)
+                        ->where('actividades_pacientes.total_a_pagar', '>', 0))
+                    ->orWhereHas('actPacDual', fn ($q) => $q
+                        ->where('pago_completado', false)
+                        ->where('total_a_pagar', '>', 0));
+            }))
             ->when($this->consultaPaciente !== '', fn ($q) => $q->buscarPaciente($this->consultaPaciente))
-            ->when($this->ocultarInscripcionesFuturas, fn ($q) => $q->whereHas(
-                'primerTurno',
-                fn ($sq) => $sq->where('turnos.fecha_hora', '<', now()->startOfDay()->addWeek())
-            ))
+            ->when($this->ocultarInscripcionesFuturas, fn ($q) => $q->where(function ($q) {
+                $limite = now()->startOfDay()->addWeek();
+                $q->whereHas('primerTurno', fn ($sq) => $sq->where('turnos.fecha_hora', '<', $limite))
+                    ->orWhereHas('actPacDual.primerTurno', fn ($sq) => $sq->where('turnos.fecha_hora', '<', $limite));
+            }))
+            ->orderByDesc('ancla_ciclo')
             ->orderByDesc('dual_group_key')
             ->orderByDesc('actividades_pacientes.id')
             ->paginate(10);
@@ -91,7 +123,14 @@ new class extends Component
 
     public function verDetalles(int $id): void
     {
-        $this->inscripcionSeleccionada = ActividadPaciente::with(['actividad', 'pacienteRegular', 'pacienteCasual', 'turnos'])->find($id);
+        $this->inscripcionSeleccionada = ActividadPaciente::with([
+            'actividad',
+            'pacienteRegular',
+            'pacienteCasual',
+            'turnos',
+            'actPacDual.actividad',
+            'actPacDual.turnos',
+        ])->find($id);
         $this->mostrarModal = true;
     }
 
@@ -140,7 +179,7 @@ new class extends Component
 };
 ?>
 
-<div class="contenedor-listado max-w-screen-3xl">
+<div class="contenedor-listado w-full">
     <h2 class="titulo-formulario">Inscripciones Mensuales / Registros de Sesiones</h2>
 
     <div class="fila-formulario">
@@ -170,6 +209,8 @@ new class extends Component
                 type="checkbox"
                 class="checkbox-formulario"
                 wire:model.live="ocultarInscripcionesFuturas"
+                wire:loading.attr="disabled"
+                wire:target="ocultarInscripcionesFuturas"
             >
             <label for="ocultar-inscripciones-futuras" class="etiqueta-formulario">
                 Ocultar inscripciones futuras
@@ -184,7 +225,7 @@ new class extends Component
         <thead>
             <tr class="tabla-listado__cabecera">
                 <th colspan="2">Descripción</th>
-                <th>Fecha de Registro</th>
+                <th>Primer turno</th>
                 <th>Cantidad</th>
                 <th>Total a Pagar</th>
                 <th>Cubierta por OS</th>
@@ -198,20 +239,35 @@ new class extends Component
         <tbody>
             @forelse($this->inscripciones as $actPac)
                 @php
-                    $cantidad = (int) $actPac->cant_sesiones;
+                    $par = $actPac->esDualCompleto() ? $actPac->actPacDual : null;
+                    $cobro = ($par && (float) $actPac->total_a_pagar <= 0) ? $par : $actPac;
+                    $cantidad = (int) $actPac->cant_sesiones + (int) ($par?->cant_sesiones ?? 0);
                     $esGeneral = $actPac->actividad->esActividadGeneral();
                     $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
+                    $primerTurno = collect([$actPac->primerTurno, $par?->primerTurno])
+                        ->filter()
+                        ->sortBy(fn ($turno) => $turno->fecha_hora->timestamp)
+                        ->first();
+                    $freqGym = 0;
+                    $freqPilates = 0;
+                    if ($par) {
+                        $porActividad = collect([$actPac, $par])->keyBy('id_actividad');
+                        $freqGym = (int) ($porActividad->get(\App\Models\Actividad::GIMNASIO)?->frecuenciaSemanal() ?? 0);
+                        $freqPilates = (int) ($porActividad->get(\App\Models\Actividad::PILATES)?->frecuenciaSemanal() ?? 0);
+                    }
                 @endphp
 
                 <tr class="tabla-listado__fila h-28" wire:key="inscripcion-{{ $actPac->id }}">
                     <td colspan="2">
                         @if ($actPac->esRegular())
-                            @if ($actPac->esDualCompleto())
-                                <span class="badge bg-indigo-600">
+                            @if ($par)
+                                <span class="badge mr-1 bg-indigo-600">
                                     Dual (x{{ $actPac->frecuencia_total_dual }})
                                 </span>
+                                {{ $actPac->ap_nom_paciente }}
+                            @else
+                                {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
                             @endif
-                            {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
                         @elseif ($actPac->esGympass())
                             <span class="badge bg-emerald-600">Paciente Gympass</span>
                             {{ $actPac->ap_nom_paciente }}
@@ -221,8 +277,8 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        {{ $actPac->created_at->format('d/m/Y H:i') }}
-                        @if ($actPac->esRegular() && $actPac->esPrimeraInscripcion())
+                        {{ $primerTurno?->fecha_hora->format('d/m/Y H:i') ?? '—' }}
+                        @if ($actPac->esRegular() && $actPac->esPrimeraInscripcion() && (!$par || $par->esPrimeraInscripcion()))
                             <span class="badge bg-slate-500 text-xs">Primera inscripción</span>
                         @endif
                     </td>
@@ -231,7 +287,9 @@ new class extends Component
                             <span class="block font-bold">
                                 {{ $cantidad }} {{ $cantidad === 1 ? 'turno' : 'turnos' }}
                             </span>
-                            @if ($actPac->esRegular())
+                            @if ($par)
+                                <small>(Gx{{ $freqGym }} | Px{{ $freqPilates }})</small>
+                            @elseif ($actPac->esRegular())
                                 <small>
                                     ({{ (int) ($cantidad / 4) }} {{ (int) ($cantidad / 4) === 1 ? 'vez' : 'veces' }} por semana)
                                 </small>
@@ -243,21 +301,19 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esSegundaDual())
-                            <span class="text-gray-400 italic">N/A</span>
-                        @elseif ($actPac->esRegular() || $actPac->esPruebaPilates())
+                        @if ($actPac->esRegular() || $actPac->esPruebaPilates())
                             <div class="flex flex-col">
-                                <span class="{{ $actPac->fecha_recargo ? 'text-gray-500 text-sm line-through' : 'font-bold' }}">
-                                    ${{ number_format($actPac->total_a_pagar, 2, ',', '.') }}
+                                <span class="{{ $cobro->fecha_recargo ? 'text-gray-500 text-sm line-through' : 'font-bold' }}">
+                                    ${{ number_format($cobro->total_a_pagar, 2, ',', '.') }}
                                 </span>
-                                @if ($actPac->fecha_recargo)
+                                @if ($cobro->fecha_recargo)
                                     <div class="flex flex-col text-red-600">
                                         <span class="font-bold">
-                                            ${{ number_format($actPac->total_con_recargo, 2, ',', '.') }}
+                                            ${{ number_format($cobro->total_con_recargo, 2, ',', '.') }}
                                         </span>
                                         <div class="flex flex-col text-sm font-semibold">
-                                            <span>Recargo: ${{ number_format($actPac->monto_recargo, 2, ',', '.') }}</span>
-                                            <span>({{ number_format($actPac->porcentaje_recargo, 2, ',', '.') }}%)</span>
+                                            <span>Recargo: ${{ number_format($cobro->monto_recargo, 2, ',', '.') }}</span>
+                                            <span>({{ number_format($cobro->porcentaje_recargo, 2, ',', '.') }}%)</span>
                                         </div>
                                     </div>
                                 @endif
@@ -274,9 +330,7 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esSegundaDual())
-                            <span class="text-gray-400 italic">N/A</span>
-                        @elseif($actPac->pago_completado)
+                        @if($cobro->pago_completado)
                             <span class="px-3 py-1 inline-flex items-center bg-emerald-500 rounded text-sm font-semibold">
                                 Completado
                             </span>
@@ -287,12 +341,10 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if($actPac->deuda > 0)
+                        @if($cobro->deuda > 0)
                             <span class="px-3 py-1 inline-flex items-center bg-red-500 rounded text-sm font-semibold">
-                                ${{ number_format($actPac->deuda, 2, ',', '.') }}
+                                ${{ number_format($cobro->deuda, 2, ',', '.') }}
                             </span>
-                        @elseif ($actPac->esSegundaDual())
-                            <span class="text-gray-400 italic">N/A</span>
                         @else
                             <span class="text-gray-400 italic">Saldada</span>
                         @endif
@@ -333,6 +385,24 @@ new class extends Component
     </div>
 
     @if($mostrarModal && $inscripcionSeleccionada)
+        @php
+            $parSel = $inscripcionSeleccionada->esDualCompleto() ? $inscripcionSeleccionada->actPacDual : null;
+            $turnosModal = $inscripcionSeleccionada->turnos;
+            if ($parSel) {
+                $turnosModal = $turnosModal->concat($parSel->turnos);
+            }
+            $nroPorOriginal = $turnosModal
+                ->whereNull('id_turno_original')
+                ->sortBy(fn ($turno) => $turno->fecha_hora->timestamp)
+                ->values()
+                ->mapWithKeys(fn ($turno, $i) => [$turno->id => $i + 1]);
+            $turnosModal = $turnosModal->sortBy(fn ($turno) => $turno->fecha_hora->timestamp)->values();
+            $fechaAlta = $inscripcionSeleccionada->created_at;
+            if ($parSel?->created_at?->lt($fechaAlta)) {
+                $fechaAlta = $parSel->created_at;
+            }
+        @endphp
+
         <div class="modal-informativo" wire:keydown.escape.window="cerrarModal">
             <div class="modal-informativo__ventana" wire:click.outside="cerrarModal">
                 <button class="modal-informativo__cerrar" wire:click="cerrarModal">
@@ -340,9 +410,9 @@ new class extends Component
                 </button>
 
                 <h2 class="modal-informativo__titulo">
-                    [{{ $inscripcionSeleccionada->created_at->format('d/m/Y H:i') }}]
+                    [{{ $fechaAlta->format('d/m/Y H:i') }}]
                     <div>
-                        {{ $inscripcionSeleccionada->nombre_actividad }} - {{ $inscripcionSeleccionada->ap_nom_paciente }}
+                        {{ $parSel ? 'Dual' : $inscripcionSeleccionada->nombre_actividad }} - {{ $inscripcionSeleccionada->ap_nom_paciente }}
                     </div>
                 </h2>
 
@@ -368,13 +438,21 @@ new class extends Component
                         <p class="mb-2 modal-informativo__etiqueta">Turnos asociados</p>
 
                         <div class="pr-2 space-y-3 max-h-60 overflow-y-auto">
-                            @forelse($inscripcionSeleccionada->turnos as $turno)
+                            @forelse($turnosModal as $turno)
+                                @php
+                                    $nroTurno = $nroPorOriginal[$turno->id_turno_original ?? $turno->id] ?? null;
+                                    $nombreActividadTurno = $turno->id_act_pac === $inscripcionSeleccionada->id
+                                        ? $inscripcionSeleccionada->nombre_actividad
+                                        : $parSel?->nombre_actividad;
+                                @endphp
                                 <div class="modal-informativo__elemento-lista flex justify-between items-center">
                                     <div>
                                         @if($turno->id_turno_original)
                                             <span class="text-blue-500 text-sm font-semibold uppercase">Reprogramado</span>
                                         @endif
-                                        <p class="modal-informativo__etiqueta">Turno #{{ $turno->nro_turno }}</p>
+                                        <p class="modal-informativo__etiqueta">
+                                            Turno #{{ $nroTurno }}{{ $parSel ? ' (' . $nombreActividadTurno . ')' : '' }}
+                                        </p>
                                         <p class="modal-informativo__valor">{{ $turno->fecha_hora->format('d/m/Y H:i') }}</p>
                                     </div>
                                     @if($turno->fecha_hora->isFuture() && $turno->estado === 'Ausente')
@@ -389,10 +467,9 @@ new class extends Component
                                 <p class="modal-informativo__sin-valor">No hay turnos registrados.</p>
                             @endforelse
                         </div>
-                        @if($inscripcionSeleccionada->turnos->count() > 0)
+                        @if($turnosModal->count() > 0)
                             <div class="mt-2 flex justify-center">
                                 <a href="{{ route('turnos.inicio', [
-                                        'actividad' => $inscripcionSeleccionada->id_actividad,
                                         'paciente' => $inscripcionSeleccionada->paciente->apellido . ' ' . $inscripcionSeleccionada->paciente->nombre
                                     ]) }}"
                                     class="text-blue-500 hover:text-blue-700 text-sm font-semibold underline transition-colors">
