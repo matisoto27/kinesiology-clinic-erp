@@ -67,8 +67,14 @@ class Turno extends Model
                     $fechaReferencia = $fechaOriginal;
                 }
 
+                $idsActPac = [$this->id_act_pac];
+                $parId = $this->actividadPaciente?->id_act_pac_dual;
+                if ($parId) {
+                    $idsActPac[] = $parId;
+                }
+
                 return self::query()
-                    ->where('id_act_pac', $this->id_act_pac)
+                    ->whereIn('id_act_pac', $idsActPac)
                     ->whereNull('id_turno_original')
                     ->where('fecha_hora', '<=', $fechaReferencia)
                     ->count();

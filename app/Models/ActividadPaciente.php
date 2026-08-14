@@ -239,6 +239,11 @@ class ActividadPaciente extends Model
         return (int) ($this->cant_sesiones / 4);
     }
 
+    public function cantSesionesGrupo(): int
+    {
+        return (int) $this->cant_sesiones + (int) ($this->actPacDual?->cant_sesiones ?? 0);
+    }
+
     public function scopeTienePacienteRegular(Builder $consulta): Builder
     {
         return $consulta->whereNull('actividades_pacientes.id_paciente_casual');

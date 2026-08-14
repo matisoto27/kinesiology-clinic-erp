@@ -75,7 +75,8 @@ new class extends Component
                 'turnos.id_turno_original',
             ])
             ->with([
-                'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,cant_sesiones',
+                'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,cant_sesiones,id_act_pac_dual',
+                'actividadPaciente.actPacDual:id,cant_sesiones',
                 'actividadPaciente.actividad:id,nombre,id_tipo_actividad',
                 'actividadPaciente.pacienteRegular:id,nombre,apellido',
                 'actividadPaciente.pacienteCasual:id,nombre,apellido',
@@ -369,11 +370,11 @@ new class extends Component
                         @if ($turno->actividadPaciente->esRegular())
                             {{ $turno->actividadPaciente->nombre_actividad }} |
                             {{ $turno->ap_nom_paciente }} |
-                            Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                            Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cantSesionesGrupo() }}
                         @elseif ($turno->actividadPaciente->esGympass())
                             <span class="badge bg-emerald-600">Paciente Gympass</span>
                             {{ $turno->ap_nom_paciente }} |
-                            Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cant_sesiones }}
+                            Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cantSesionesGrupo() }}
                         @else
                             <span class="badge bg-purple-600">Prueba de Pilates</span>
                             {{ $turno->ap_nom_paciente }}
