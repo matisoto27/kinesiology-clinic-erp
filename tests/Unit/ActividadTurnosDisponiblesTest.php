@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Horario;
@@ -11,11 +12,16 @@ use App\Services\TurnoService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class ActividadTurnosDisponiblesTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const SLOT_ORIGINAL = '2026-06-03 10:00:00';
+
+    private const SLOT_NUEVO = '2026-06-04 10:00:00';
 
     private TurnoService $turnoService;
 
@@ -27,6 +33,7 @@ class ActividadTurnosDisponiblesTest extends TestCase
         Config::set('app.max_turnos_gimnasio', 1);
         Config::set('app.max_turnos_pilates', 1);
         Config::set('app.max_turnos_convencional', 1);
+        Carbon::setTestNow('2026-06-01 08:00:00');
     }
 
     protected function tearDown(): void
@@ -36,155 +43,103 @@ class ActividadTurnosDisponiblesTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_tras_reprogramar_libera_cupo_en_fecha_original_y_ocupa_la_nueva(): void
+    public static function actividades(): array
     {
-        Carbon::setTestNow('2026-06-01 08:00:00');
-
-        $gimnasio = $this->prepararGimnasioConHorario('10:00:00');
-        $paciente = $this->crearPaciente();
-        $otroPaciente = $this->crearPaciente();
-
-        $actPac = $this->crearInscripcion($paciente, Actividad::GIMNASIO);
-        $turnoOriginal = Turno::create([
-            'id_act_pac' => $actPac->id,
-            'fecha_hora' => '2026-06-03 10:00:00',
-            'estado' => 'Ausente',
-        ]);
-
-        $comienzo = Carbon::parse('2026-06-01')->startOfDay();
-        $fin = Carbon::parse('2026-06-05')->endOfDay();
-
-        $antes = $gimnasio->turnosDisponibles($otroPaciente->id, $comienzo, $fin);
-        $this->assertNotContains('2026-06-03 10:00:00', $antes);
-
-        $this->turnoService->reprogramar($turnoOriginal, Carbon::parse('2026-06-04 10:00:00'));
-
-        $despues = $gimnasio->turnosDisponibles($otroPaciente->id, $comienzo, $fin);
-        $this->assertContains('2026-06-03 10:00:00', $despues);
-        $this->assertNotContains('2026-06-04 10:00:00', $despues);
+        return [
+            'gimnasio' => [Actividad::GIMNASIO],
+            'quiropraxia' => [Actividad::QUIROPRAXIA],
+        ];
     }
 
-    public function test_ausente_aviso_libera_cupo_sin_necesidad_de_reprogramar(): void
+    #[DataProvider('actividades')]
+    public function test_ausente_ocupa_cupo_y_bloquea_reprogramar(int $idActividad): void
     {
-        Carbon::setTestNow('2026-06-01 08:00:00');
+        ['actividad' => $actividad, 'turno' => $turno, 'otroPaciente' => $otro] = $this->escenario($idActividad, 'Ausente');
 
-        $gimnasio = $this->prepararGimnasioConHorario('10:00:00');
-        $paciente = $this->crearPaciente();
-        $otroPaciente = $this->crearPaciente();
+        $this->assertNotContains(self::SLOT_ORIGINAL, $this->disponibles($actividad, $otro));
 
-        $actPac = $this->crearInscripcion($paciente, Actividad::GIMNASIO);
-        Turno::create([
-            'id_act_pac' => $actPac->id,
-            'fecha_hora' => '2026-06-03 10:00:00',
-            'estado' => 'Ausente avisó',
-        ]);
-
-        $disponibles = $gimnasio->turnosDisponibles(
-            $otroPaciente->id,
-            Carbon::parse('2026-06-01')->startOfDay(),
-            Carbon::parse('2026-06-05')->endOfDay()
-        );
-
-        $this->assertContains('2026-06-03 10:00:00', $disponibles);
+        $this->expectException(ReglaNegocioException::class);
+        $this->turnoService->reprogramar($turno, Carbon::parse(self::SLOT_NUEVO));
     }
 
-    public function test_ausente_sin_aviso_sigue_ocupando_cupo(): void
+    #[DataProvider('actividades')]
+    public function test_aa_libera_cupo_y_reprogramar_ocupa_nueva(int $idActividad): void
     {
-        Carbon::setTestNow('2026-06-01 08:00:00');
+        ['actividad' => $actividad, 'turno' => $turno, 'otroPaciente' => $otro] = $this->escenario($idActividad, 'Ausente avisó');
 
-        $gimnasio = $this->prepararGimnasioConHorario('10:00:00');
-        $paciente = $this->crearPaciente();
-        $otroPaciente = $this->crearPaciente();
+        $this->assertContains(self::SLOT_ORIGINAL, $this->disponibles($actividad, $otro));
 
-        $actPac = $this->crearInscripcion($paciente, Actividad::GIMNASIO);
-        Turno::create([
-            'id_act_pac' => $actPac->id,
-            'fecha_hora' => '2026-06-03 10:00:00',
-            'estado' => 'Ausente',
-        ]);
+        $this->turnoService->reprogramar($turno, Carbon::parse(self::SLOT_NUEVO));
 
-        $disponibles = $gimnasio->turnosDisponibles(
-            $otroPaciente->id,
-            Carbon::parse('2026-06-01')->startOfDay(),
-            Carbon::parse('2026-06-05')->endOfDay()
-        );
-
-        $this->assertNotContains('2026-06-03 10:00:00', $disponibles);
+        $despues = $this->disponibles($actividad, $otro);
+        $this->assertContains(self::SLOT_ORIGINAL, $despues);
+        $this->assertNotContains(self::SLOT_NUEVO, $despues);
     }
 
-    public function test_paciente_no_queda_bloqueado_en_fecha_original_tras_reprogramar(): void
+    public function test_paciente_recupera_fecha_original_tras_reprogramar(): void
     {
-        Carbon::setTestNow('2026-06-01 08:00:00');
-
-        $gimnasio = $this->prepararGimnasioConHorario('10:00:00');
         Config::set('app.max_turnos_gimnasio', 8);
 
+        $gimnasio = $this->prepararActividad(Actividad::GIMNASIO);
         $paciente = $this->crearPaciente();
-        $actPac = $this->crearInscripcion($paciente, Actividad::GIMNASIO);
-        $turnoOriginal = Turno::create([
-            'id_act_pac' => $actPac->id,
-            'fecha_hora' => '2026-06-03 10:00:00',
-            'estado' => 'Ausente',
-        ]);
+        $turno = $this->crearTurno($paciente, Actividad::GIMNASIO, 'Ausente avisó');
 
-        $this->turnoService->reprogramar($turnoOriginal, Carbon::parse('2026-06-04 10:00:00'));
+        $this->turnoService->reprogramar($turno, Carbon::parse(self::SLOT_NUEVO));
 
-        $disponibles = $gimnasio->turnosDisponibles(
+        $disponibles = $this->disponibles($gimnasio, $paciente);
+        $this->assertContains(self::SLOT_ORIGINAL, $disponibles);
+        $this->assertNotContains(self::SLOT_NUEVO, $disponibles);
+    }
+
+    private function escenario(int $idActividad, string $estado): array
+    {
+        $actividad = $this->prepararActividad($idActividad);
+        $paciente = $this->crearPaciente();
+        $otroPaciente = $this->crearPaciente();
+        $turno = $this->crearTurno($paciente, $idActividad, $estado);
+
+        return [
+            'actividad' => $actividad,
+            'turno' => $turno,
+            'otroPaciente' => $otroPaciente,
+        ];
+    }
+
+    private function disponibles(Actividad $actividad, Paciente $paciente): array
+    {
+        return $actividad->turnosDisponibles(
             $paciente->id,
             Carbon::parse('2026-06-01')->startOfDay(),
             Carbon::parse('2026-06-05')->endOfDay()
         );
-
-        $this->assertContains('2026-06-03 10:00:00', $disponibles);
-        $this->assertNotContains('2026-06-04 10:00:00', $disponibles);
     }
 
-    public function test_reprogramacion_kinesiologia_libera_slot_original(): void
+    private function prepararActividad(int $idActividad): Actividad
     {
-        Carbon::setTestNow('2026-06-01 08:00:00');
-
-        $kine = Actividad::findOrFail(Actividad::QUIROPRAXIA);
+        $actividad = Actividad::findOrFail($idActividad);
         $horario = Horario::create([
             'hora_inicio' => '10:00:00',
             'franja' => 'M',
         ]);
-        $kine->horarios()->attach($horario->id);
+        $actividad->horarios()->attach($horario->id);
 
-        $paciente = $this->crearPaciente();
-        $otroPaciente = $this->crearPaciente();
-        $actPac = $this->crearInscripcion($paciente, Actividad::QUIROPRAXIA);
-
-        $turnoOriginal = Turno::create([
-            'id_act_pac' => $actPac->id,
-            'fecha_hora' => '2026-06-03 10:00:00',
-            'estado' => 'Ausente',
-        ]);
-
-        $comienzo = Carbon::parse('2026-06-01')->startOfDay();
-        $fin = Carbon::parse('2026-06-05')->endOfDay();
-
-        $this->assertNotContains(
-            '2026-06-03 10:00:00',
-            $kine->turnosDisponibles($otroPaciente->id, $comienzo, $fin)
-        );
-
-        $this->turnoService->reprogramar($turnoOriginal, Carbon::parse('2026-06-04 10:00:00'));
-
-        $despues = $kine->turnosDisponibles($otroPaciente->id, $comienzo, $fin);
-        $this->assertContains('2026-06-03 10:00:00', $despues);
-        $this->assertNotContains('2026-06-04 10:00:00', $despues);
+        return $actividad->fresh(['horarios']);
     }
 
-    private function prepararGimnasioConHorario(string $horaInicio): Actividad
+    private function crearTurno(Paciente $paciente, int $idActividad, string $estado): Turno
     {
-        $gimnasio = Actividad::findOrFail(Actividad::GIMNASIO);
-        $horario = Horario::create([
-            'hora_inicio' => $horaInicio,
-            'franja' => 'M',
+        $actPac = ActividadPaciente::create([
+            'id_actividad' => $idActividad,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 4,
+            'total_a_pagar' => 0,
         ]);
-        $gimnasio->horarios()->attach($horario->id);
 
-        return $gimnasio->fresh(['horarios']);
+        return Turno::create([
+            'id_act_pac' => $actPac->id,
+            'fecha_hora' => self::SLOT_ORIGINAL,
+            'estado' => $estado,
+        ]);
     }
 
     private function crearPaciente(): Paciente
@@ -199,16 +154,6 @@ class ActividadTurnosDisponiblesTest extends TestCase
             'profesion' => 'Profesion',
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
-        ]);
-    }
-
-    private function crearInscripcion(Paciente $paciente, int $idActividad): ActividadPaciente
-    {
-        return ActividadPaciente::create([
-            'id_actividad' => $idActividad,
-            'id_paciente' => $paciente->id,
-            'cant_sesiones' => 4,
-            'total_a_pagar' => 0,
         ]);
     }
 }

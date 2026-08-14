@@ -43,6 +43,10 @@ new class extends Component
 
     public string $horaSeleccionada = '';
 
+    public ?string $modoKinesio = null;
+
+    public bool $avisoRecienMarcado = false;
+
     public function updatingConsultaPaciente(): void
     {
         $this->resetPage();
@@ -63,7 +67,6 @@ new class extends Component
     {
         return Turno::query()
             ->conActPac()
-            ->visiblesEnAgenda()
             ->select([
                 'turnos.id',
                 'turnos.id_act_pac',
@@ -76,7 +79,7 @@ new class extends Component
                 'actividadPaciente.actividad:id,nombre,id_tipo_actividad',
                 'actividadPaciente.pacienteRegular:id,nombre,apellido',
                 'actividadPaciente.pacienteCasual:id,nombre,apellido',
-                'turnoOriginal:id',
+                'turnoOriginal:id,fecha_hora',
                 'turnoRecuperacion:id,id_turno_original',
             ])
             ->when($this->idActividad > 0, fn ($q) => $q->deLaActividad($this->idActividad))
@@ -98,6 +101,16 @@ new class extends Component
         $nueva = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada)->format('Y-m-d H:i:s');
 
         return $original === $nueva;
+    }
+
+    #[Computed]
+    public function esKinesio(): bool
+    {
+        if (!$this->turnoSeleccionado) {
+            return false;
+        }
+
+        return !$this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral();
     }
 
     public function abrirModal(int $id)
@@ -135,31 +148,60 @@ new class extends Component
         $this->obtenerHorasParaFecha($this->fechaSeleccionada);
         $this->horaSeleccionada = $fechaHora->format('H:i:s');
 
+        $this->avisoRecienMarcado = false;
+
+        if ($actividad->esActividadGeneral()) {
+            $this->modoKinesio = null;
+        } elseif ($this->turnoSeleccionado->esReprogramado()) {
+            $this->modoKinesio = 'corregir';
+        } elseif ($this->turnoSeleccionado->esAusenteAviso()) {
+            $this->modoKinesio = 'aviso';
+        } else {
+            $this->modoKinesio = null;
+        }
+
         $this->mostrarModal = true;
     }
 
-    public function marcarAusenteAviso($id)
+    public function marcarAusenteAviso(): void
     {
-        try {
-            DB::transaction(function () use ($id) {
-                $turno = Turno::lockForUpdate()->findOrFail($id);
+        if (!$this->turnoSeleccionado) {
+            return;
+        }
 
-                if (!$turno->actividadPaciente->actividad->esActividadGeneral()) {
-                    throw new \Exception("Los turnos de tipo kinesiología solo admiten estados 'Ausente' o 'Presente'.");
-                } else if (str_contains($turno->estado, 'Presente')) {
+        try {
+            DB::transaction(function () {
+                $turno = Turno::lockForUpdate()->findOrFail($this->turnoSeleccionado->id);
+                $turno->load(['actividadPaciente.actividad', 'turnoRecuperacion']);
+
+                if (str_contains($turno->estado, 'Presente')) {
                     throw new \Exception("No puede marcarse como 'Ausente avisó' un turno cuya asistencia ya fue confirmada.");
                 }
 
-                $turno->update(['estado' => 'Ausente avisó']);
+                if ($turno->esReprogramado() || $turno->turnoRecuperacion) {
+                    throw new \Exception('Este turno ya fue reprogramado.');
+                }
+
+                if (!$turno->esAusenteAviso()) {
+                    $turno->update(['estado' => 'Ausente avisó']);
+                }
+
+                $this->turnoSeleccionado = $turno->fresh([
+                    'actividadPaciente.actividad',
+                    'actividadPaciente.pacienteRegular',
+                    'actividadPaciente.pacienteCasual',
+                ]);
             });
 
-            $this->cerrarModal();
-            session()->flash('exito', "El turno ha sido marcado como 'Ausente avisó'. Luego podrás reprogramarlo eligiendo una nueva fecha y hora.");
+            $this->avisoRecienMarcado = true;
 
+            if ($this->esKinesio) {
+                $this->modoKinesio = 'aviso';
+            }
         } catch (\Throwable $th) {
-            Log::error('[(Livewire) principal@marcarAusenteAviso] Error al actualizar estado del turno.', [
-                'id' => $id,
-                'excepción' => $th->getMessage()
+            Log::error('[(Livewire) turnos.inicio@marcarAusenteAviso] Error al marcar ausente avisó.', [
+                'id' => $this->turnoSeleccionado?->id,
+                'excepción' => $th->getMessage(),
             ]);
 
             $this->cerrarModal();
@@ -185,11 +227,54 @@ new class extends Component
             ->toArray();
     }
 
+    public function elegirModificacionSimple(): void
+    {
+        if (!$this->esKinesio) {
+            return;
+        }
+
+        $this->modoKinesio = 'corregir';
+    }
+
+    public function volverChooserKinesio(): void
+    {
+        if (!$this->esKinesio || $this->turnoSeleccionado?->esAusenteAviso() || $this->turnoSeleccionado?->esReprogramado()) {
+            return;
+        }
+
+        $this->modoKinesio = null;
+    }
+
     public function actualizar(TurnoService $turnoService)
     {
         try {
             $esGeneral = $this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral();
             $nuevaFechaHora = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada);
+
+            if (!$esGeneral && $this->modoKinesio === 'corregir') {
+                DB::transaction(function () use ($nuevaFechaHora) {
+                    $turno = Turno::lockForUpdate()->findOrFail($this->turnoSeleccionado->id);
+
+                    if (str_contains($turno->estado, 'Presente')) {
+                        throw new ReglaNegocioException('No se puede corregir un turno donde el paciente ya ha asistido.');
+                    }
+
+                    if ($turno->esAusenteAviso()) {
+                        throw new ReglaNegocioException('Este turno ya fue marcado como ausente con avisó.');
+                    }
+
+                    $turno->update(['fecha_hora' => $nuevaFechaHora]);
+                });
+
+                $this->cerrarModal();
+                session()->flash('exito', 'La fecha del turno de Kinesiología ha sido corregida.');
+
+                return;
+            }
+
+            if (!$this->turnoSeleccionado->esAusenteAviso()) {
+                throw new ReglaNegocioException("Primero debe marcarse el turno como 'Ausente avisó'.");
+            }
 
             $turnoService->reprogramar($this->turnoSeleccionado, $nuevaFechaHora);
 
@@ -211,7 +296,17 @@ new class extends Component
 
     public function cerrarModal()
     {
-        $this->reset(['mostrarModal', 'turnoSeleccionado', 'turnosTotalesDisponibles', 'fechasUnicas', 'fechaSeleccionada', 'horasDisponiblesParaFecha', 'horaSeleccionada']);
+        $this->reset([
+            'mostrarModal',
+            'turnoSeleccionado',
+            'turnosTotalesDisponibles',
+            'fechasUnicas',
+            'fechaSeleccionada',
+            'horasDisponiblesParaFecha',
+            'horaSeleccionada',
+            'modoKinesio',
+            'avisoRecienMarcado',
+        ]);
     }
 };
 ?>
@@ -326,13 +421,26 @@ new class extends Component
     </div>
 
     @if($mostrarModal && $turnoSeleccionado)
+        @php
+            $esChooserKinesio = $this->esKinesio && $modoKinesio === null;
+            $esSoloAvisoGeneral = !$this->esKinesio && !$turnoSeleccionado->esAusenteAviso();
+            $mostrarFechas = !$esChooserKinesio && !$esSoloAvisoGeneral;
+        @endphp
         <div class="modal-informativo" wire:keydown.escape.window="cerrarModal">
             <div class="modal-informativo__ventana" wire:click.outside="cerrarModal">
                 <button class="modal-informativo__cerrar" wire:click="cerrarModal">
                     <x-iconos.cruz />
                 </button>
 
-                <h2 class="modal-informativo__titulo text-center">Reasignar Turno</h2>
+                <h2 class="modal-informativo__titulo text-center">
+                    @if ($this->esKinesio && $modoKinesio === 'corregir')
+                        Corregir fecha
+                    @elseif ($turnoSeleccionado->esAusenteAviso())
+                        Asignar nueva fecha
+                    @else
+                        Reasignar Turno
+                    @endif
+                </h2>
 
                 <div class="mb-6 flex items-center justify-between">
                     <div class="flex flex-col">
@@ -344,56 +452,114 @@ new class extends Component
                         <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
                             Ausente avisó (AA)
                         </span>
-                    @else
-                        <button
-                            class="px-4 py-2 bg-orange-400 hover:bg-red-600 text-white text-lg font-medium rounded-md transition-all duration-100 active:scale-95 hover:scale-110"
-                            wire:click="marcarAusenteAviso({{ $turnoSeleccionado->id }})"
-                            wire:confirm="¿Estás seguro de que deseas actualizar el estado del turno a 'Ausente avisó'?"
-                            wire:loading.attr="disabled">
-                            No viene pero avisó
-                        </button>
                     @endif
                 </div>
 
-                <div class="mb-8 space-y-3">
-                    <div class="modal-informativo__seccion">
-                        <label class="modal-informativo__etiqueta mb-1 block">Día de la semana</label>
-                        <select class="entrada w-full" wire:model.live="fechaSeleccionada">
-                            @foreach($fechasUnicas as $fecha)
-                                <option value="{{ $fecha }}">
-                                    {{ Carbon::parse($fecha)->translatedFormat('l d/m/Y') }}
-                                </option>
-                            @endforeach
-                        </select>
+                @if ($esChooserKinesio)
+                    <div class="mb-8 flex flex-col gap-6">
+                        <div class="flex flex-col items-center">
+                            <button
+                                type="button"
+                                class="w-full rounded-md bg-slate-600 px-4 py-3 text-center text-lg font-semibold text-white transition-all duration-100 hover:bg-slate-700 active:scale-95"
+                                wire:click="elegirModificacionSimple"
+                                wire:loading.attr="disabled">
+                                Modificación simple
+                            </button>
+                            <p class="mt-2 text-center text-sm text-gray-400">
+                                Para corregir fechas mal agendadas
+                            </p>
+                        </div>
+
+                        <div class="flex flex-col items-center">
+                            <button
+                                type="button"
+                                class="w-full rounded-md bg-orange-400 px-4 py-3 text-center text-lg font-semibold text-white transition-all duration-100 hover:bg-red-600 active:scale-95"
+                                wire:click="marcarAusenteAviso"
+                                wire:confirm="¿Estás seguro de que deseas marcar este turno como 'Ausente avisó'? Se liberará el cupo de esta fecha."
+                                wire:loading.attr="disabled">
+                                Avisó que no viene
+                            </button>
+                            <p class="mt-2 text-center text-sm text-gray-400">
+                                El paciente acaba de notificar que no va a poder asistir a este turno y desea cambiar la fecha
+                            </p>
+                        </div>
                     </div>
 
-                    <div class="modal-informativo__seccion">
-                        <label class="modal-informativo__etiqueta mb-1 block">Horario disponible</label>
-                        <select class="entrada w-full" wire:model.live="horaSeleccionada">
-                            @forelse($horasDisponiblesParaFecha as $hora)
-                                <option value="{{ $hora }}">
-                                    {{ Carbon::parse($hora)->format('H:i') }} hs
-                                </option>
-                            @empty
-                                <option value="">No hay horarios disponibles</option>
-                            @endforelse
-                        </select>
-                    </div>
-                </div>
-
-                <div class="flex gap-3">
-                    <button class="modal-informativo__accion flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 transition-all" wire:click="cerrarModal">
+                    <button class="modal-informativo__accion w-full bg-gray-100 text-gray-700 transition-all hover:bg-gray-200" wire:click="cerrarModal">
                         Cancelar
                     </button>
-                    <button
-                        class="modal-informativo__accion flex-1 transition-all {{ $this->esMismoTurno ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-emerald-600 hover:bg-emerald-700 text-white' }}"
-                        wire:click="actualizar"
-                        wire:loading.attr="disabled"
-                        @disabled($this->esMismoTurno)
-                    >
-                        Guardar Cambios
+                @elseif ($esSoloAvisoGeneral)
+                    <div class="mb-8 flex flex-col items-center">
+                        <button
+                            type="button"
+                            class="w-full rounded-md bg-orange-400 px-4 py-3 text-center text-lg font-semibold text-white transition-all duration-100 hover:bg-red-600 active:scale-95"
+                            wire:click="marcarAusenteAviso"
+                            wire:confirm="¿Estás seguro de que deseas marcar este turno como 'Ausente avisó'? Se liberará el cupo de esta fecha."
+                            wire:loading.attr="disabled">
+                            Avisó que no viene
+                        </button>
+                    </div>
+
+                    <button class="modal-informativo__accion w-full bg-gray-100 text-gray-700 transition-all hover:bg-gray-200" wire:click="cerrarModal">
+                        Cancelar
                     </button>
-                </div>
+                @elseif ($mostrarFechas)
+                    @if ($turnoSeleccionado->esAusenteAviso())
+                        <p class="mb-4 text-center text-sm text-gray-400">
+                            @if ($avisoRecienMarcado)
+                                El cupo de esta fecha ya quedó libre. Podés asignar otra ahora o cerrar y hacerlo más tarde.
+                            @else
+                                El cupo de esta fecha está libre. Podés asignar otra ahora o cerrar y hacerlo más tarde.
+                            @endif
+                        </p>
+                    @endif
+
+                    <div class="mb-8 space-y-3">
+                        <div class="modal-informativo__seccion">
+                            <label class="modal-informativo__etiqueta mb-1 block">Día de la semana</label>
+                            <select class="entrada w-full" wire:model.live="fechaSeleccionada">
+                                @foreach($fechasUnicas as $fecha)
+                                    <option value="{{ $fecha }}">
+                                        {{ Carbon::parse($fecha)->translatedFormat('l d/m/Y') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="modal-informativo__seccion">
+                            <label class="modal-informativo__etiqueta mb-1 block">Horario disponible</label>
+                            <select class="entrada w-full" wire:model.live="horaSeleccionada">
+                                @forelse($horasDisponiblesParaFecha as $hora)
+                                    <option value="{{ $hora }}">
+                                        {{ Carbon::parse($hora)->format('H:i') }} hs
+                                    </option>
+                                @empty
+                                    <option value="">No hay horarios disponibles</option>
+                                @endforelse
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        @if ($this->esKinesio && $modoKinesio === 'corregir' && !$turnoSeleccionado->esReprogramado())
+                            <button class="modal-informativo__accion flex-1 bg-gray-100 text-gray-700 transition-all hover:bg-gray-200" wire:click="volverChooserKinesio">
+                                Volver
+                            </button>
+                        @else
+                            <button class="modal-informativo__accion flex-1 bg-gray-100 text-gray-700 transition-all hover:bg-gray-200" wire:click="cerrarModal">
+                                {{ $turnoSeleccionado->esAusenteAviso() ? 'Cerrar' : 'Cancelar' }}
+                            </button>
+                        @endif
+                        <button
+                            class="modal-informativo__accion flex-1 transition-all {{ $this->esMismoTurno ? 'bg-gray-400 cursor-not-allowed opacity-50' : 'bg-emerald-600 hover:bg-emerald-700 text-white' }}"
+                            wire:click="actualizar"
+                            wire:loading.attr="disabled"
+                            @disabled($this->esMismoTurno)
+                        >
+                            Guardar Cambios
+                        </button>
+                    </div>
+                @endif
             </div>
         </div>
     @endif

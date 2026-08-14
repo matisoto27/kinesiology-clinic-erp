@@ -89,18 +89,22 @@ class TurnoService
             throw new ReglaNegocioException('No se puede reprogramar un turno donde el paciente ya ha asistido.');
         }
 
-        return DB::transaction(function () use ($turnoOriginal, $nuevaFechaHora) {
-            $esGeneral = $turnoOriginal->actividadPaciente->actividad->esActividadGeneral();
+        if (!$turnoOriginal->esAusenteAviso()) {
+            throw new ReglaNegocioException('El turno debe marcarse como Ausente avisó antes de asignar una nueva fecha.');
+        }
 
-            // Para turnos de kinesiología no se modifica el estado del turno original.
-            if ($esGeneral && !$turnoOriginal->esAusenteAviso()) {
-                $turnoOriginal->update(['estado' => 'Ausente avisó']);
+        return DB::transaction(function () use ($turnoOriginal, $nuevaFechaHora) {
+            $turno = Turno::lockForUpdate()->findOrFail($turnoOriginal->id);
+            $turno->load('turnoRecuperacion');
+
+            if ($turno->esReprogramado() || $turno->turnoRecuperacion) {
+                throw new ReglaNegocioException('Este turno ya fue reprogramado.');
             }
 
             return Turno::create([
-                'id_act_pac' => $turnoOriginal->id_act_pac,
+                'id_act_pac' => $turno->id_act_pac,
                 'fecha_hora' => $nuevaFechaHora,
-                'id_turno_original' => $turnoOriginal->id,
+                'id_turno_original' => $turno->id,
             ]);
         });
     }

@@ -30,8 +30,7 @@ class Turno extends Model
     protected function estado(): Attribute
     {
         // SALIDAS:
-        // Actividades de tipo general: Ausente - Ausente avisó - Presente - Presente recupera
-        // Actividades de tipo kinesiología: Ausente - Presente
+        // Ausente - Ausente avisó - Presente - Presente recupera
 
         return Attribute::make(
             get: function (string $valor) {
@@ -55,12 +54,17 @@ class Turno extends Model
     {
         return Attribute::make(
             get: function () {
-                $fechaReferencia = $this->id_turno_original !== null
-                    ? $this->turnoOriginal?->fecha_hora
-                    : $this->fecha_hora;
+                $fechaReferencia = $this->fecha_hora;
 
-                if ($fechaReferencia === null) {
-                    return null;
+                if ($this->id_turno_original !== null) {
+                    $fechaOriginal = $this->turnoOriginal?->fecha_hora
+                        ?? self::query()->where('id', $this->id_turno_original)->value('fecha_hora');
+
+                    if ($fechaOriginal === null) {
+                        return null;
+                    }
+
+                    $fechaReferencia = $fechaOriginal;
                 }
 
                 return self::query()
@@ -116,7 +120,7 @@ class Turno extends Model
             return $this->esAusenteAviso() || $this->fecha_hora->isFuture();
         }
 
-        // Los turnos de kinesiología siempre pueden reprogramarse, salvo que este turno en particular ya haya sido reemplazado por otro.
+        // Kinesio: el sustituido no se edita; el vigente (original o recupero) sí, para corregir fecha.
         return !$this->turnoRecuperacion;
     }
 
