@@ -15,21 +15,13 @@ new class extends Component
     public string $filtroMetodo = 'todos';
     public string $filtroTipo = 'todos';
 
-    public function updatedFiltroMetodo($value)
+    public function updatedFiltroMetodo()
     {
-        if ($value === 'transferencia') {
-            $this->filtroTipo = 'ingreso';
-        }
-
         $this->resetPage();
     }
 
-    public function updatedFiltroTipo($value)
+    public function updatedFiltroTipo()
     {
-        if ($value === 'egreso') {
-            $this->filtroMetodo = 'efectivo';
-        }
-
         $this->resetPage();
     }
 
@@ -48,7 +40,7 @@ new class extends Component
             ]);
 
             if ($this->filtroMetodo !== 'todos') {
-                $consulta->where('metodo', $this->filtroMetodo);
+                $consulta->where('metodo', $this->mapearMetodo($this->filtroMetodo));
             }
 
             $ingresos = $consulta
@@ -61,8 +53,14 @@ new class extends Component
                 });
         }
 
-        if ($this->filtroMetodo !== 'transferencia' && ($this->filtroTipo === 'todos' || $this->filtroTipo === 'egreso')) {
-            $egresos = Egreso::with('profesional')
+        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'egreso') {
+            $consultaEgresos = Egreso::with('profesional');
+
+            if ($this->filtroMetodo !== 'todos') {
+                $consultaEgresos->where('metodo', $this->mapearMetodo($this->filtroMetodo));
+            }
+
+            $egresos = $consultaEgresos
                 ->latest()
                 ->take(500)
                 ->get()
@@ -100,6 +98,11 @@ new class extends Component
     {
         return Caja::value('saldo_transferencia') ?? 0;
     }
+
+    private function mapearMetodo(string $filtro): string
+    {
+        return $filtro === 'transferencia' ? 'Transferencia' : 'Efectivo';
+    }
 };
 ?>
 
@@ -130,7 +133,6 @@ new class extends Component
             <select
                 id="filtro-metodo"
                 class="entrada"
-                @disabled($filtroTipo === 'egreso')
                 wire:model.live="filtroMetodo"
             >
                 <option value="todos">Todos los métodos</option>
@@ -144,7 +146,6 @@ new class extends Component
             <select
                 id="filtro-tipo"
                 class="entrada"
-                @disabled($filtroMetodo === 'transferencia')
                 wire:model.live="filtroTipo"
             >
                 <option value="todos">Todos los movimientos</option>
@@ -161,9 +162,9 @@ new class extends Component
         <thead>
             <tr class="tabla-listado__cabecera">
                 <th>Fecha</th>
-                <th>Tipo</th>
                 <th>Profesional que lo registró</th>
                 <th>Concepto / Detalle</th>
+                <th>Tipo</th>
                 <th>Monto</th>
             </tr>
         </thead>
@@ -173,17 +174,6 @@ new class extends Component
             @forelse($movimientos as $mov)
                 <tr class="tabla-listado__fila group">
                     <td>{{ $mov->fecha->format('d/m/Y H:i') }}</td>
-                    <td>
-                        @if($mov->tipo === 'ingreso')
-                            <span class="badge bg-emerald-500">
-                                {{ $mov->metodo === 'Efectivo' ? 'Ingreso de Caja' : 'Transferencia recibida' }}
-                            </span>
-                        @else
-                            <span class="badge bg-red-500">
-                                Egreso de Caja
-                            </span>
-                        @endif
-                    </td>
                     <td>{{ $mov->profesional->nombre }} {{ $mov->profesional->apellido}}</td>
                     <td>
                         @if($mov->tipo === 'ingreso')
@@ -219,6 +209,17 @@ new class extends Component
                         @else
                             <span class="text-gray-300 italic group-hover:text-emerald-900">
                                 {{ $mov->motivo }}
+                            </span>
+                        @endif
+                    </td>
+                    <td>
+                        @if($mov->tipo === 'ingreso')
+                            <span class="badge bg-emerald-500">
+                                {{ $mov->metodo === 'Efectivo' ? 'Ingreso de Caja' : 'Transferencia recibida' }}
+                            </span>
+                        @else
+                            <span class="badge bg-red-500">
+                                {{ $mov->metodo === 'Efectivo' ? 'Egreso de Caja' : 'Transferencia enviada' }}
                             </span>
                         @endif
                     </td>

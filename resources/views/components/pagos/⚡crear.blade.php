@@ -1,6 +1,5 @@
 <?php
 
-use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Caja;
 use App\Models\Pago;
@@ -19,26 +18,25 @@ new class extends Component
     #[Locked]
     public Collection $profesionales;
 
-    public string $filtroActividad = '';
     public string $busquedaInscripcion = '';
     public string $idActPac = '';
     public string $idProfesional = '';
+    public string $metodo = '';
     public string $montoStr = '';
     public $monto;
-    public string $metodo = '';
 
     protected function rules()
     {
         return [
             'idActPac' => 'required|exists:actividades_pacientes,id',
             'idProfesional' => 'required|exists:profesionales,id',
+            'metodo' => 'required|in:Efectivo,Transferencia',
             'monto' => [
                 'required',
                 'numeric',
                 'gt:0',
                 'lte:' . $this->deudaActual,
             ],
-            'metodo' => 'required|in:Efectivo,Transferencia',
         ];
     }
 
@@ -92,19 +90,6 @@ new class extends Component
         $this->resetValidation(['monto', 'idActPac']);
     }
 
-    public function updatedFiltroActividad(): void
-    {
-        if ($this->idActPac === '') {
-            $this->busquedaInscripcion = '';
-
-            return;
-        }
-
-        if (!$this->pendientesDePago->contains('id', (int) $this->idActPac)) {
-            $this->limpiarInscripcion();
-        }
-    }
-
     public function updatedBusquedaInscripcion(): void
     {
         $this->resetValidation('idActPac');
@@ -126,21 +111,6 @@ new class extends Component
             ->with(['actividad', 'pacienteRegular', 'pacienteCasual', 'primerTurno'])
             ->withSum('pagos', 'monto')
             ->sinPagar()
-            ->when($this->filtroActividad === 'gimnasio', fn ($consulta) => $consulta
-                ->where(function ($sc) {
-                    $sc->where('id_actividad', Actividad::GIMNASIO)
-                        ->orWhere(fn ($sc) => $sc->dualCompleto());
-                })
-            )
-            ->when($this->filtroActividad === 'pilates', fn ($consulta) => $consulta
-                ->where(function ($sc) {
-                    $sc->where('id_actividad', Actividad::PILATES)
-                        ->orWhere(fn ($sc) => $sc->dualCompleto());
-                })
-            )
-            ->when($this->filtroActividad === 'kinesiologia', fn ($consulta) => $consulta
-                ->whereHas('actividad', fn ($subconsulta) => $subconsulta
-                    ->where('id_tipo_actividad', Actividad::TIPO_KINESIOLOGIA)))
             ->get();
 
         return ActividadPaciente::filtrarProximasPagables($inscripciones)
@@ -299,7 +269,7 @@ new class extends Component
 };
 ?>
 
-<div class="contenedor max-w-5xl">
+<div class="contenedor max-w-xl">
     <form class="formulario" wire:submit.prevent="almacenar">
         <h2 class="titulo-formulario">Pago de una actividad</h2>
 
@@ -308,14 +278,27 @@ new class extends Component
 
         <div class="fila-formulario">
             <div class="columna-campo flex-1">
-                <label for="filtro-actividad" class="etiqueta-formulario">Filtrar por Actividad</label>
-                <select id="filtro-actividad" class="entrada mb-4" wire:model.live="filtroActividad">
-                    <option value="">Todas</option>
-                    <option value="gimnasio">Gimnasio</option>
-                    <option value="pilates">Pilates</option>
-                    <option value="kinesiologia">Kinesiología</option>
+                <label for="profesional-select" class="etiqueta-formulario">Profesional que lo registra</label>
+                <select
+                    id="profesional-select"
+                    @class([
+                        'entrada',
+                        'border-red-500 border-2' => $errors->has('idProfesional'),
+                    ])
+                    wire:model.live="idProfesional"
+                    required
+                >
+                    <option value="" disabled @selected($idProfesional === '')>Seleccione un profesional</option>
+                    @foreach($profesionales as $profesional)
+                        <option value="{{ $profesional->id }}">{{ $profesional->apellido }}, {{ $profesional->nombre }}</option>
+                    @endforeach
                 </select>
+                @error('idProfesional') <span class="text-red-500 text-sm italic">{{ $message }}</span> @enderror
+            </div>
+        </div>
 
+        <div class="fila-formulario pb-4">
+            <div class="columna-campo flex-1">
                 <div class="flex items-center gap-1">
                     <label for="act-pac-buscar" class="etiqueta-formulario">Actividad contratada</label>
                     @if($idActPac !== '')
@@ -381,27 +364,28 @@ new class extends Component
                     </div>
                 @endif
             </div>
-
-            <div class="columna-campo flex-1">
-                <label for="profesional-select" class="etiqueta-formulario">Profesional que lo registra</label>
-                <select
-                    id="profesional-select"
-                    @class([
-                        'entrada',
-                        'border-red-500 border-2' => $errors->has('idProfesional'),
-                    ])
-                    wire:model.live="idProfesional"
-                    required
-                >
-                    <option value="" disabled @selected($idProfesional === '')>Seleccione un profesional</option>
-                    @foreach($profesionales as $profesional)
-                        <option value="{{ $profesional->id }}">{{ $profesional->apellido }}, {{ $profesional->nombre }}</option>
-                    @endforeach
-                </select>
-                @error('idProfesional') <span class="text-red-500 text-sm italic">{{ $message }}</span> @enderror
-            </div>
         </div>
 
+        <div class="fila-formulario pb-4">
+            <div class="columna-campo flex-1">
+                <label for="metodo-select" class="etiqueta-formulario">Método de pago</label>
+                <select
+                    id="metodo-select"
+                    @class([
+                        'entrada',
+                        'border-red-500 border-2' => $errors->has('metodo'),
+                    ])
+                    wire:model.live="metodo"
+                    required
+                >
+                    <option value="" disabled @selected($metodo === '')>Seleccione un método</option>
+                    <option value="Efectivo">Efectivo</option>
+                    <option value="Transferencia">Transferencia</option>
+                </select>
+                @error('metodo') <span class="text-red-500 text-sm italic">{{ $message }}</span> @enderror
+            </div>
+        </div>
+        
         <div class="fila-formulario pb-4">
             <div class="columna-campo flex-1">
                 <label for="monto-input" class="etiqueta-formulario">Monto abonado</label>
@@ -419,24 +403,6 @@ new class extends Component
                     required
                 >
                 @error('monto') <p class="alerta">{{ $message }}</p> @enderror
-            </div>
-
-            <div class="columna-campo flex-1">
-                <label for="metodo-select" class="etiqueta-formulario">Método de pago</label>
-                <select
-                    id="metodo-select"
-                    @class([
-                        'entrada',
-                        'border-red-500 border-2' => $errors->has('metodo'),
-                    ])
-                    wire:model.live="metodo"
-                    required
-                >
-                    <option value="" disabled @selected($metodo === '')>Seleccione un método</option>
-                    <option value="Efectivo">Efectivo</option>
-                    <option value="Transferencia">Transferencia</option>
-                </select>
-                @error('metodo') <span class="text-red-500 text-sm italic">{{ $message }}</span> @enderror
             </div>
         </div>
 
