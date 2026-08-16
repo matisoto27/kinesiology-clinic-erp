@@ -21,7 +21,6 @@ class Profesional extends Model
         'nombre',
         'apellido',
         'valor_por_hora',
-        'codigo_personal',
         'activo' // Temporalmente deja de estar disponible
     ];
 

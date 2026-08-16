@@ -90,7 +90,6 @@ class MovimientosTest extends TestCase
             'dni' => (string) random_int(10000000, 99999999),
             'nombre' => 'Ana',
             'apellido' => 'García',
-            'codigo_personal' => 'AG001',
             'activo' => true,
         ]);
     }

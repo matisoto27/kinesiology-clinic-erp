@@ -16,13 +16,11 @@ new class extends Component
     public $total_a_cobrar = 0;
     public $fecha_trabajada = '';
     public $id_profesional = '';
-    public $codigo_personal = '';
 
     protected $rules = [
         'cantidad_horas' => 'required|integer|min:1|max:8',
         'fecha_trabajada' => 'required|date',
         'id_profesional' => 'required|exists:profesionales,id',
-        'codigo_personal' => 'required|numeric|digits:5'
     ];
 
     public function mount()
@@ -40,12 +38,10 @@ new class extends Component
 
         DB::beginTransaction();
         try {
-            $profesional = Profesional::where('id', $this->id_profesional)
-                ->where('codigo_personal', $this->codigo_personal)
-                ->first();
+            $profesional = Profesional::find($this->id_profesional);
 
             if (!$profesional) {
-                $this->addError('codigo_personal', 'El código ingresado no coincide con el profesional seleccionado.');
+                $this->addError('id_profesional', 'El profesional seleccionado no existe.');
                 return;
             }
 
@@ -63,7 +59,7 @@ new class extends Component
             DB::commit();
             session()->flash('exito', 'Horas registradas con éxito. Monto a cobrar: $' . number_format($this->total_a_cobrar, 2));
 
-            $this->reset(['cantidad_horas', 'total_a_cobrar', 'id_profesional', 'codigo_personal']);
+            $this->reset(['cantidad_horas', 'total_a_cobrar', 'id_profesional']);
             $this->fecha_trabajada = Carbon::now()->toDateString();
 
         } catch (\Throwable $ex) {
@@ -104,18 +100,6 @@ new class extends Component
                     @endforeach
                 </select>
                 @error('id_profesional') <span class="text-red-500 italic">{{ $message }}</span> @enderror
-            </div>
-
-            <div class="columna-campo flex-1">
-                <label for="codigo_personal" class="etiqueta-formulario">Código Personal</label>
-                <input
-                    id="codigo_personal"
-                    type="password"
-                    maxlength="5"
-                    placeholder="Ingrese su código personal"
-                    class="entrada @error('codigo_personal') border-red-500 @enderror"
-                    wire:model="codigo_personal">
-                @error('codigo_personal') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
         </div>
 

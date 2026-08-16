@@ -9,7 +9,7 @@ new class extends Component
 {
     public $profesional;
 
-    public $dni, $nombre, $apellido, $codigo_personal, $activo;
+    public $dni, $nombre, $apellido, $activo;
     public $valorPorHoraStr = '';
 
     public function mount(Profesional $profesional)
@@ -20,7 +20,6 @@ new class extends Component
         $this->nombre = $profesional->nombre;
         $this->apellido = $profesional->apellido;
         $this->valorPorHoraStr = number_format($profesional->valor_por_hora, 0, '', '.');
-        $this->codigo_personal = $profesional->codigo_personal;
         $this->activo = $profesional->activo ? 1 : 0;
     }
 
@@ -30,7 +29,6 @@ new class extends Component
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'valorPorHoraStr' => 'required',
-            'codigo_personal' => 'required|numeric|digits:5',
             'activo' => 'required|boolean'
         ]);
 
@@ -41,7 +39,6 @@ new class extends Component
             $this->profesional->update([
                 'nombre' => trim($this->nombre),
                 'apellido' => trim($this->apellido),
-                'codigo_personal' => $this->codigo_personal,
                 'valor_por_hora' => $valorPorHora,
                 'activo' => $this->activo
             ]);
@@ -81,11 +78,6 @@ new class extends Component
             <div class="columna-campo flex-1">
                 <label for="input-dni" class="etiqueta-formulario">DNI</label>
                 <input id="input-dni" type="text" class="entrada" wire:model="dni" disabled>
-            </div>
-            <div class="columna-campo flex-1">
-                <label for="input-codigo" class="etiqueta-formulario">Código personal (5 dígitos)</label>
-                <input id="input-codigo" type="text" maxlength="5" class="entrada" wire:model="codigo_personal">
-                @error('codigo_personal') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
         </div>
 

@@ -85,7 +85,6 @@ new class extends Component
                 <th>Nombre</th>
                 <th>Apellido</th>
                 <th>Valor por hora</th>
-                <th>Código personal</th>
                 <th>Estado</th>
                 <th>Acciones</th>
             </tr>
@@ -97,7 +96,6 @@ new class extends Component
                     <td>{{ $prof->nombre }}</td>
                     <td>{{ $prof->apellido }}</td>
                     <td>${{ number_format($prof->valor_por_hora, 2, ',', '.') }}</td>
-                    <td>{{ $prof->codigo_personal }}</td>
                     <td>
                         <span class="px-3 py-1 inline-flex items-center {{ $prof->activo ? 'bg-emerald-500' : 'bg-amber-500' }} text-white text-sm font-semibold rounded">
                             {{ $prof->activo ? 'Activo' : 'Inactivo' }}

@@ -10,13 +10,11 @@ new class extends Component
     public $dni;
     public $nombre;
     public $apellido;
-    public $codigo_personal;
 
     protected $rules = [
         'dni' => 'required|unique:profesionales,dni|numeric|digits_between:7,8',
         'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
         'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
-        'codigo_personal' => 'required|numeric|digits:5'
     ];
 
     protected $messages = [
@@ -26,8 +24,6 @@ new class extends Component
         'apellido.required' => 'El apellido es obligatorio.',
         'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
         'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
-        'codigo_personal.required' => 'El código personal es obligatorio.',
-        'codigo_personal.digits' => 'El código debe ser de exactamente 5 dígitos.'
     ];
 
     public function almacenar()
@@ -40,7 +36,6 @@ new class extends Component
                 'dni' => $this->dni,
                 'nombre' => $this->nombre,
                 'apellido' => $this->apellido,
-                'codigo_personal' => $this->codigo_personal
             ]);
             DB::commit();
 
@@ -72,18 +67,6 @@ new class extends Component
                     class="entrada @error('dni') border-red-500 @enderror"
                     wire:model="dni">
                 @error('dni') <span class="text-red-500 italic">{{ $message }}</span> @enderror
-            </div>
-
-            <div class="columna-campo flex-1">
-                <label for="codigo_personal" class="etiqueta-formulario">Código Personal (5 dígitos)</label>
-                <input
-                    id="codigo_personal"
-                    type="password"
-                    maxlength="5"
-                    placeholder="Ejemplo: 12345"
-                    class="entrada @error('codigo_personal') border-red-500 @enderror"
-                    wire:model="codigo_personal">
-                @error('codigo_personal') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
         </div>
 
