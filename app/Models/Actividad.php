@@ -245,6 +245,49 @@ class Actividad extends Model
         return $ocupados < $this->cupoMaximoEstructural();
     }
 
+    /**
+     * @return list<array{dia_semana: string, hora: string, libres: int, cupo: int}>
+     */
+    public function slotsEstructurales(): array
+    {
+        if (! $this->esActividadGeneral()) {
+            return [];
+        }
+
+        $cupo = $this->cupoMaximoEstructural();
+        $horasInicio = $this->obtenerHorasDeInicio()
+            ->map(fn ($hora) => substr((string) $hora, 0, 5))
+            ->values();
+
+        $ocupacion = HorarioPacienteFijo::query()
+            ->where('id_actividad', $this->id)
+            ->select('dia_semana', 'hora_inicio', DB::raw('count(*) as cantidad'))
+            ->groupBy('dia_semana', 'hora_inicio')
+            ->get()
+            ->mapWithKeys(fn ($fila) => [
+                ((int) $fila->dia_semana).'_'.substr((string) $fila->hora_inicio, 0, 5) => (int) $fila->cantidad,
+            ]);
+
+        $slots = [];
+
+        foreach (self::diasSemanaDisponibles() as $dia) {
+            $diaInt = self::diaSemanaAEntero($dia);
+
+            foreach ($horasInicio as $hora) {
+                $ocupados = $ocupacion[$diaInt.'_'.$hora] ?? 0;
+
+                $slots[] = [
+                    'dia_semana' => $dia,
+                    'hora' => $hora,
+                    'libres' => max(0, $cupo - $ocupados),
+                    'cupo' => $cupo,
+                ];
+            }
+        }
+
+        return $slots;
+    }
+
     public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin, bool $esPacienteRegular = true): array
     {
         $idActividad = (int) $this->id;
