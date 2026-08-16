@@ -240,7 +240,10 @@ new class extends Component
             @forelse($this->inscripciones as $actPac)
                 @php
                     $par = $actPac->esDualCompleto() ? $actPac->actPacDual : null;
-                    $cobro = ($par && (float) $actPac->total_a_pagar <= 0) ? $par : $actPac;
+                    $cobro = collect([$actPac, $par])
+                        ->filter()
+                        ->first(fn ($inscripcion) => (float) $inscripcion->total_a_pagar > 0)
+                        ?? $actPac;
                     $cantidad = (int) $actPac->cant_sesiones + (int) ($par?->cant_sesiones ?? 0);
                     $esGeneral = $actPac->actividad->esActividadGeneral();
                     $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
