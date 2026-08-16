@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
+use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use Carbon\Carbon;
 use Exception;
@@ -83,7 +84,7 @@ class TurnoService
         }
     }
 
-    public function reprogramar(Turno $turnoOriginal, Carbon $nuevaFechaHora): Turno
+    public function reprogramar(Turno $turnoOriginal, Carbon $nuevaFechaHora, ?int $idActividadDestino = null): Turno
     {
         if (str_contains($turnoOriginal->estado, 'Presente')) {
             throw new ReglaNegocioException('No se puede reprogramar un turno donde el paciente ya ha asistido.');
@@ -93,19 +94,85 @@ class TurnoService
             throw new ReglaNegocioException('El turno debe marcarse como Ausente avisó antes de asignar una nueva fecha.');
         }
 
-        return DB::transaction(function () use ($turnoOriginal, $nuevaFechaHora) {
+        return DB::transaction(function () use ($turnoOriginal, $nuevaFechaHora, $idActividadDestino) {
             $turno = Turno::lockForUpdate()->findOrFail($turnoOriginal->id);
-            $turno->load('turnoRecuperacion');
+            $turno->load([
+                'turnoRecuperacion',
+                'actividadPaciente.actividad',
+                'actividadPaciente.actPacDual.actividad',
+            ]);
 
             if ($turno->esReprogramado() || $turno->turnoRecuperacion) {
                 throw new ReglaNegocioException('Este turno ya fue reprogramado.');
             }
 
+            $inscripcionOrigen = $turno->actividadPaciente;
+            $inscripcionDestino = $this->resolverInscripcionDestino(
+                $inscripcionOrigen,
+                $idActividadDestino ?? (int) $inscripcionOrigen->id_actividad
+            );
+
+            if ((int) $inscripcionDestino->id !== (int) $inscripcionOrigen->id) {
+                ActividadPaciente::lockForUpdate()->findOrFail($inscripcionDestino->id);
+            }
+
+            $this->asegurarSlotDisponible(
+                $inscripcionDestino->actividad,
+                $inscripcionOrigen->id_paciente,
+                $nuevaFechaHora
+            );
+
             return Turno::create([
-                'id_act_pac' => $turno->id_act_pac,
+                'id_act_pac' => $inscripcionDestino->id,
                 'fecha_hora' => $nuevaFechaHora,
                 'id_turno_original' => $turno->id,
             ]);
         });
+    }
+
+    private function resolverInscripcionDestino(
+        ActividadPaciente $origen,
+        int $idActividadDestino
+    ): ActividadPaciente {
+        if ((int) $origen->id_actividad === $idActividadDestino) {
+            return $origen;
+        }
+
+        $generales = [Actividad::GIMNASIO, Actividad::PILATES];
+
+        if (
+            !in_array((int) $origen->id_actividad, $generales, true)
+            || !in_array($idActividadDestino, $generales, true)
+        ) {
+            throw new ReglaNegocioException('Solo se puede cambiar un turno entre Gimnasio y Pilates.');
+        }
+
+        if (!$origen->esDualOperativo()) {
+            throw new ReglaNegocioException('Solo se puede cambiar de actividad en una inscripción dual activa.');
+        }
+
+        $par = $origen->actPacDual;
+
+        if ((int) $par->id_actividad !== $idActividadDestino) {
+            throw new ReglaNegocioException('La actividad destino no corresponde al par dual.');
+        }
+
+        return $par;
+    }
+
+    private function asegurarSlotDisponible(
+        Actividad $actividad,
+        ?int $idPaciente,
+        Carbon $nuevaFechaHora
+    ): void {
+        $disponibles = array_flip($actividad->turnosDisponibles(
+            $idPaciente,
+            $nuevaFechaHora->copy()->startOfDay(),
+            $nuevaFechaHora->copy()->endOfDay()
+        ));
+
+        if (!isset($disponibles[$nuevaFechaHora->toDateTimeString()])) {
+            throw new ReglaNegocioException('El horario seleccionado ya no tiene cupo disponible.');
+        }
     }
 }

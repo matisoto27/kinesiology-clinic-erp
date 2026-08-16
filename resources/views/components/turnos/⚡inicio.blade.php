@@ -47,6 +47,8 @@ new class extends Component
 
     public bool $avisoRecienMarcado = false;
 
+    public int $idActividadDestino = 0;
+
     public function updatingConsultaPaciente(): void
     {
         $this->resetPage();
@@ -100,8 +102,9 @@ new class extends Component
 
         $original = $this->turnoSeleccionado->fecha_hora->format('Y-m-d H:i:s');
         $nueva = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada)->format('Y-m-d H:i:s');
+        $idActividadOrigen = (int) $this->turnoSeleccionado->actividadPaciente->id_actividad;
 
-        return $original === $nueva;
+        return $original === $nueva && (int) $this->idActividadDestino === $idActividadOrigen;
     }
 
     #[Computed]
@@ -114,40 +117,30 @@ new class extends Component
         return !$this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral();
     }
 
+    #[Computed]
+    public function puedeCruzarActividad(): bool
+    {
+        $inscripcion = $this->turnoSeleccionado?->actividadPaciente;
+
+        if (!$inscripcion?->actividad?->esActividadGeneral()) {
+            return false;
+        }
+
+        return $inscripcion->esDualOperativo();
+    }
+
     public function abrirModal(int $id)
     {
-        $this->turnoSeleccionado = Turno::with(['actividadPaciente.actividad', 'actividadPaciente.pacienteRegular', 'actividadPaciente.pacienteCasual'])->findOrFail($id);
-        $fechaHora = $this->turnoSeleccionado->fecha_hora;
+        $this->turnoSeleccionado = Turno::with([
+            'actividadPaciente.actividad',
+            'actividadPaciente.actPacDual.actividad',
+            'actividadPaciente.pacienteRegular',
+            'actividadPaciente.pacienteCasual',
+        ])->findOrFail($id);
 
         $actividad = $this->turnoSeleccionado->actividadPaciente->actividad;
-        $idPaciente = $this->turnoSeleccionado->actividadPaciente->id_paciente;
-        $comienzo = $fechaHora->copy()->startOfWeek()->subWeek()->startOfDay();
-        $fin = $fechaHora->copy()->startOfWeek()->addWeek()->addDays(4)->endOfDay();
-
-        $this->turnosTotalesDisponibles = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin))
-            ->push($fechaHora->format('Y-m-d H:i:s'))
-            ->sort()
-            ->values();
-
-        $diasOcupadosInscripcion = $this->turnoSeleccionado->actividadPaciente->turnos()
-            ->whereDoesntHave('turnoRecuperacion')
-            ->where('estado', '!=', 'Ausente avisó')
-            ->whereBetween('fecha_hora', [$comienzo, $fin])
-            ->where('id', '!=', $this->turnoSeleccionado->id)
-            ->pluck('fecha_hora')
-            ->map(fn($fecha) => $fecha->format('Y-m-d'))
-            ->unique();
-
-        $this->fechasUnicas = $this->turnosTotalesDisponibles
-            ->map(fn($t) => substr($t, 0, 10))
-            ->unique()
-            ->diff($diasOcupadosInscripcion)
-            ->values()
-            ->toArray();
-
-        $this->fechaSeleccionada = $fechaHora->format('Y-m-d');
-        $this->obtenerHorasParaFecha($this->fechaSeleccionada);
-        $this->horaSeleccionada = $fechaHora->format('H:i:s');
+        $this->idActividadDestino = (int) $actividad->id;
+        $this->cargarDisponibilidad($this->idActividadDestino);
 
         $this->avisoRecienMarcado = false;
 
@@ -189,12 +182,14 @@ new class extends Component
 
                 $this->turnoSeleccionado = $turno->fresh([
                     'actividadPaciente.actividad',
+                    'actividadPaciente.actPacDual.actividad',
                     'actividadPaciente.pacienteRegular',
                     'actividadPaciente.pacienteCasual',
                 ]);
             });
 
             $this->avisoRecienMarcado = true;
+            $this->cargarDisponibilidad($this->idActividadDestino);
 
             if ($this->esKinesio) {
                 $this->modoKinesio = 'aviso';
@@ -215,17 +210,84 @@ new class extends Component
     public function updatedFechaSeleccionada($valor)
     {
         $this->obtenerHorasParaFecha($valor);
-        $this->horaSeleccionada = $this->horasDisponiblesParaFecha[0];
+        $this->horaSeleccionada = $this->horasDisponiblesParaFecha[0] ?? '';
+    }
+
+    public function updatedIdActividadDestino(): void
+    {
+        if (!$this->turnoSeleccionado) {
+            return;
+        }
+
+        $this->cargarDisponibilidad((int) $this->idActividadDestino);
     }
 
     public function obtenerHorasParaFecha($fecha)
     {
-        $this->horasDisponiblesParaFecha = $this->turnosTotalesDisponibles
-            ->filter(fn($t) => str_starts_with($t, $fecha))
+        $this->horasDisponiblesParaFecha = collect($this->turnosTotalesDisponibles)
+            ->filter(fn($t) => $fecha !== '' && str_starts_with($t, $fecha))
             ->map(fn($t) => substr($t, 11, 8))
             ->sort()
             ->values()
             ->toArray();
+    }
+
+    private function cargarDisponibilidad(int $idActividad): void
+    {
+        $turno = $this->turnoSeleccionado;
+        $inscripcion = $turno->actividadPaciente;
+        $fechaHora = $turno->fecha_hora;
+        $actividad = Actividad::findOrFail($idActividad);
+        $idPaciente = $inscripcion->id_paciente;
+        $comienzo = $fechaHora->copy()->startOfWeek()->subWeek()->startOfDay();
+        $fin = $fechaHora->copy()->startOfWeek()->addWeek()->addDays(4)->endOfDay();
+
+        $slots = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin));
+
+        if ((int) $inscripcion->id_actividad === $idActividad) {
+            $slots->push($fechaHora->format('Y-m-d H:i:s'));
+        }
+
+        $this->turnosTotalesDisponibles = $slots->unique()->sort()->values();
+
+        $inscripcionCupo = (int) $inscripcion->id_actividad === $idActividad
+            ? $inscripcion
+            : $inscripcion->actPacDual;
+
+        $diasOcupados = collect();
+
+        if ($inscripcionCupo) {
+            $diasOcupados = $inscripcionCupo->turnos()
+                ->whereDoesntHave('turnoRecuperacion')
+                ->where('estado', '!=', 'Ausente avisó')
+                ->whereBetween('fecha_hora', [$comienzo, $fin])
+                ->when(
+                    (int) $inscripcionCupo->id === (int) $turno->id_act_pac,
+                    fn ($q) => $q->where('id', '!=', $turno->id)
+                )
+                ->pluck('fecha_hora')
+                ->map(fn ($fecha) => $fecha->format('Y-m-d'))
+                ->unique();
+        }
+
+        $this->fechasUnicas = $this->turnosTotalesDisponibles
+            ->map(fn ($t) => substr($t, 0, 10))
+            ->unique()
+            ->diff($diasOcupados)
+            ->values()
+            ->toArray();
+
+        $fechaActual = $fechaHora->format('Y-m-d');
+        $this->fechaSeleccionada = in_array($fechaActual, $this->fechasUnicas, true)
+            ? $fechaActual
+            : ($this->fechasUnicas[0] ?? '');
+
+        $this->obtenerHorasParaFecha($this->fechaSeleccionada);
+
+        $horaActual = $fechaHora->format('H:i:s');
+        $this->horaSeleccionada = in_array($horaActual, $this->horasDisponiblesParaFecha, true)
+            ? $horaActual
+            : ($this->horasDisponiblesParaFecha[0] ?? '');
     }
 
     public function elegirModificacionSimple(): void
@@ -250,6 +312,11 @@ new class extends Component
     {
         try {
             $esGeneral = $this->turnoSeleccionado->actividadPaciente->actividad->esActividadGeneral();
+
+            if ($this->fechaSeleccionada === '' || $this->horaSeleccionada === '') {
+                throw new ReglaNegocioException('Debe seleccionar un horario disponible.');
+            }
+
             $nuevaFechaHora = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada);
 
             if (!$esGeneral && $this->modoKinesio === 'corregir') {
@@ -277,7 +344,7 @@ new class extends Component
                 throw new ReglaNegocioException("Primero debe marcarse el turno como 'Ausente avisó'.");
             }
 
-            $turnoService->reprogramar($this->turnoSeleccionado, $nuevaFechaHora);
+            $turnoService->reprogramar($this->turnoSeleccionado, $nuevaFechaHora, (int) $this->idActividadDestino);
 
             $this->cerrarModal();
             session()->flash('exito', $esGeneral
@@ -307,6 +374,7 @@ new class extends Component
             'horaSeleccionada',
             'modoKinesio',
             'avisoRecienMarcado',
+            'idActividadDestino',
         ]);
     }
 };
@@ -516,6 +584,20 @@ new class extends Component
                     @endif
 
                     <div class="mb-8 space-y-3">
+                        @if ($this->puedeCruzarActividad)
+                            <div class="modal-informativo__seccion">
+                                <label class="modal-informativo__etiqueta mb-1 block">Actividad del nuevo turno</label>
+                                <select class="entrada w-full" wire:model.live="idActividadDestino">
+                                    <option value="{{ $turnoSeleccionado->actividadPaciente->id_actividad }}">
+                                        {{ $turnoSeleccionado->actividadPaciente->actividad->nombre }}
+                                    </option>
+                                    <option value="{{ $turnoSeleccionado->actividadPaciente->actPacDual->id_actividad }}">
+                                        {{ $turnoSeleccionado->actividadPaciente->actPacDual->actividad->nombre }}
+                                    </option>
+                                </select>
+                            </div>
+                        @endif
+
                         <div class="modal-informativo__seccion">
                             <label class="modal-informativo__etiqueta mb-1 block">Día de la semana</label>
                             <select class="entrada w-full" wire:model.live="fechaSeleccionada">

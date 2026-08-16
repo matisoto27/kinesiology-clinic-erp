@@ -132,6 +132,14 @@ class ActividadPaciente extends Model
             && $this->frecuencia_total_dual !== null;
     }
 
+    public function esDualOperativo(): bool
+    {
+        return $this->id_act_pac_dual !== null
+            && (int) $this->cant_sesiones > 0
+            && $this->actPacDual !== null
+            && (int) $this->actPacDual->cant_sesiones > 0;
+    }
+
     public function esPrimeraDual(): bool
     {
         return $this->esDualCompleto() && (int) $this->id < (int) $this->id_act_pac_dual;

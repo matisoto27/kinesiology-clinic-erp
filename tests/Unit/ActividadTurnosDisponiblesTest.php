@@ -76,6 +76,21 @@ class ActividadTurnosDisponiblesTest extends TestCase
         $this->assertNotContains(self::SLOT_NUEVO, $despues);
     }
 
+    public function test_reprogramar_rechaza_si_el_slot_destino_no_tiene_cupo(): void
+    {
+        Config::set('app.max_turnos_gimnasio', 1);
+
+        $gimnasio = $this->prepararActividad(Actividad::GIMNASIO);
+        $turno = $this->crearTurno($this->crearPaciente(), Actividad::GIMNASIO, 'Ausente avisó');
+
+        $this->crearTurno($this->crearPaciente(), Actividad::GIMNASIO, 'Ausente', self::SLOT_NUEVO);
+
+        $this->expectException(ReglaNegocioException::class);
+        $this->expectExceptionMessage('El horario seleccionado ya no tiene cupo disponible.');
+
+        $this->turnoService->reprogramar($turno, Carbon::parse(self::SLOT_NUEVO));
+    }
+
     public function test_paciente_recupera_fecha_original_tras_reprogramar(): void
     {
         Config::set('app.max_turnos_gimnasio', 8);
@@ -126,8 +141,12 @@ class ActividadTurnosDisponiblesTest extends TestCase
         return $actividad->fresh(['horarios']);
     }
 
-    private function crearTurno(Paciente $paciente, int $idActividad, string $estado): Turno
-    {
+    private function crearTurno(
+        Paciente $paciente,
+        int $idActividad,
+        string $estado,
+        string $fechaHora = self::SLOT_ORIGINAL
+    ): Turno {
         $actPac = ActividadPaciente::create([
             'id_actividad' => $idActividad,
             'id_paciente' => $paciente->id,
@@ -137,7 +156,7 @@ class ActividadTurnosDisponiblesTest extends TestCase
 
         return Turno::create([
             'id_act_pac' => $actPac->id,
-            'fecha_hora' => self::SLOT_ORIGINAL,
+            'fecha_hora' => $fechaHora,
             'estado' => $estado,
         ]);
     }
