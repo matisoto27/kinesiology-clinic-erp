@@ -47,7 +47,7 @@ new class extends Component
         if ($this->modo === 'mensual') {
             $this->reset(['idPacienteSeleccionado', 'nombrePacienteSeleccionado', 'busquedaPaciente', 'sugerencias']);
 
-            if ($this->idActividad && ! in_array($this->idActividad, [Actividad::GIMNASIO, Actividad::PILATES], true)) {
+            if ($this->idActividad && !in_array($this->idActividad, [Actividad::GIMNASIO, Actividad::PILATES], true)) {
                 $this->idActividad = null;
                 $this->soloEnPunto = false;
             }
@@ -111,7 +111,7 @@ new class extends Component
 
     public function copiarTurnos(): void
     {
-        if (! $this->idActividad || ! $actividad = Actividad::find($this->idActividad)) {
+        if (!$this->idActividad || !$actividad = Actividad::find($this->idActividad)) {
             session()->flash('error', 'Por favor, seleccione una actividad válida.');
 
             return;
@@ -128,7 +128,7 @@ new class extends Component
 
     private function copiarDisponibilidadMensual(Actividad $actividad): void
     {
-        if (! $actividad->esActividadGeneral()) {
+        if (!$actividad->esActividadGeneral()) {
             session()->flash('error', 'La disponibilidad mensual solo aplica a Gimnasio y Pilates.');
 
             return;

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Horario;
@@ -576,6 +577,204 @@ class HorarioPacienteFijoEdicionTest extends TestCase
         $this->assertSame(4, (int) (($gimnasio->cant_sesiones + $pilates->cant_sesiones) / 4));
     }
 
+    public function test_editar_patron_rechaza_si_un_recupero_cae_en_un_slot_nuevo(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+        Carbon::setLocale('es');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->reprogramarOriginal(
+            $inscripcion->id,
+            '2026-06-08 10:00:00',
+            '2026-06-18 10:00:00'
+        );
+
+        Carbon::setTestNow('2026-06-09 08:00:00');
+        $patronNuevo = [
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+        ];
+
+        try {
+            app(HorarioPacienteFijoService::class)->actualizar(
+                $resultado->pacienteFijo->id,
+                $patronNuevo,
+                Carbon::parse('2026-06-09 08:00:00')
+            );
+            $this->fail('Se esperaba una ReglaNegocioException por el recupero en el slot nuevo.');
+        } catch (ReglaNegocioException $ex) {
+            $this->assertStringContainsString('reprogramado', $ex->getMessage());
+            $this->assertStringContainsString('18/06 10:00', $ex->getMessage());
+        }
+
+        $this->expectException(ReglaNegocioException::class);
+        app(HorarioPacienteFijoService::class)->previsualizar(
+            $resultado->pacienteFijo->id,
+            $patronNuevo,
+            Carbon::parse('2026-06-09 08:00:00')
+        );
+    }
+
+    public function test_editar_patron_rechaza_si_un_turno_de_kine_se_solapa_con_un_slot_nuevo(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+        Carbon::setLocale('es');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $kine = ActividadPaciente::create([
+            'id_actividad' => Actividad::QUIROPRAXIA,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 1,
+            'total_a_pagar' => 0,
+        ]);
+        Turno::create([
+            'id_act_pac' => $kine->id,
+            'fecha_hora' => '2026-06-18 09:30:00',
+            'estado' => 'Ausente',
+        ]);
+
+        Carbon::setTestNow('2026-06-09 08:00:00');
+
+        $this->expectException(ReglaNegocioException::class);
+        $this->expectExceptionMessage('Quiropraxia');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-09 08:00:00')
+        );
+    }
+
+    public function test_editar_patron_permite_recupero_fuera_de_la_hora_del_slot_nuevo(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $this->reprogramarOriginal(
+            $resultado->inscripciones->first()->id,
+            '2026-06-08 10:00:00',
+            '2026-06-18 16:00:00'
+        );
+
+        Carbon::setTestNow('2026-06-09 08:00:00');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-09 08:00:00')
+        );
+
+        $this->assertTrue(
+            Turno::query()
+                ->where('id_act_pac', $resultado->inscripciones->first()->id)
+                ->where('fecha_hora', '2026-06-18 10:00:00')
+                ->whereNull('id_turno_original')
+                ->exists()
+        );
+        $this->assertTrue(
+            Turno::query()
+                ->where('fecha_hora', '2026-06-18 16:00:00')
+                ->whereNotNull('id_turno_original')
+                ->exists()
+        );
+    }
+
+    public function test_editar_patron_ignora_recupero_de_un_original_que_el_plan_va_a_borrar(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->reprogramarOriginal(
+            $inscripcion->id,
+            '2026-06-15 10:00:00',
+            '2026-06-18 10:00:00'
+        );
+
+        Carbon::setTestNow('2026-06-09 08:00:00');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-09 08:00:00')
+        );
+
+        $this->assertFalse(
+            Turno::query()->where('fecha_hora', '2026-06-15 10:00:00')->exists(),
+            'El original futuro que sale del patrón debe borrarse.'
+        );
+        $this->assertSame(
+            1,
+            Turno::query()
+                ->where('id_act_pac', $inscripcion->id)
+                ->where('fecha_hora', '2026-06-18 10:00:00')
+                ->whereNull('id_turno_original')
+                ->count()
+        );
+    }
+
     /**
      * @param  array<int, array{id_actividad: int, dia_semana: string, hora_inicio: string}>  $horarios
      */
@@ -624,6 +823,33 @@ class HorarioPacienteFijoEdicionTest extends TestCase
             'franja' => 'M',
         ]);
         $pilates->horarios()->attach($horario->id);
+    }
+
+    private function asociarHorarioAGimnasio(): void
+    {
+        $gimnasio = Actividad::findOrFail(Actividad::GIMNASIO);
+        $horario = Horario::create([
+            'hora_inicio' => '10:00:00',
+            'franja' => 'M',
+        ]);
+        $gimnasio->horarios()->attach($horario->id);
+    }
+
+    private function reprogramarOriginal(int $idActPac, string $fechaOriginal, string $fechaRecupero): void
+    {
+        $original = Turno::query()
+            ->where('id_act_pac', $idActPac)
+            ->where('fecha_hora', $fechaOriginal)
+            ->whereNull('id_turno_original')
+            ->firstOrFail();
+
+        $original->update(['estado' => 'Ausente avisó']);
+
+        Turno::create([
+            'id_act_pac' => $idActPac,
+            'fecha_hora' => $fechaRecupero,
+            'id_turno_original' => $original->id,
+        ]);
     }
 
     private function crearPaciente(): Paciente

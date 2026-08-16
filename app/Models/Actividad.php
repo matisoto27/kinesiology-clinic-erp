@@ -250,7 +250,7 @@ class Actividad extends Model
      */
     public function slotsEstructurales(): array
     {
-        if (! $this->esActividadGeneral()) {
+        if (!$this->esActividadGeneral()) {
             return [];
         }
 

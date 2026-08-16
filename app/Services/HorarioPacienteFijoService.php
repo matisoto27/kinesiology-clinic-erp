@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
@@ -42,6 +43,7 @@ class HorarioPacienteFijoService
         $this->asegurarPuedeEditar($idPacienteFijo);
 
         $plan = $this->calcularPlan($idPacienteFijo, $horariosNuevos, $fechaCorte);
+        $this->asegurarSinSolapesConTurnosExistentes($plan);
 
         return $this->resultadoDesdePlan($plan, persistido: false);
     }
@@ -58,16 +60,19 @@ class HorarioPacienteFijoService
                 $plan = $this->calcularPlan($idPacienteFijo, $horariosNuevos, $fechaCorte);
 
                 if (!$plan['sin_cambios_efectivos']) {
+                    $this->asegurarSinSolapesConTurnosExistentes($plan);
                     $this->aplicarPlan($plan);
                 }
 
                 return $this->resultadoDesdePlan($plan, persistido: true);
             });
         } catch (Throwable $th) {
-            Log::error('[HorarioPacienteFijoService@actualizar] Error al actualizar horarios del paciente fijo', [
-                'excepción' => $th->getMessage(),
-                'id_paciente_fijo' => $idPacienteFijo,
-            ]);
+            if (!$th instanceof ReglaNegocioException) {
+                Log::error('[HorarioPacienteFijoService@actualizar] Error al actualizar horarios del paciente fijo', [
+                    'excepción' => $th->getMessage(),
+                    'id_paciente_fijo' => $idPacienteFijo,
+                ]);
+            }
 
             throw $th;
         }
@@ -786,6 +791,88 @@ class HorarioPacienteFijoService
         }
 
         return $deseados->values();
+    }
+
+    private function asegurarSinSolapesConTurnosExistentes(array $plan): void
+    {
+        $turnosACrear = collect($plan['turnos_a_crear']);
+
+        if ($turnosACrear->isEmpty()) {
+            return;
+        }
+
+        $nuevos = $turnosACrear
+            ->map(fn (array $t) => Carbon::parse($t['fecha_hora']))
+            ->sortBy(fn (Carbon $fecha) => $fecha->timestamp)
+            ->values();
+
+        $idsAIgnorar = collect($plan['turnos_a_eliminar'])
+            ->pluck('id')
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($idsAIgnorar !== []) {
+            $idsRecuperos = Turno::query()
+                ->whereIn('id_turno_original', $idsAIgnorar)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $idsAIgnorar = array_values(array_unique(array_merge($idsAIgnorar, $idsRecuperos)));
+        }
+
+        $existentes = Turno::query()
+            ->with(['actividadPaciente.actividad'])
+            ->whereHas(
+                'actividadPaciente',
+                fn ($consulta) => $consulta->where('id_paciente', $plan['paciente_fijo']->id_paciente)
+            )
+            ->entreFechas(
+                $nuevos->first()->copy()->subHour()->toDateTimeString(),
+                $nuevos->last()->copy()->addHour()->toDateTimeString()
+            )
+            ->activosParaCupo()
+            ->when($idsAIgnorar !== [], fn ($consulta) => $consulta->whereNotIn('id', $idsAIgnorar))
+            ->get();
+
+        if ($existentes->isEmpty()) {
+            return;
+        }
+
+        $conflictos = [];
+
+        foreach ($nuevos as $nuevo) {
+            $nuevoInicio = $nuevo->timestamp;
+            $nuevoFin = $nuevoInicio + 3600;
+
+            foreach ($existentes as $existente) {
+                $existenteInicio = $existente->fecha_hora->timestamp;
+                $existenteFin = $existenteInicio + 3600;
+
+                if ($nuevoInicio >= $existenteFin || $nuevoFin <= $existenteInicio) {
+                    continue;
+                }
+
+                $nombre = $existente->actividadPaciente?->actividad?->nombre ?? 'otra actividad';
+                $etiqueta = $existente->id_turno_original
+                    ? "{$nombre}, reprogramado"
+                    : $nombre;
+                $conflictos[$existente->id] = $existente->fecha_hora->translatedFormat('l d/m H:i')." ({$etiqueta})";
+            }
+        }
+
+        if ($conflictos === []) {
+            return;
+        }
+
+        $listado = implode('; ', $conflictos);
+
+        throw new ReglaNegocioException(
+            count($conflictos) === 1
+                ? "El paciente ya tiene un turno el {$listado}. Movelo antes de aplicar el nuevo patrón."
+                : "El paciente ya tiene turnos que se solapan con el nuevo patrón: {$listado}. Movelos antes de aplicar."
+        );
     }
 
     /**
