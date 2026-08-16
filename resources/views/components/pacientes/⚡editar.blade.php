@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Paciente;
+use App\Livewire\Concerns\ManejaBuscadorObraSocial;
 use App\Livewire\Concerns\ManejaBuscadorPatologias;
 use App\Livewire\Concerns\ManejaBuscadorSintomas;
 use Carbon\Carbon;
@@ -11,6 +12,7 @@ use Livewire\Component;
 
 new class extends Component
 {
+    use ManejaBuscadorObraSocial;
     use ManejaBuscadorPatologias;
     use ManejaBuscadorSintomas;
 
@@ -73,6 +75,10 @@ new class extends Component
             'nombre' => $sintoma->nombre,
             'es_nuevo' => false,
         ])->values()->all();
+
+        $this->hidratarObraSocialSeleccionada(
+            $paciente->afiliacionVigente()->with('obraSocial')->first()
+        );
     }
 
     protected function rules()
@@ -93,7 +99,7 @@ new class extends Component
             'contactos.*.nombre' => 'required_with:contactos|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:100',
             'contactos.*.telefono' => 'required_with:contactos|numeric|digits_between:8,20',
             'contactos.*.vinculo' => 'required_with:contactos|string|in:Cónyuge,Hijo/a,Hermano/a,Otro',
-        ], $this->reglasPatologiasSeleccionadas(), $this->reglasSintomasSeleccionados());
+        ], $this->reglasPatologiasSeleccionadas(), $this->reglasSintomasSeleccionados(), $this->reglasObraSocialSeleccionada());
     }
 
     protected function messages()
@@ -122,6 +128,9 @@ new class extends Component
             'patologiasSeleccionadas.*.nombre' => 'nombre de la patología',
             'sintomasSeleccionados' => 'síntomas',
             'sintomasSeleccionados.*.nombre' => 'nombre del síntoma',
+            'obraSocialSeleccionada' => 'obra social',
+            'obraSocialSeleccionada.nombre' => 'obra social',
+            'busquedaObraSocial' => 'obra social',
         ];
     }
 
@@ -244,6 +253,8 @@ new class extends Component
                         })->toArray()
                     );
                 }
+
+                $this->persistirObraSocial($this->paciente);
             });
 
             return redirect()->route('pacientes.inicio')->with('exito', '¡La información del paciente ha sido actualizada con éxito!');
@@ -392,6 +403,8 @@ new class extends Component
                 </select>
                 @error('actividad_fisica') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
             </div>
+
+            @include('components.pacientes.buscador-obra-social')
 
             <div class="space-y-5">
                 <div class="flex items-center gap-1">

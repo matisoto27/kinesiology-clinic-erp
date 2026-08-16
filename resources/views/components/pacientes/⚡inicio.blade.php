@@ -25,7 +25,7 @@ new class extends Component
         return Paciente::query()
             ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'actividad_fisica', 'es_adulto_mayor', 'vive_con', 'created_at'])
             ->with([
-                'afiliacionVigente',
+                'afiliacionVigente.obraSocial',
                 'contactosEmergencia:id,nombre,telefono,vinculo,id_paciente',
                 'patologias:id,nombre',
                 'sintomasActivos:id,nombre',

@@ -18,19 +18,12 @@ class PacienteController extends Controller
                 return response()->json(['pacientes' => []], 200);
             }
 
-            $consultaPacientes = Paciente::select('id', 'nombre', 'apellido')
+            $pacientes = Paciente::select('id', 'nombre', 'apellido')
                 ->buscarPorApNom($nombre)
                 ->orderBy('apellido')
                 ->orderBy('nombre')
-                ->limit(10);
-
-            if ($request->boolean('incluir_obra')) {
-                $consultaPacientes->with(['afiliacionVigente' => function ($consulta) {
-                    $consulta->select('obras_sociales.id', 'obras_sociales.nombre');
-                }]);
-            }
-
-            $pacientes = $consultaPacientes->get();
+                ->limit(10)
+                ->get();
 
             return response()->json(['pacientes' => $pacientes], 200);
 

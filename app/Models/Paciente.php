@@ -8,7 +8,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -102,22 +101,17 @@ class Paciente extends Model
         return $this->sintomas()->wherePivotNull('fecha_hasta');
     }
 
-    public function historialAfiliaciones(): BelongsToMany
+    public function afiliacionVigente(): HasOne
     {
-        return $this->belongsToMany(ObraSocial::class, 'obras_sociales_pacientes', 'id_paciente', 'id_obra_social')
-            ->withPivot('fecha_desde', 'fecha_hasta')
-            ->using(ObraSocialPaciente::class);
-    }
-
-    public function afiliacionVigente(): HasOneThrough
-    {
-        return $this->hasOneThrough(ObraSocial::class, ObraSocialPaciente::class, 'id_paciente', 'id', 'id', 'id_obra_social')
-            ->whereNull('obras_sociales_pacientes.fecha_hasta');
+        return $this->hasOne(ObraSocialPaciente::class, 'id_paciente')
+            ->whereNull('fecha_hasta');
     }
 
     public function scopeTieneObraSocial(Builder $consulta): Builder
     {
-        return $consulta->whereHas('afiliacionVigente');
+        return $consulta->whereHas('afiliacionVigente', function (Builder $afiliacion) {
+            $afiliacion->whereNotNull('id_obra_social');
+        });
     }
 
     public function scopeBuscarPorApNom(Builder $consulta, $termino): Builder

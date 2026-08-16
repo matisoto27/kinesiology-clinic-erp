@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\Pivot;
 
-class ObraSocialPaciente extends Pivot
+class ObraSocialPaciente extends Model
 {
     protected $table = 'obras_sociales_pacientes';
 
@@ -13,6 +14,7 @@ class ObraSocialPaciente extends Pivot
 
     protected $fillable = [
         'id_obra_social',
+        'nombre_os',
         'id_paciente',
         'fecha_desde',
         'fecha_hasta'
@@ -22,6 +24,11 @@ class ObraSocialPaciente extends Pivot
         'fecha_desde' => 'date',
         'fecha_hasta' => 'date'
     ];
+
+    protected function nombreMostrable(): Attribute
+    {
+        return Attribute::get(fn () => $this->obraSocial?->nombre ?? $this->nombre_os);
+    }
 
     public function obraSocial(): BelongsTo
     {

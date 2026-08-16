@@ -22,7 +22,7 @@ class PacienteResource extends JsonResource
             'es_adulto_mayor' => $this->es_adulto_mayor,
             'vive_con' => $this->vive_con,
             'created_at' => $this->fecha_ingreso,
-            'obra_social' => $this->afiliacionVigente?->nombre,
+            'obra_social' => $this->afiliacionVigente?->nombre_mostrable,
             'contactos_emergencia' => $this->whenLoaded('contactosEmergencia')->map(fn($cont) => [
                 'id' => $cont->id,
                 'nombre' => $cont->nombre,

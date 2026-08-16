@@ -80,6 +80,31 @@ class ActividadPacienteServiceTest extends TestCase
         ));
     }
 
+    public function test_registrar_con_orden_rechaza_obra_social_ajena_a_la_clinica(): void
+    {
+        Carbon::setTestNow('2026-06-02 09:00:00');
+
+        ['actividad' => $actividad] = $this->crearActividadKinesiologiaConPrecios(precioCombo5: 9000.00);
+        $paciente = $this->crearPaciente();
+
+        ObraSocialPaciente::create([
+            'id_paciente' => $paciente->id,
+            'id_obra_social' => null,
+            'nombre_os' => 'OS Pepe',
+            'fecha_desde' => '2026-06-01',
+            'fecha_hasta' => null,
+        ]);
+
+        $this->expectException(Exception::class);
+        $this->expectExceptionMessage('El paciente seleccionado no posee una afiliación vigente a una obra social.');
+
+        $this->service->registrar($this->payloadConOrden(
+            actividad: $actividad,
+            paciente: $paciente,
+            sesionesCubiertas: 5
+        ));
+    }
+
     public function test_registrar_con_orden_falla_si_no_existe_precio_del_combo_solicitado(): void
     {
         Carbon::setTestNow('2026-06-02 09:00:00');

@@ -40,7 +40,6 @@
                         <ul>
                             <li><a href="{{ route('pacientes.inicio') }}">Lista de pacientes</a></li>
                             <li><a href="{{ route('pacientes.crear') }}">Registrar paciente</a></li>
-                            <li><a href="{{ route('obras-sociales-pacientes.crear') }}">Actualizar obra social de un paciente</a></li>
                             <li><a href="{{ route('pacientes-casuales.inicio') }}">Lista de pacientes casuales</a></li>
                             <li><a href="{{ route('pacientes-casuales.crear') }}">Registrar paciente casual (Gympass/Prueba pilates)</a></li>
                         </ul>

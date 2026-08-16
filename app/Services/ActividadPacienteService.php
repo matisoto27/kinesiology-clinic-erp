@@ -234,7 +234,7 @@ class ActividadPacienteService
     {
         $paciente = Paciente::with('afiliacionVigente')->findOrFail($validados['id_paciente']);
 
-        if (!$paciente->afiliacionVigente) {
+        if (!$paciente->afiliacionVigente?->id_obra_social) {
             throw new Exception('El paciente seleccionado no posee una afiliación vigente a una obra social.');
         }
 

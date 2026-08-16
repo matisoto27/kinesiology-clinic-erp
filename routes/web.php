@@ -5,8 +5,6 @@ use App\Http\Controllers\ActividadComboController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ActividadPacienteController;
 use App\Http\Controllers\NotaTurnoController;
-use App\Http\Controllers\ObraSocialController;
-use App\Http\Controllers\ObraSocialPacienteController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\PrecioController;
 use Illuminate\Support\Facades\Route;
@@ -33,15 +31,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
 
     Route::livewire('/actividades-pacientes', 'actividades-pacientes.inicio')->name('actividades-pacientes.inicio');
     Route::livewire('/actividades-pacientes/aplicar-orden', 'actividades-pacientes.aplicar-orden')->name('actividades-pacientes.aplicar-orden');
-
-    Route::controller(ObraSocialController::class)->group(function () {
-        Route::get('/buscar-obras-sociales', 'buscarPorNombre');
-    });
-
-    Route::controller(ObraSocialPacienteController::class)->group(function () {
-        Route::get('/obras-sociales-pacientes/crear', 'crear')->name('obras-sociales-pacientes.crear');
-        Route::post('/obras-sociales-pacientes', 'almacenar')->name('obras-sociales-pacientes.almacenar');
-    });
 
     Route::controller(PacienteController::class)->group(function () {
         Route::view('/pacientes', 'pacientes.inicio')->name('pacientes.inicio');

@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -17,11 +18,17 @@ return new class extends Migration
             $table->date('fecha_desde');
             $table->date('fecha_hasta')->nullable();
 
-            $table->foreignId('id_obra_social')->constrained(table: 'obras_sociales');
+            $table->foreignId('id_obra_social')->nullable()->constrained(table: 'obras_sociales');
+            $table->string('nombre_os', 30)->nullable();
             $table->foreignId('id_paciente')->constrained(table: 'pacientes');
-
-            $table->unique(['id_obra_social', 'id_paciente', 'fecha_desde'], 'os_pac_fecha_unique');
         });
+
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE obras_sociales_pacientes ADD CONSTRAINT chk_afiliacion_xor CHECK (
+                (id_obra_social IS NOT NULL AND nombre_os IS NULL)
+                OR (id_obra_social IS NULL AND nombre_os IS NOT NULL)
+            )');
+        }
     }
 
     /**
