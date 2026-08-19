@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +16,9 @@ new class extends Component
     #[Url(as: 'pago')]
     public string $filtroPago = '';
 
+    #[Url(as: 'tipo')]
+    public int $filtroTipo = 0;
+
     #[Url(as: 'ocultarFuturas')]
     public bool $ocultarInscripcionesFuturas = true;
 
@@ -26,6 +30,11 @@ new class extends Component
     public bool $mostrarModal = false;
 
     public function updatingFiltroPago(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFiltroTipo(): void
     {
         $this->resetPage();
     }
@@ -109,6 +118,10 @@ new class extends Component
                         ->where('pago_completado', false)
                         ->where('total_a_pagar', '>', 0));
             }))
+            ->when($this->filtroTipo !== 0, fn ($q) => $q->whereHas(
+                'actividad',
+                fn ($sc) => $sc->porTipo($this->filtroTipo)
+            ))
             ->when($this->consultaPaciente !== '', fn ($q) => $q->buscarPaciente($this->consultaPaciente))
             ->when($this->ocultarInscripcionesFuturas, fn ($q) => $q->where(function ($q) {
                 $limite = now()->startOfDay()->addWeek();
@@ -189,6 +202,15 @@ new class extends Component
                 <option value="" selected>Todas</option>
                 <option value="completado">Pago Completado</option>
                 <option value="pendiente">Pago Pendiente</option>
+            </select>
+        </div>
+
+        <div class="columna-campo">
+            <label for="filtro-tipo" class="etiqueta-formulario">Tipo de actividad</label>
+            <select id="filtro-tipo" class="entrada" wire:model.live="filtroTipo">
+                <option value="0">Todas</option>
+                <option value="{{ \App\Models\Actividad::TIPO_GENERAL }}">General</option>
+                <option value="{{ \App\Models\Actividad::TIPO_KINESIOLOGIA }}">Kinesiología</option>
             </select>
         </div>
 
@@ -374,7 +396,7 @@ new class extends Component
             @empty
                 <tr>
                     <td colspan="10" class="py-10 text-center text-gray-300 italic">
-                        {{ $filtroPago !== '' || $ocultarInscripcionesFuturas || $consultaPaciente !== ''
+                        {{ $filtroPago !== '' || $filtroTipo !== 0 || $ocultarInscripcionesFuturas || $consultaPaciente !== ''
                             ? 'No se encontraron inscripciones con los filtros aplicados.'
                             : 'No hay registros disponibles.' }}
                     </td>

@@ -4,6 +4,7 @@ use App\Models\Caja;
 use App\Models\Egreso;
 use App\Models\Pago;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -15,12 +16,20 @@ new class extends Component
     public string $filtroMetodo = 'todos';
     public string $filtroTipo = 'todos';
 
+    #[Url(as: 'paciente')]
+    public string $consultaPaciente = '';
+
     public function updatedFiltroMetodo()
     {
         $this->resetPage();
     }
 
     public function updatedFiltroTipo()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingConsultaPaciente(): void
     {
         $this->resetPage();
     }
@@ -36,11 +45,20 @@ new class extends Component
                 'actividadPaciente.actividad',
                 'actividadPaciente.pacienteRegular',
                 'actividadPaciente.pacienteCasual',
+                'actividadPaciente.primerTurno',
+                'actividadPaciente.actPacDual.primerTurno',
                 'profesional'
             ]);
 
             if ($this->filtroMetodo !== 'todos') {
                 $consulta->where('metodo', $this->mapearMetodo($this->filtroMetodo));
+            }
+
+            if ($this->consultaPaciente !== '') {
+                $consulta->whereHas(
+                    'actividadPaciente',
+                    fn ($q) => $q->buscarPaciente($this->consultaPaciente)
+                );
             }
 
             $ingresos = $consulta
@@ -53,7 +71,7 @@ new class extends Component
                 });
         }
 
-        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'egreso') {
+        if ($this->consultaPaciente === '' && ($this->filtroTipo === 'todos' || $this->filtroTipo === 'egreso')) {
             $consultaEgresos = Egreso::with('profesional');
 
             if ($this->filtroMetodo !== 'todos') {
@@ -153,6 +171,17 @@ new class extends Component
                 <option value="egreso">Egresos</option>
             </select>
         </div>
+
+        <div class="columna-campo">
+            <label for="buscar-paciente" class="etiqueta-formulario">Buscar Paciente</label>
+            <input
+                id="buscar-paciente"
+                type="text"
+                class="entrada w-[28ch]"
+                placeholder="Ingrese nombre y/o apellido"
+                wire:model.live.debounce.300ms="consultaPaciente"
+            >
+        </div>
     </div>
 
     <x-alerta tipo="exito" />
@@ -178,7 +207,14 @@ new class extends Component
                     <td>
                         @if($mov->tipo === 'ingreso')
                             @php
-                                $cantidad = (int) $mov->actividadPaciente->cant_sesiones;
+                                $actPac = $mov->actividadPaciente;
+                                $cantidad = (int) $actPac->cant_sesiones;
+                                $par = $actPac->esDualCompleto() ? $actPac->actPacDual : null;
+                                $primerTurno = collect([$actPac->primerTurno, $par?->primerTurno])
+                                    ->filter()
+                                    ->sortBy(fn ($turno) => $turno->fecha_hora->timestamp)
+                                    ->first();
+                                $fechaPrimerTurno = $primerTurno?->fecha_hora->format('d/m/Y');
                             @endphp
 
                             <small class="block text-emerald-400 group-hover:text-emerald-900 font-bold tracking-wide uppercase">
@@ -192,6 +228,9 @@ new class extends Component
                                     @endif
                                 @else
                                     {{ $mov->actividadPaciente->nombre_actividad }} ({{ $cantidad }} {{ $cantidad === 1 ? 'sesión' : 'sesiones' }})
+                                @endif
+                                @if ($fechaPrimerTurno)
+                                    (COM {{ $fechaPrimerTurno }})
                                 @endif
                             </small>
 
