@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use Carbon\Carbon;
@@ -88,8 +89,8 @@ new class extends Component
 
         return ActividadPaciente::query()
             ->whereHas('pacienteFijo')
+            ->whereHas('actividad', fn ($q) => $q->porTipo(Actividad::TIPO_GENERAL))
             ->where('total_a_pagar', '>', 0)
-            ->whereHas('pacienteFijo')
             ->whereDoesntHave('pagos')
             ->conUltimoTurnoVigente()
             ->with([
