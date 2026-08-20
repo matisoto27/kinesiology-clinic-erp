@@ -6,14 +6,13 @@ use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
+use App\Models\PrecioMensual;
 use App\Models\Turno;
 use App\Support\Registros\ResultadoActualizacionHorarioFijo;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class HorarioPacienteFijoService
 {
@@ -53,29 +52,18 @@ class HorarioPacienteFijoService
      */
     public function actualizar(int $idPacienteFijo, array $horariosNuevos, Carbon $fechaCorte): ResultadoActualizacionHorarioFijo
     {
-        try {
-            return DB::transaction(function () use ($idPacienteFijo, $horariosNuevos, $fechaCorte) {
-                $this->asegurarPuedeEditar($idPacienteFijo);
+        return DB::transaction(function () use ($idPacienteFijo, $horariosNuevos, $fechaCorte) {
+            $this->asegurarPuedeEditar($idPacienteFijo);
 
-                $plan = $this->calcularPlan($idPacienteFijo, $horariosNuevos, $fechaCorte);
+            $plan = $this->calcularPlan($idPacienteFijo, $horariosNuevos, $fechaCorte);
 
-                if (!$plan['sin_cambios_efectivos']) {
-                    $this->asegurarSinSolapesConTurnosExistentes($plan);
-                    $this->aplicarPlan($plan);
-                }
-
-                return $this->resultadoDesdePlan($plan, persistido: true);
-            });
-        } catch (Throwable $th) {
-            if (!$th instanceof ReglaNegocioException) {
-                Log::error('[HorarioPacienteFijoService@actualizar] Error al actualizar horarios del paciente fijo', [
-                    'excepción' => $th->getMessage(),
-                    'id_paciente_fijo' => $idPacienteFijo,
-                ]);
+            if (!$plan['sin_cambios_efectivos']) {
+                $this->asegurarSinSolapesConTurnosExistentes($plan);
+                $this->aplicarPlan($plan);
             }
 
-            throw $th;
-        }
+            return $this->resultadoDesdePlan($plan, persistido: true);
+        });
     }
 
     /**
@@ -122,7 +110,7 @@ class HorarioPacienteFijoService
         $pacienteFijo = PacienteFijo::findOrFail($idPacienteFijo);
 
         if (!$pacienteFijo->estaCursandoInscripcion()) {
-            throw new Exception(
+            throw new ReglaNegocioException(
                 'No se pueden editar los horarios fijos porque el paciente no está cursando una inscripción. Eliminá el registro de fijo y creá la inscripción nuevamente.'
             );
         }
@@ -163,14 +151,14 @@ class HorarioPacienteFijoService
         $frecuenciaNueva = $horariosNuevosNormalizados->count();
 
         if ($frecuenciaNueva < 1 || $frecuenciaNueva > 5) {
-            throw new Exception('La frecuencia semanal debe estar entre 1 y 5.');
+            throw new ReglaNegocioException('La frecuencia semanal debe estar entre 1 y 5.');
         }
 
         $nuevosPorActividad = $horariosNuevosNormalizados->groupBy('id_actividad');
         $actividadesInvalidas = $nuevosPorActividad->keys()->diff([Actividad::GIMNASIO, Actividad::PILATES]);
 
         if ($actividadesInvalidas->isNotEmpty() || $nuevosPorActividad->count() > 2) {
-            throw new Exception('Solo se admiten horarios de Gimnasio y/o Pilates.');
+            throw new ReglaNegocioException('Solo se admiten horarios de Gimnasio y/o Pilates.');
         }
 
         $frecuenciaAnterior = $pacienteFijo->horarios->count();
@@ -343,7 +331,8 @@ class HorarioPacienteFijoService
         $precio = $this->calcularPrecio(
             $inscripciones,
             $frecuenciaNueva,
-            $turnosACrear
+            $turnosACrear,
+            $turnosAEliminar
         );
 
         $sinCambiosEfectivos = $turnosACrear->isEmpty() && $turnosAEliminar->isEmpty();
@@ -983,7 +972,7 @@ class HorarioPacienteFijoService
                 'frecuencia_total_dual' => $freqDual,
                 'id_act_pac_dual' => $segunda->id,
                 'total_a_pagar' => $precio['total_nuevo'],
-                'pago_completado' => $precio['total_nuevo'] <= 0,
+                'pago_completado' => $primera->pagoCubreTotal($precio['total_nuevo']),
             ]);
             $segunda->update([
                 'frecuencia_total_dual' => $freqDual,
@@ -997,7 +986,7 @@ class HorarioPacienteFijoService
                 'frecuencia_total_dual' => null,
                 'id_act_pac_dual' => null,
                 'total_a_pagar' => $precio['total_nuevo'],
-                'pago_completado' => $precio['total_nuevo'] <= 0,
+                'pago_completado' => $unica->pagoCubreTotal($precio['total_nuevo']),
             ]);
         }
 
@@ -1017,13 +1006,20 @@ class HorarioPacienteFijoService
      * Cobro solo si la frecuencia pedida supera la marca de agua contractual del ciclo.
      * Bajar o volver a la frecuencia ya contratada no genera cargo.
      *
+     * El extra es la fracción del salto de lista (PrecioMensual), no el precio/turno
+     * del plan anterior: las tarifas no son lineales (a más frecuencia, cada turno
+     * sale más barato). Sesiones que solo se reubican (crear − eliminar) no cobran.
+     *
      * @param  Collection<int, ActividadPaciente>  $inscripciones
-     * @return array{total_anterior: float, total_nuevo: float, cargo_extra: float, precio_por_turno: float}
+     * @param  Collection<int, array<string, mixed>>  $turnosACrear
+     * @param  Collection<int, array<string, mixed>>  $turnosAEliminar
+     * @return array{total_anterior: float, total_nuevo: float, cargo_extra: float}
      */
     private function calcularPrecio(
         Collection $inscripciones,
         int $frecuenciaNueva,
-        Collection $turnosACrear
+        Collection $turnosACrear,
+        Collection $turnosAEliminar
     ): array {
         $liderActual = $this->resolverInscripcionLider($inscripciones, $inscripciones->count() === 2);
         $totalAnterior = $liderActual ? (float) $liderActual->total_a_pagar : 0.0;
@@ -1032,44 +1028,32 @@ class HorarioPacienteFijoService
             $totalAnterior = (float) $inscripciones->sum('total_a_pagar');
         }
 
-        $cantContrato = $this->cantSesionesContrato($inscripciones, $liderActual);
-        $precioPorTurno = $cantContrato > 0 ? $totalAnterior / $cantContrato : 0;
-        $sesionesContratoNuevo = $frecuenciaNueva * self::SEMANAS_CICLO;
+        $freqContrato = $this->frecuenciaContractualActual($inscripciones, $liderActual);
 
-        if ($sesionesContratoNuevo <= $cantContrato) {
+        if ($frecuenciaNueva <= $freqContrato || $freqContrato < 1) {
             return [
                 'total_anterior' => $totalAnterior,
                 'total_nuevo' => $totalAnterior,
                 'cargo_extra' => 0.0,
-                'precio_por_turno' => round($precioPorTurno, 2),
             ];
         }
 
-        $sesionesExtraContrato = $sesionesContratoNuevo - $cantContrato;
-        $turnosCobrables = min($turnosACrear->count(), $sesionesExtraContrato);
-        $cargoExtra = round($precioPorTurno * $turnosCobrables, 2);
+        $saltoLista = max(
+            0.0,
+            PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaNueva) - PrecioMensual::obtenerVigentePorFrecuencia($freqContrato)
+        );
+        $sesionesExtraFull = ($frecuenciaNueva - $freqContrato) * self::SEMANAS_CICLO;
+        $sesionesNetas = max(0, $turnosACrear->count() - $turnosAEliminar->count());
+        $turnosCobrables = min($sesionesNetas, $sesionesExtraFull);
+        $cargoExtra = $sesionesExtraFull > 0
+            ? round($saltoLista * ($turnosCobrables / $sesionesExtraFull), 2)
+            : 0.0;
 
         return [
             'total_anterior' => $totalAnterior,
             'total_nuevo' => round($totalAnterior + $cargoExtra, 2),
             'cargo_extra' => $cargoExtra,
-            'precio_por_turno' => round($precioPorTurno, 2),
         ];
-    }
-
-    private function cantSesionesContrato(Collection $inscripciones, ?ActividadPaciente $lider): int
-    {
-        foreach ($inscripciones as $inscripcion) {
-            if ($inscripcion->frecuencia_total_dual) {
-                return (int) $inscripcion->frecuencia_total_dual * self::SEMANAS_CICLO;
-            }
-        }
-
-        if ($lider) {
-            return (int) $lider->cant_sesiones;
-        }
-
-        return (int) $inscripciones->sum('cant_sesiones');
     }
 
     /**

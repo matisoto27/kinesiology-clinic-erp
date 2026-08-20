@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
 use App\Livewire\Concerns\ManejaGrillaHorariosGenerales;
 use App\Models\PacienteFijo;
 use App\Services\HorarioPacienteFijoService;
@@ -167,11 +168,13 @@ new class extends Component
             );
 
             $this->vistaPrevia = $this->mapearVistaPrevia($resultado);
+        } catch (ReglaNegocioException $ex) {
+            session()->flash('error', $ex->getMessage());
         } catch (\Throwable $ex) {
             Log::error('[(Livewire) pacientes-fijos.editar@previsualizar] Error al previsualizar cambios.', [
                 'excepcion' => $ex->getMessage(),
             ]);
-            session()->flash('error', $ex->getMessage());
+            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
     }
 
@@ -205,11 +208,13 @@ new class extends Component
             return redirect()
                 ->route('pacientes-fijos.inicio')
                 ->with('exito', 'Los horarios fijos y los turnos fueron actualizados correctamente.');
+        } catch (ReglaNegocioException $ex) {
+            session()->flash('error', $ex->getMessage());
         } catch (\Throwable $ex) {
             Log::error('[(Livewire) pacientes-fijos.editar@confirmar] Error al confirmar cambios.', [
                 'excepcion' => $ex->getMessage(),
             ]);
-            session()->flash('error', $ex->getMessage());
+            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
     }
 
@@ -346,7 +351,7 @@ new class extends Component
                     <p class="text-amber-300 text-sm mt-1">
                         Cargo adicional: ${{ number_format($vistaPrevia['cargo_extra'], 2, ',', '.') }}
                         @if ($vistaPrevia['hubo_primer_turno'])
-                            (prorrateo por turno del ciclo actual)
+                            (prorrateo del salto de tarifa por los turnos nuevos generados)
                         @endif
                     </p>
                 @else

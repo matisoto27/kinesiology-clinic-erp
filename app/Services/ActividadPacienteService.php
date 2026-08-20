@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
@@ -12,10 +13,8 @@ use App\Support\Registros\ModalidadRegistro;
 use App\Support\Registros\ResultadoInscripcionGeneral;
 use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class ActividadPacienteService
 {
@@ -28,141 +27,125 @@ class ActividadPacienteService
 
     public function registrar(array $validados): ActividadPaciente
     {
-        try {
-            return DB::transaction(function () use ($validados) {
-                $esConOrden = ModalidadRegistro::esConOrden($validados);
-                $ahora = Carbon::now();
+        return DB::transaction(function () use ($validados) {
+            $esConOrden = ModalidadRegistro::esConOrden($validados);
+            $ahora = Carbon::now();
 
-                if ($esConOrden) {
-                    $validados = $this->enriquecerDatosConOrden($validados, $ahora);
-                }
+            if ($esConOrden) {
+                $validados = $this->enriquecerDatosConOrden($validados, $ahora);
+            }
 
-                $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar(
-                    (int) $validados['id_actividad'],
-                    (int) $validados['cant_sesiones'],
-                    exigirComboExacto: $esConOrden
-                );
+            $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar(
+                (int) $validados['id_actividad'],
+                (int) $validados['cant_sesiones'],
+                exigirComboExacto: $esConOrden
+            );
 
-                $actividadPaciente = $this->crearInscripcion($validados, $esConOrden);
-                $this->persistirTurnos($actividadPaciente, $validados);
+            $actividadPaciente = $this->crearInscripcion($validados, $esConOrden);
+            $this->persistirTurnos($actividadPaciente, $validados);
 
-                return $actividadPaciente;
-            });
-        } catch (Throwable $th) {
-            Log::error('[ActividadPacienteService@registrar] Error al registrar la inscripción del paciente', [
-                'excepción' => $th->getMessage(),
-            ]);
-
-            throw $th;
-        }
+            return $actividadPaciente;
+        });
     }
 
     public function registrarInscripcionesGenerales(array $datos): ResultadoInscripcionGeneral
     {
-        try {
-            return DB::transaction(function () use ($datos) {
-                $idPaciente = (int) $datos['id_paciente'];
+        return DB::transaction(function () use ($datos) {
+            $idPaciente = (int) $datos['id_paciente'];
 
-                if (PacienteFijo::where('id_paciente', $idPaciente)->exists()) {
-                    throw new Exception(self::MENSAJE_PACIENTE_YA_FIJO);
-                }
+            if (PacienteFijo::where('id_paciente', $idPaciente)->exists()) {
+                throw new ReglaNegocioException(self::MENSAJE_PACIENTE_YA_FIJO);
+            }
 
-                $horariosPorActividad = collect($datos['horarios'])
-                    ->groupBy(fn (array $horario) => (int) $horario['id_actividad']);
+            $horariosPorActividad = collect($datos['horarios'])
+                ->groupBy(fn (array $horario) => (int) $horario['id_actividad']);
 
-                $actividadesInvalidas = $horariosPorActividad->keys()
-                    ->diff([Actividad::GIMNASIO, Actividad::PILATES]);
+            $actividadesInvalidas = $horariosPorActividad->keys()
+                ->diff([Actividad::GIMNASIO, Actividad::PILATES]);
 
-                if ($horariosPorActividad->isEmpty() || $horariosPorActividad->count() > 2 || $actividadesInvalidas->isNotEmpty()) {
-                    throw new Exception('Solo se admiten inscripciones de Gimnasio y/o Pilates.');
-                }
+            if ($horariosPorActividad->isEmpty() || $horariosPorActividad->count() > 2 || $actividadesInvalidas->isNotEmpty()) {
+                throw new ReglaNegocioException('Solo se admiten inscripciones de Gimnasio y/o Pilates.');
+            }
 
-                $this->asegurarCupoEstructural($datos['horarios']);
+            $this->asegurarCupoEstructural($datos['horarios']);
 
-                $esDual = $horariosPorActividad->count() === 2;
-                $fechaAncla = Carbon::parse($datos['fecha_ancla'])->startOfDay();
-                $frecuenciaTotal = count($datos['horarios']);
-                $precioMensual = PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaTotal);
+            $esDual = $horariosPorActividad->count() === 2;
+            $fechaAncla = Carbon::parse($datos['fecha_ancla'])->startOfDay();
+            $frecuenciaTotal = count($datos['horarios']);
+            $precioMensual = PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaTotal);
 
-                $inscripciones = collect();
+            $inscripciones = collect();
 
-                foreach ($horariosPorActividad as $idActividad => $horarios) {
-                    $idActividad = (int) $idActividad;
-                    $frecuencia = $horarios->count();
-                    $cantSesiones = $frecuencia * 4;
+            foreach ($horariosPorActividad as $idActividad => $horarios) {
+                $idActividad = (int) $idActividad;
+                $frecuencia = $horarios->count();
+                $cantSesiones = $frecuencia * 4;
 
-                    $totalAPagar = $esDual
-                        ? ($idActividad === Actividad::GIMNASIO ? $precioMensual : 0)
-                        : $precioMensual;
+                $totalAPagar = $esDual
+                    ? ($idActividad === Actividad::GIMNASIO ? $precioMensual : 0)
+                    : $precioMensual;
 
-                    $actividadPaciente = ActividadPaciente::create([
-                        'id_actividad' => $idActividad,
-                        'id_paciente' => $idPaciente,
-                        'cant_sesiones' => $cantSesiones,
-                        'total_a_pagar' => $totalAPagar,
-                        'pago_completado' => $totalAPagar <= 0,
-                    ]);
+                $actividadPaciente = ActividadPaciente::create([
+                    'id_actividad' => $idActividad,
+                    'id_paciente' => $idPaciente,
+                    'cant_sesiones' => $cantSesiones,
+                    'total_a_pagar' => $totalAPagar,
+                    'pago_completado' => $totalAPagar <= 0,
+                ]);
 
-                    $patron = $horarios
-                        ->map(fn (array $horario) => [
-                            'dia_semana' => $horario['dia_semana'],
-                            'hora_inicio' => $horario['hora_inicio'],
-                        ])
-                        ->values()
-                        ->all();
+                $patron = $horarios
+                    ->map(fn (array $horario) => [
+                        'dia_semana' => $horario['dia_semana'],
+                        'hora_inicio' => $horario['hora_inicio'],
+                    ])
+                    ->values()
+                    ->all();
 
-                    $expansion = $this->expansorTurnosPatron->expandir($fechaAncla, $patron, $cantSesiones, $frecuencia);
+                $expansion = $this->expansorTurnosPatron->expandir($fechaAncla, $patron, $cantSesiones, $frecuencia);
 
-                    $actividadPaciente->turnos()->createMany(
-                        $this->prepararTurnosGenerales($expansion['turnos'])
-                    );
-
-                    $inscripciones->put($idActividad, $actividadPaciente);
-                }
-
-                if ($esDual) {
-                    $inscripcionGym = $inscripciones->get(Actividad::GIMNASIO);
-                    $inscripcionPilates = $inscripciones->get(Actividad::PILATES);
-
-                    $inscripcionGym->update([
-                        'frecuencia_total_dual' => $frecuenciaTotal,
-                        'id_act_pac_dual' => $inscripcionPilates->id,
-                    ]);
-                    $inscripcionPilates->update([
-                        'frecuencia_total_dual' => $frecuenciaTotal,
-                        'id_act_pac_dual' => $inscripcionGym->id,
-                    ]);
-                }
-
-                $pacienteFijo = PacienteFijo::create(['id_paciente' => $idPaciente]);
-                $pacienteFijo->horarios()->createMany(
-                    collect($datos['horarios'])
-                        ->map(fn (array $horario) => [
-                            'id_actividad' => (int) $horario['id_actividad'],
-                            'dia_semana' => Actividad::diaSemanaAEntero($horario['dia_semana']),
-                            'hora_inicio' => $horario['hora_inicio'],
-                        ])
-                        ->all()
+                $actividadPaciente->turnos()->createMany(
+                    $this->prepararTurnosGenerales($expansion['turnos'])
                 );
 
-                $inscripcionParaCobro = $esDual
-                    ? $inscripciones->get(Actividad::GIMNASIO)
-                    : $inscripciones->first();
+                $inscripciones->put($idActividad, $actividadPaciente);
+            }
 
-                return new ResultadoInscripcionGeneral(
-                    inscripcionParaCobro: $inscripcionParaCobro->fresh(['turnos']),
-                    inscripciones: $inscripciones->values()->map(fn (ActividadPaciente $i) => $i->fresh(['turnos'])),
-                    pacienteFijo: $pacienteFijo->fresh(['horarios']),
-                    esDual: $esDual,
-                );
-            });
-        } catch (Throwable $th) {
-            Log::error('[ActividadPacienteService@registrarInscripcionesGenerales] Error al registrar las inscripciones generales del paciente', [
-                'excepción' => $th->getMessage(),
-            ]);
+            if ($esDual) {
+                $inscripcionGym = $inscripciones->get(Actividad::GIMNASIO);
+                $inscripcionPilates = $inscripciones->get(Actividad::PILATES);
 
-            throw $th;
-        }
+                $inscripcionGym->update([
+                    'frecuencia_total_dual' => $frecuenciaTotal,
+                    'id_act_pac_dual' => $inscripcionPilates->id,
+                ]);
+                $inscripcionPilates->update([
+                    'frecuencia_total_dual' => $frecuenciaTotal,
+                    'id_act_pac_dual' => $inscripcionGym->id,
+                ]);
+            }
+
+            $pacienteFijo = PacienteFijo::create(['id_paciente' => $idPaciente]);
+            $pacienteFijo->horarios()->createMany(
+                collect($datos['horarios'])
+                    ->map(fn (array $horario) => [
+                        'id_actividad' => (int) $horario['id_actividad'],
+                        'dia_semana' => Actividad::diaSemanaAEntero($horario['dia_semana']),
+                        'hora_inicio' => $horario['hora_inicio'],
+                    ])
+                    ->all()
+            );
+
+            $inscripcionParaCobro = $esDual
+                ? $inscripciones->get(Actividad::GIMNASIO)
+                : $inscripciones->first();
+
+            return new ResultadoInscripcionGeneral(
+                inscripcionParaCobro: $inscripcionParaCobro->fresh(['turnos']),
+                inscripciones: $inscripciones->values()->map(fn (ActividadPaciente $i) => $i->fresh(['turnos'])),
+                pacienteFijo: $pacienteFijo->fresh(['horarios']),
+                esDual: $esDual,
+            );
+        });
     }
 
     /**
@@ -177,7 +160,7 @@ class ActividadPacienteService
                 continue;
             }
 
-            throw new Exception(sprintf(
+            throw new ReglaNegocioException(sprintf(
                 'Sin cupo para %s %s %s. El horario dejó de estar disponible.',
                 $actividad->nombre,
                 $horario['dia_semana'],
@@ -193,12 +176,12 @@ class ActividadPacienteService
     private function prepararTurnosGenerales(array $turnosSolicitados): array
     {
         if ($turnosSolicitados === []) {
-            throw new Exception('No se pudieron calcular turnos para la inscripción.');
+            throw new ReglaNegocioException('No se pudieron calcular turnos para la inscripción.');
         }
 
         foreach ($turnosSolicitados as $turno) {
             if ($turno->isPast()) {
-                throw new Exception(
+                throw new ReglaNegocioException(
                     'Alguno de los turnos de la inscripción ya quedó en el pasado. Vuelva a seleccionar la fecha de inicio.'
                 );
             }
@@ -235,7 +218,7 @@ class ActividadPacienteService
         $paciente = Paciente::with('afiliacionVigente')->findOrFail($validados['id_paciente']);
 
         if (!$paciente->afiliacionVigente?->id_obra_social) {
-            throw new Exception('El paciente seleccionado no posee una afiliación vigente a una obra social.');
+            throw new ReglaNegocioException('El paciente seleccionado no posee una afiliación vigente a una obra social.');
         }
 
         $validados['cant_sesiones'] = (int) $validados['sesiones_cubiertas'];

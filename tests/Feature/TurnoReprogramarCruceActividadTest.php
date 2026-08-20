@@ -158,6 +158,21 @@ class TurnoReprogramarCruceActividadTest extends TestCase
             ->assertDontSee('Actividad del nuevo turno');
     }
 
+    public function test_livewire_flash_regla_negocio_desde_catch_local(): void
+    {
+        $this->asociarHora(Actividad::PILATES, '10:00:00');
+        $turno = $this->crearTurnoAa(
+            $this->crearInscripcion(Actividad::PILATES, cantSesiones: 8),
+            self::ORIGINAL,
+            estado: 'Ausente'
+        );
+
+        Livewire::test('turnos.inicio', ['actividades' => Actividad::all()])
+            ->call('abrirModal', $turno->id)
+            ->call('actualizar')
+            ->assertSee("Primero debe marcarse el turno como 'Ausente avisó'.");
+    }
+
     public function test_livewire_cruzar_a_gimnasio_deja_el_turno_reprogramado_en_el_par(): void
     {
         ['gimnasio' => $gimnasio, 'turno' => $turno] = $this->crearDualConTurnoPilates();

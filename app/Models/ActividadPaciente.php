@@ -301,4 +301,16 @@ class ActividadPaciente extends Model
 
         return max(0, (float) ($totalFinal - $totalPagado));
     }
+
+    public function pagoCubreTotal(float $totalAPagar): bool
+    {
+        if ($totalAPagar <= 0) {
+            return true;
+        }
+
+        $totalFinal = $totalAPagar + (float) ($this->monto_recargo ?? 0);
+        $totalPagado = (float) ($this->pagos_sum_monto ?? $this->pagos()->sum('monto'));
+
+        return $totalPagado >= $totalFinal;
+    }
 }

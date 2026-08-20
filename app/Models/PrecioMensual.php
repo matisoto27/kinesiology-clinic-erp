@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use Exception;
+use App\Exceptions\ReglaNegocioException;
 use Illuminate\Database\Eloquent\Model;
 
 class PrecioMensual extends Model
@@ -30,7 +30,7 @@ class PrecioMensual extends Model
             ->first();
 
         if (!$precio) {
-            throw new Exception("No existe un precio mensual vigente para frecuencia x{$frecuenciaSemanal}.");
+            throw new ReglaNegocioException("No existe un precio mensual vigente para frecuencia x{$frecuenciaSemanal}.");
         }
 
         return (float) $precio->valor;

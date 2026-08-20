@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
@@ -176,7 +177,7 @@ new class extends Component
             });
 
             return redirect()->route('actividades-pacientes.inicio')->with('exito', '¡Turnos registrados con éxito!');
-        } catch (\Exception $ex) {
+        } catch (ReglaNegocioException $ex) {
             $this->addError('turnosSeleccionados', $ex->getMessage());
             $this->limpiarTurnos();
         } catch (\Throwable $th) {

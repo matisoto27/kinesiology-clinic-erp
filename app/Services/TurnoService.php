@@ -7,7 +7,6 @@ use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Support\Facades\DB;
 
 class TurnoService
@@ -34,7 +33,7 @@ class TurnoService
                 $turnoStr = $actividad->buscarReemplazoTurno($turno, $fechasDisponibles, $fechasRestringidas);
 
                 if (!$turnoStr) {
-                    throw new Exception('No hay suficientes turnos disponibles para cubrir la cantidad de turnos solicitada.');
+                    throw new ReglaNegocioException('No hay suficientes turnos disponibles para cubrir la cantidad de turnos solicitada.');
                 }
             }
 
@@ -61,7 +60,7 @@ class TurnoService
         array $fechasHoraSolicitadas
     ): void {
         if ($fechasHoraSolicitadas === []) {
-            throw new Exception('Debe seleccionar al menos un turno.');
+            throw new ReglaNegocioException('Debe seleccionar al menos un turno.');
         }
 
         $disponibles = array_flip($actividad->turnosDisponibles($idPaciente, $comienzo, $fin, false));
@@ -73,11 +72,11 @@ class TurnoService
             $slot = $instante->toDateTimeString();
 
             if (isset($fechasVistas[$fecha])) {
-                throw new Exception('No puede seleccionar más de un turno por día.');
+                throw new ReglaNegocioException('No puede seleccionar más de un turno por día.');
             }
 
             if (!isset($disponibles[$slot])) {
-                throw new Exception('Uno o más horarios seleccionados ya no tienen cupo disponible.');
+                throw new ReglaNegocioException('Uno o más horarios seleccionados ya no tienen cupo disponible.');
             }
 
             $fechasVistas[$fecha] = true;

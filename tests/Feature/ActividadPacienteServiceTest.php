@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
@@ -19,6 +20,7 @@ use App\Services\ActividadPacienteService;
 use App\Services\TurnoService;
 use Carbon\Carbon;
 use Exception;
+use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
@@ -70,7 +72,7 @@ class ActividadPacienteServiceTest extends TestCase
         ['actividad' => $actividad] = $this->crearActividadKinesiologiaConPrecios(precioCombo5: 9000.00);
         $paciente = $this->crearPaciente();
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage('El paciente seleccionado no posee una afiliación vigente a una obra social.');
 
         $this->service->registrar($this->payloadConOrden(
@@ -78,6 +80,45 @@ class ActividadPacienteServiceTest extends TestCase
             paciente: $paciente,
             sesionesCubiertas: 5
         ));
+    }
+
+    public function test_store_con_orden_sin_afiliacion_devuelve_422_con_el_mensaje_de_negocio(): void
+    {
+        Carbon::setTestNow('2026-06-02 09:00:00');
+        Config::set('app.debug', false);
+
+        ['actividad' => $actividad] = $this->crearActividadKinesiologiaConPrecios(precioCombo5: 9000.00);
+        $paciente = $this->crearPaciente();
+        $payload = $this->payloadConOrden($actividad, $paciente, 5);
+
+        $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->withSession(['autorizado' => true])
+            ->postJson(route('actividades-pacientes.store'), $payload)
+            ->assertUnprocessable()
+            ->assertJson([
+                'message' => 'El paciente seleccionado no posee una afiliación vigente a una obra social.',
+            ]);
+    }
+
+    public function test_store_con_orden_sin_precio_combo_devuelve_422_con_el_mensaje_de_negocio(): void
+    {
+        Carbon::setTestNow('2026-06-02 09:00:00');
+        Config::set('app.debug', false);
+
+        ['actividad' => $actividad] = $this->crearActividadKinesiologiaConPrecios(
+            precioSesion: 2000.00,
+            precioCombo10: 18000.00
+        );
+        $paciente = $this->crearPacienteConAfiliacion();
+        $payload = $this->payloadConOrden($actividad, $paciente, 5);
+
+        $this->withoutMiddleware(ValidateCsrfToken::class)
+            ->withSession(['autorizado' => true])
+            ->postJson(route('actividades-pacientes.store'), $payload)
+            ->assertUnprocessable()
+            ->assertJson([
+                'message' => 'La actividad no tiene un precio determinado para el combo de 5 sesiones.',
+            ]);
     }
 
     public function test_registrar_con_orden_rechaza_obra_social_ajena_a_la_clinica(): void
@@ -95,7 +136,7 @@ class ActividadPacienteServiceTest extends TestCase
             'fecha_hasta' => null,
         ]);
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage('El paciente seleccionado no posee una afiliación vigente a una obra social.');
 
         $this->service->registrar($this->payloadConOrden(
@@ -122,7 +163,7 @@ class ActividadPacienteServiceTest extends TestCase
                 sesionesCubiertas: 5
             ));
             $this->fail('Se esperaba una excepción al registrar con orden sin precio del combo x5.');
-        } catch (Exception $e) {
+        } catch (ReglaNegocioException $e) {
             $this->assertSame(
                 'La actividad no tiene un precio determinado para el combo de 5 sesiones.',
                 $e->getMessage()
@@ -247,7 +288,7 @@ class ActividadPacienteServiceTest extends TestCase
         $paciente = $this->crearPaciente();
         PacienteFijo::create(['id_paciente' => $paciente->id]);
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage(ActividadPacienteService::MENSAJE_PACIENTE_YA_FIJO);
 
         $this->service->registrarInscripcionesGenerales([
@@ -346,7 +387,7 @@ class ActividadPacienteServiceTest extends TestCase
             'hora_inicio' => '10:00:00',
         ]);
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage('Sin cupo');
 
         $this->service->registrarInscripcionesGenerales([

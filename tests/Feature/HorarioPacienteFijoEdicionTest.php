@@ -7,14 +7,15 @@ use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Horario;
 use App\Models\Paciente;
+use App\Models\Pago;
 use App\Models\PrecioMensual;
+use App\Models\Profesional;
 use App\Models\Turno;
 use App\Services\ActividadPacienteService;
 use App\Services\HorarioPacienteFijoService;
 use App\Services\TurnoService;
 use App\Support\Registros\ResultadoInscripcionGeneral;
 use Carbon\Carbon;
-use Exception;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -262,7 +263,7 @@ class HorarioPacienteFijoEdicionTest extends TestCase
             ],
         ]);
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage(
             'No se pueden editar los horarios fijos porque el paciente no está cursando una inscripción. Eliminá el registro de fijo y creá la inscripción nuevamente.'
         );
@@ -477,14 +478,95 @@ class HorarioPacienteFijoEdicionTest extends TestCase
         $this->assertSame(4, $pilates->cant_sesiones);
         $this->assertSame(8, $gimnasio->cant_sesiones);
 
-        // El cobro (incluido el cargo proporcional por subir de frecuencia) sigue en
-        // pilates, la inscripción líder (menor id); gimnasio queda saldado. El cargo
-        // extra solo cubre las sesiones nuevas que entran en la ventana restante del
-        // ciclo (semanas 2 a 4: 6 turnos de gimnasio), no las 4 semanas completas.
+        // El cobro sigue en pilates (líder, menor id); gimnasio queda saldado.
+        // El extra es 6/8 del salto de lista x1→x3: (30000-10000)*6/8 = 15000.
         $this->assertSame('25000.00', (string) $pilates->total_a_pagar);
         $this->assertSame('0.00', (string) $gimnasio->total_a_pagar);
         $this->assertFalse($pilates->pago_completado);
         $this->assertTrue($gimnasio->pago_completado);
+    }
+
+    public function test_aumento_x2_a_x4_en_semana_2_prorratea_el_salto_de_lista(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 53000.00, 4 => 67000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->assertSame('53000.00', (string) $inscripcion->total_a_pagar);
+
+        // Lunes semana 2, lun de esa semana aún no ocurrió.
+        // Equivale a 1/4 del ciclo a x2 + 3/4 a x4:
+        //   53000×2/8 + 67000×12/16 = 63500
+        // Código: salto 14000 × 6/8 extras (mar+vie × 3 semanas).
+        // No 6 × (53000/8): el extra no usa el precio/turno del plan anterior.
+        Carbon::setTestNow('2026-06-08 09:00:00');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Martes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-08 09:00:00')
+        );
+
+        $inscripcion->refresh();
+        $this->assertSame('63500.00', (string) $inscripcion->total_a_pagar);
+        $this->assertFalse($inscripcion->pago_completado);
+        $this->assertSame(4, Turno::where('id_act_pac', $inscripcion->id)->whereDate('fecha_hora', '>=', '2026-06-08')->whereDate('fecha_hora', '<', '2026-06-15')->count());
+    }
+
+    public function test_aumento_x2_a_x4_con_todos_los_extras_del_ciclo_queda_en_precio_x4(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 53000.00, 4 => 67000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        // Martes semana 1: lun ya pasó; mar y vie aún caben. 2 extra × 4 semanas = 8/8 del salto.
+        Carbon::setTestNow('2026-06-02 08:00:00');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Martes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-02 08:00:00')
+        );
+
+        $this->assertSame(
+            '67000.00',
+            (string) $resultado->inscripciones->first()->fresh()->total_a_pagar
+        );
     }
 
     public function test_congela_cant_sesiones_dual_al_operar_por_debajo_del_tope_contratado(): void
@@ -775,6 +857,131 @@ class HorarioPacienteFijoEdicionTest extends TestCase
         );
     }
 
+    public function test_mismo_freq_dias_distintos_con_pago_completo_sigue_saldada(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([3 => 30000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->registrarPagoCompleto($inscripcion);
+
+        Carbon::setTestNow('2026-06-11 08:00:00'); // jueves semana 2; mié nuevo ya pasó
+
+        $horariosNuevos = [
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+        ];
+
+        $this->assertTrue(
+            app(HorarioPacienteFijoService::class)->debeForzarSemanaSiguiente(
+                $resultado->pacienteFijo->id,
+                $horariosNuevos
+            )
+        );
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            $horariosNuevos,
+            Carbon::parse('2026-06-11 08:00:00')
+        );
+
+        $inscripcion->refresh();
+        $this->assertSame('30000.00', (string) $inscripcion->total_a_pagar);
+        $this->assertTrue($inscripcion->pago_completado);
+    }
+
+    public function test_mismo_freq_dias_distintos_sin_pagos_sigue_impaga(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([3 => 30000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Jueves', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->assertFalse($inscripcion->pago_completado);
+
+        Carbon::setTestNow('2026-06-11 08:00:00');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-11 08:00:00')
+        );
+
+        $inscripcion->refresh();
+        $this->assertSame('30000.00', (string) $inscripcion->total_a_pagar);
+        $this->assertFalse($inscripcion->pago_completado);
+    }
+
+    public function test_aumentar_frecuencia_con_inscripcion_pagada_queda_con_deuda(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 20000.00, 3 => 30000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente();
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->registrarPagoCompleto($inscripcion);
+
+        Carbon::setTestNow('2026-06-09 08:00:00'); // martes semana 2; viernes aún futuro
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-09 08:00:00')
+        );
+
+        $inscripcion->refresh();
+        $this->assertGreaterThan(20000.0, (float) $inscripcion->total_a_pagar);
+        $this->assertFalse($inscripcion->pago_completado);
+    }
+
     /**
      * @param  array<int, array{id_actividad: int, dia_semana: string, hora_inicio: string}>  $horarios
      */
@@ -850,6 +1057,25 @@ class HorarioPacienteFijoEdicionTest extends TestCase
             'fecha_hora' => $fechaRecupero,
             'id_turno_original' => $original->id,
         ]);
+    }
+
+    private function registrarPagoCompleto(ActividadPaciente $inscripcion): void
+    {
+        $profesional = Profesional::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Ana',
+            'apellido' => 'García',
+            'activo' => true,
+        ]);
+
+        Pago::create([
+            'id_act_pac' => $inscripcion->id,
+            'id_profesional' => $profesional->id,
+            'metodo' => 'Efectivo',
+            'monto' => (float) $inscripcion->total_a_pagar,
+        ]);
+
+        $inscripcion->update(['pago_completado' => true]);
     }
 
     private function crearPaciente(): Paciente

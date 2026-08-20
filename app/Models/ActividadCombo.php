@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\Combo;
-use Exception;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -82,11 +82,11 @@ class ActividadCombo extends Model
             ->firstOrFail();
 
         if (!$vinculo->precioVigente) {
-            throw new Exception('La clase de prueba de Pilates no tiene un precio determinado actualmente.');
+            throw new ReglaNegocioException('La clase de prueba de Pilates no tiene un precio determinado actualmente.');
         }
 
         if (!$vinculo->activo) {
-            throw new Exception('La clase de prueba de Pilates no se encuentra habilitada en este momento.');
+            throw new ReglaNegocioException('La clase de prueba de Pilates no se encuentra habilitada en este momento.');
         }
 
         return (float) $vinculo->precioVigente->valor;
@@ -109,13 +109,13 @@ class ActividadCombo extends Model
         }
 
         if (!$vinculos->has(1)) {
-            throw new Exception($mensajeSesionIndividual);
+            throw new ReglaNegocioException($mensajeSesionIndividual);
         }
 
         $vinculoIndividual = $vinculos->get(1);
 
         if (!$vinculoIndividual->precioVigente) {
-            throw new Exception($mensajeSesionIndividual);
+            throw new ReglaNegocioException($mensajeSesionIndividual);
         }
 
         $precioIndividual = (float) $vinculoIndividual->precioVigente->valor;
@@ -136,7 +136,7 @@ class ActividadCombo extends Model
         $vinculoCombo = $vinculos->get($cantidadSesiones);
 
         if (!$vinculos->has($cantidadSesiones) || !$vinculoCombo->precioVigente) {
-            throw new Exception("La actividad no tiene un precio determinado para el combo de {$cantidadSesiones} sesiones.");
+            throw new ReglaNegocioException("La actividad no tiene un precio determinado para el combo de {$cantidadSesiones} sesiones.");
         }
 
         return (float) $vinculoCombo->precioVigente->valor;

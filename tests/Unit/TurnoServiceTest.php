@@ -2,11 +2,11 @@
 
 namespace Tests\Unit;
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Services\TurnoService;
 use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
-use Exception;
 use Tests\TestCase;
 
 class TurnoServiceTest extends TestCase
@@ -82,7 +82,7 @@ class TurnoServiceTest extends TestCase
         $actividad->method('turnosDisponibles')
             ->willReturn(['2026-06-03 10:00:00']);
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage('Uno o más horarios seleccionados ya no tienen cupo disponible.');
 
         (new TurnoService())->validarCuposTurnosCasuales(
@@ -103,7 +103,7 @@ class TurnoServiceTest extends TestCase
                 '2026-06-03 11:00:00',
             ]);
 
-        $this->expectException(Exception::class);
+        $this->expectException(ReglaNegocioException::class);
         $this->expectExceptionMessage('No puede seleccionar más de un turno por día.');
 
         (new TurnoService())->validarCuposTurnosCasuales(

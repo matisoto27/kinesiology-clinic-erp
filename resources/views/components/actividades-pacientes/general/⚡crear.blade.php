@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
 use App\Livewire\Concerns\ManejaGrillaHorariosGenerales;
 use App\Models\Actividad;
 use App\Models\Paciente;
@@ -226,12 +227,15 @@ new class extends Component
                 'fecha_ancla' => $this->fechaAncla,
                 'horarios' => $slots->all(),
             ]);
+        } catch (ReglaNegocioException $ex) {
+            session()->flash('error', $ex->getMessage());
+            return;
         } catch (\Throwable $ex) {
             Log::error('[(Livewire) actividades-pacientes.general.crear@almacenar] Error al registrar la inscripción general.', [
                 'excepcion' => $ex->getMessage(),
             ]);
 
-            session()->flash('error', $ex->getMessage());
+            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
             return;
         }
 
