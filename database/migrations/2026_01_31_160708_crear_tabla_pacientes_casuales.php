@@ -16,7 +16,7 @@ return new class extends Migration
 
             $table->string('nombre', length: 30)->index();
             $table->string('apellido', length: 30)->index();
-            $table->string('telefono', length: 20);
+            $table->string('telefono', length: 20)->unique();
 
             $table->timestamps();
             $table->softDeletes();

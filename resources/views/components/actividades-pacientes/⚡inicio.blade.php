@@ -124,7 +124,7 @@ new class extends Component
             ))
             ->when($this->consultaPaciente !== '', fn ($q) => $q->buscarPaciente($this->consultaPaciente))
             ->when($this->ocultarInscripcionesFuturas, fn ($q) => $q->where(function ($q) {
-                $limite = now()->startOfDay()->addWeek();
+                $limite = now()->startOfDay()->addDay();
                 $q->whereHas('primerTurno', fn ($sq) => $sq->where('turnos.fecha_hora', '<', $limite))
                     ->orWhereHas('actPacDual.primerTurno', fn ($sq) => $sq->where('turnos.fecha_hora', '<', $limite));
             }))
@@ -193,7 +193,7 @@ new class extends Component
 ?>
 
 <div class="contenedor-listado w-full">
-    <h2 class="titulo-formulario">Inscripciones Mensuales / Registros de Sesiones</h2>
+    <h2 class="titulo-formulario">Gestión de registros</h2>
 
     <div class="fila-formulario">
         <div class="columna-campo">

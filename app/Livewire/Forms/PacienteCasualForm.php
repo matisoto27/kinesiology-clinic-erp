@@ -3,6 +3,7 @@
 namespace App\Livewire\Forms;
 
 use App\Models\PacienteCasual;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Form;
 
@@ -20,7 +21,15 @@ class PacienteCasualForm extends Form
         return [
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
-            'telefono' => 'required|numeric|digits_between:8,20'
+            'telefono' => [
+                'required',
+                'numeric',
+                'digits_between:8,20',
+                // Solo activos: un soft-deleted se restaura en el alta.
+                Rule::unique('pacientes_casuales', 'telefono')
+                    ->whereNull('deleted_at')
+                    ->ignore($this->paciente?->id),
+            ],
         ];
     }
 
@@ -28,7 +37,8 @@ class PacienteCasualForm extends Form
     {
         return [
             'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
-            'apellido.regex' => 'El apellido solo puede contener letras y espacios.'
+            'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
+            'telefono.unique' => 'Ya existe un paciente casual con ese teléfono.',
         ];
     }
 

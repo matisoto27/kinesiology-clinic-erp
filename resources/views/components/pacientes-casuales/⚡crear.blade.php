@@ -1,7 +1,8 @@
 <?php
 
-use App\Models\PacienteCasual;
+use App\Exceptions\ReglaNegocioException;
 use App\Livewire\Forms\PacienteCasualForm;
+use App\Models\PacienteCasual;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Component;
@@ -16,15 +17,48 @@ new class extends Component
         $datos = $this->form->transformarDatos();
 
         try {
-            DB::transaction(function () use ($datos) {
-                PacienteCasual::create($datos);
-            });
+            $paciente = $this->registrarORestaurar($datos);
 
-            return redirect()->route('pacientes-casuales.inicio')->with('exito', '¡Paciente registrado con éxito!');
+            $mensaje = $paciente->wasRecentlyCreated
+                ? '¡Paciente registrado con éxito!'
+                : 'Se restauró el paciente casual eliminado previamente con ese teléfono.';
+
+            return redirect()->route('pacientes-casuales.inicio')->with('exito', $mensaje);
+        } catch (ReglaNegocioException $ex) {
+            $this->addError('form.telefono', $ex->getMessage());
         } catch (\Throwable $th) {
             Log::error('[(Livewire) pacientes-casuales.crear@almacenar] Error al registrar el paciente.', ['excepción' => $th->getMessage()]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
+    }
+
+    /**
+     * @param  array{nombre: string, apellido: string, telefono: string}  $datos
+     */
+    private function registrarORestaurar(array $datos): PacienteCasual
+    {
+        return DB::transaction(function () use ($datos) {
+            $existente = PacienteCasual::withTrashed()
+                ->where('telefono', $datos['telefono'])
+                ->lockForUpdate()
+                ->first();
+
+            if ($existente === null) {
+                return PacienteCasual::create($datos);
+            }
+
+            if (!$existente->trashed()) {
+                throw new ReglaNegocioException('Ya existe un paciente casual con ese teléfono.');
+            }
+
+            $existente->restore();
+            $existente->update([
+                'nombre' => $datos['nombre'],
+                'apellido' => $datos['apellido'],
+            ]);
+
+            return $existente->fresh();
+        });
     }
 };
 ?>

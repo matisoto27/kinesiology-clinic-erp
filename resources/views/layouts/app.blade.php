@@ -47,30 +47,29 @@
 
                     <li class="menu-desplegable group">
                         <button>
-                            Turnos
+                            Inscripciones y Registros
                             <x-iconos.flecha-abajo />
                         </button>
                         <ul>
-                            <li><a href="{{ route('actividades-pacientes.inicio') }}">Historial de registros</a></li>
-                            <li><a href="{{ route('turnos.inicio') }}">Listado de turnos</a></li>
-                            <li><a href="{{ route('turnos.calendario') }}">Ver calendario</a></li>
-                            <li><a href="{{ route('actividades.turnos-disponibles') }}">Consultar disponibilidad</a></li>
+                            <li><a href="{{ route('actividades-pacientes.inicio') }}">Gestión de registros</a></li>
+                            <li><a href="{{ route('pacientes-fijos.inicio') }}">Inscripciones mensuales</a></li>
                             <li><a href="{{ route('actividades-pacientes.general.crear') }}">Nueva inscripción Gimnasio/Pilates</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.sin-orden.crear') }}">Kinesiología (SIN orden médica)</a></li>
-                            <li><a href="{{ route('actividades-pacientes.aplicar-orden') }}">Aplicar orden médica a un registro de sesiones</a></li>
                             <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'Gympass']) }}">Registrar turnos Gympass</a></li>
-                            <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'PruebaPilates']) }}">Registrar turno para clase de Prueba de Pilates</a></li>
+                            <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'PruebaPilates']) }}">Registrar clase de Prueba de Pilates</a></li>
                         </ul>
                     </li>
 
                     <li class="menu-desplegable group">
                         <button>
-                            Pacientes Fijos
+                            Turnos
                             <x-iconos.flecha-abajo />
                         </button>
                         <ul>
-                            <li><a href="{{ route('pacientes-fijos.inicio') }}">Inscripciones mensuales</a></li>
+                            <li><a href="{{ route('turnos.inicio') }}">Listado de turnos</a></li>
+                            <li><a href="{{ route('turnos.calendario') }}">Ver calendario</a></li>
+                            <li><a href="{{ route('actividades.turnos-disponibles') }}">Consultar disponibilidad</a></li>
                         </ul>
                     </li>
 

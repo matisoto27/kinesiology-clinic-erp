@@ -7,6 +7,7 @@ use App\Livewire\Concerns\ManejaBuscadorSintomas;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -84,7 +85,14 @@ new class extends Component
     protected function rules()
     {
         return array_merge([
-            'dni' => 'required|numeric|digits_between:7,8|unique:pacientes,dni,' . $this->paciente->id,
+            'dni' => [
+                'required',
+                'numeric',
+                'digits_between:7,8',
+                Rule::unique('pacientes', 'dni')
+                    ->whereNull('deleted_at')
+                    ->ignore($this->paciente->id),
+            ],
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'fecha_nac' => 'required|date|before:today',
@@ -105,6 +113,7 @@ new class extends Component
     protected function messages()
     {
         return [
+            'dni.unique' => 'Ya existe un paciente con ese DNI.',
             'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
             'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
             'vive_con.required_if' => 'Por favor, especifique con quién vive el paciente.'

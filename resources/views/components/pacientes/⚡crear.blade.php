@@ -7,6 +7,7 @@ use App\Livewire\Concerns\ManejaBuscadorSintomas;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Livewire\Component;
 
 new class extends Component
@@ -31,7 +32,13 @@ new class extends Component
     protected function rules()
     {
         return array_merge([
-            'dni' => 'required|unique:pacientes,dni|numeric|digits_between:7,8',
+            'dni' => [
+                'required',
+                'numeric',
+                'digits_between:7,8',
+                // Solo activos: un soft-deleted se restaura en el alta.
+                Rule::unique('pacientes', 'dni')->whereNull('deleted_at'),
+            ],
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'fecha_nac' => 'required|date|before:today',
@@ -52,9 +59,10 @@ new class extends Component
     protected function messages()
     {
         return [
+            'dni.unique' => 'Ya existe un paciente con ese DNI.',
             'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
             'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
-            'vive_con.required_if' => 'Por favor, especifique con quién vive el paciente.'
+            'vive_con.required_if' => 'Por favor, especifique con quién vive el paciente.',
         ];
     }
 
@@ -137,7 +145,28 @@ new class extends Component
         $idsSintomas = $this->persistirSintomasSeleccionados();
 
         try {
-            DB::transaction(function () use ($idsPatologias, $idsSintomas) {
+            $fueRestaurado = false;
+
+            DB::transaction(function () use ($idsPatologias, $idsSintomas, &$fueRestaurado) {
+                $existente = Paciente::withTrashed()
+                    ->where('dni', $this->dni)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existente?->trashed()) {
+                    $existente->restore();
+                    $this->actualizarPacienteRestaurado($existente, $idsPatologias, $idsSintomas);
+                    $fueRestaurado = true;
+
+                    return;
+                }
+
+                if ($existente !== null) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'dni' => 'Ya existe un paciente con ese DNI.',
+                    ]);
+                }
+
                 $paciente = Paciente::create([
                     'dni' => $this->dni,
                     'nombre' => $this->nombre,
@@ -175,13 +204,70 @@ new class extends Component
                 $this->persistirObraSocial($paciente);
             });
 
-            return redirect()->route('pacientes.inicio')->with('exito', '¡El paciente ha sido registrado con éxito!');
+            $mensaje = $fueRestaurado
+                ? 'Se restauró el paciente eliminado previamente con ese DNI.'
+                : '¡El paciente ha sido registrado con éxito!';
+
+            return redirect()->route('pacientes.inicio')->with('exito', $mensaje);
         } catch (\Illuminate\Validation\ValidationException $ex) {
             throw $ex;
         } catch (\Throwable $ex) {
             Log::error('[components.pacientes.crear@almacenar] Error al registrar el paciente', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Ocurrió un error inesperado al intentar registrar el paciente.');
         }
+    }
+
+    /**
+     * @param  list<int>  $idsPatologias
+     * @param  list<int>  $idsSintomas
+     */
+    private function actualizarPacienteRestaurado(Paciente $paciente, array $idsPatologias, array $idsSintomas): void
+    {
+        $paciente->update([
+            'dni' => $this->dni,
+            'nombre' => $this->nombre,
+            'apellido' => $this->apellido,
+            'fecha_nac' => $this->fecha_nac,
+            'domicilio' => $this->domicilio,
+            'telefono' => $this->telefono,
+            'profesion' => $this->profesion,
+            'actividad_fisica' => $this->actividad_fisica,
+            'es_adulto_mayor' => $this->es_adulto_mayor,
+            'vive_con' => $this->es_adulto_mayor
+                ? ($this->vive_solo ? 'SOLO' : $this->vive_con)
+                : null,
+        ]);
+
+        $paciente->contactosEmergencia()->delete();
+
+        if ($this->es_adulto_mayor && !empty($this->contactos)) {
+            $datosContactos = array_map(function ($cont) {
+                unset($cont['clave']);
+                $cont['nombre'] = mb_convert_case(mb_strtolower(trim($cont['nombre'])), MB_CASE_TITLE, "UTF-8");
+
+                return $cont;
+            }, $this->contactos);
+            $paciente->contactosEmergencia()->createMany($datosContactos);
+        }
+
+        if ($idsPatologias !== []) {
+            $paciente->patologias()->syncWithoutDetaching(
+                collect($idsPatologias)->mapWithKeys(fn ($id) => [$id => ['fecha_desde' => now()]])->toArray()
+            );
+        }
+
+        $sintomasActivosPaciente = $paciente->sintomasActivos()->pluck('sintomas.id')->toArray();
+        $sintomasParaCrear = array_diff($idsSintomas, $sintomasActivosPaciente);
+
+        if ($sintomasParaCrear !== []) {
+            $paciente->sintomas()->attach(
+                collect($sintomasParaCrear)->mapWithKeys(
+                    fn ($id) => [$id => ['fecha_desde' => now()]]
+                )->toArray()
+            );
+        }
+
+        $this->persistirObraSocial($paciente);
     }
 };
 ?>
