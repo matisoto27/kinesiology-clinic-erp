@@ -129,6 +129,79 @@ class TurnoService
         });
     }
 
+    public function corregirFecha(Turno $turno, Carbon $nuevaFechaHora): Turno
+    {
+        return DB::transaction(function () use ($turno, $nuevaFechaHora) {
+            $vigente = $this->bloquearSinAsistencia(
+                $turno,
+                'No se puede corregir un turno donde el paciente ya ha asistido.'
+            );
+            $vigente->load(['actividadPaciente.actividad', 'turnoRecuperacion']);
+
+            if ($vigente->actividadPaciente->actividad->esActividadGeneral()) {
+                throw new ReglaNegocioException('La corrección simple de fecha solo aplica a turnos de kinesiología.');
+            }
+
+            if ($vigente->esAusenteAviso()) {
+                throw new ReglaNegocioException('Este turno ya fue marcado como Ausente Avisó.');
+            }
+
+            if ($vigente->turnoRecuperacion) {
+                throw new ReglaNegocioException('Este turno ya fue reprogramado.');
+            }
+
+            $vigente->update(['fecha_hora' => $nuevaFechaHora]);
+
+            return $vigente->fresh();
+        });
+    }
+
+    public function moverReprogramado(Turno $reprogramado, Carbon $nuevaFechaHora, int $idActividadDestino): Turno
+    {
+        return DB::transaction(function () use ($reprogramado, $nuevaFechaHora, $idActividadDestino) {
+            $turno = $this->bloquearSinAsistencia(
+                $reprogramado,
+                'No se puede mover un turno donde el paciente ya ha asistido.'
+            );
+            $turno->load([
+                'actividadPaciente.actividad',
+                'actividadPaciente.actPacDual.actividad',
+            ]);
+
+            if (!$turno->esReprogramado()) {
+                throw new ReglaNegocioException('Solo se puede mover un turno reprogramado.');
+            }
+
+            if (!$turno->actividadPaciente->actividad->esActividadGeneral()) {
+                throw new ReglaNegocioException('Solo se puede mover un turno reprogramado de Gimnasio o Pilates.');
+            }
+
+            $inscripcionOrigen = $turno->actividadPaciente;
+            $inscripcionDestino = $this->resolverInscripcionDestino(
+                $inscripcionOrigen,
+                $idActividadDestino
+            );
+
+            if ((int) $inscripcionDestino->id !== (int) $inscripcionOrigen->id) {
+                ActividadPaciente::lockForUpdate()->findOrFail($inscripcionDestino->id);
+            }
+
+            $this->asegurarSlotDisponible(
+                $inscripcionDestino->actividad,
+                $inscripcionOrigen->id_paciente,
+                $nuevaFechaHora,
+                $turno->id
+            );
+
+            $turno->update([
+                'id_act_pac' => $inscripcionDestino->id,
+                'fecha_hora' => $nuevaFechaHora,
+            ]);
+
+            return $turno->fresh();
+        });
+    }
+
     private function resolverInscripcionDestino(
         ActividadPaciente $origen,
         int $idActividadDestino
@@ -159,19 +232,70 @@ class TurnoService
         return $par;
     }
 
+    private function bloquearSinAsistencia(Turno $turno, string $mensajePresente): Turno
+    {
+        $bloqueado = Turno::lockForUpdate()->findOrFail($turno->id);
+
+        if (str_contains($bloqueado->estado, 'Presente')) {
+            throw new ReglaNegocioException($mensajePresente);
+        }
+
+        return $bloqueado;
+    }
+
     private function asegurarSlotDisponible(
         Actividad $actividad,
         ?int $idPaciente,
-        Carbon $nuevaFechaHora
+        Carbon $nuevaFechaHora,
+        ?int $idTurnoAIgnorar = null
     ): void {
-        $disponibles = array_flip($actividad->turnosDisponibles(
-            $idPaciente,
-            $nuevaFechaHora->copy()->startOfDay(),
-            $nuevaFechaHora->copy()->endOfDay()
-        ));
+        $comienzo = $nuevaFechaHora->copy()->startOfDay();
+        $fin = $nuevaFechaHora->copy()->endOfDay();
+        $slot = $nuevaFechaHora->toDateTimeString();
 
-        if (!isset($disponibles[$nuevaFechaHora->toDateTimeString()])) {
+        if ($idTurnoAIgnorar === null) {
+            $disponibles = array_flip($actividad->turnosDisponibles($idPaciente, $comienzo, $fin));
+
+            if (!isset($disponibles[$slot])) {
+                throw new ReglaNegocioException('El horario seleccionado ya no tiene cupo disponible.');
+            }
+
+            return;
+        }
+
+        $disponibles = array_flip($actividad->turnosDisponibles(null, $comienzo, $fin));
+
+        if (!isset($disponibles[$slot])) {
             throw new ReglaNegocioException('El horario seleccionado ya no tiene cupo disponible.');
         }
+
+        if (
+            $idPaciente !== null
+            && $this->pacienteTieneSolapeEnSlot($idPaciente, $nuevaFechaHora, $idTurnoAIgnorar)
+        ) {
+            throw new ReglaNegocioException('El horario seleccionado ya no tiene cupo disponible.');
+        }
+    }
+
+    private function pacienteTieneSolapeEnSlot(int $idPaciente, Carbon $nuevaFechaHora, int $idTurnoAIgnorar): bool
+    {
+        $inicio = $nuevaFechaHora->timestamp;
+        $fin = $inicio + 3600;
+
+        return Turno::conActPac()
+            ->delPaciente($idPaciente, true)
+            ->activosParaCupo()
+            ->entreFechas(
+                $nuevaFechaHora->copy()->startOfDay()->toDateTimeString(),
+                $nuevaFechaHora->copy()->endOfDay()->toDateTimeString()
+            )
+            ->where('turnos.id', '!=', $idTurnoAIgnorar)
+            ->get()
+            ->contains(function (Turno $turno) use ($inicio, $fin) {
+                $existenteInicio = $turno->fecha_hora->timestamp;
+                $existenteFin = $existenteInicio + 3600;
+
+                return $inicio < $existenteFin && $fin > $existenteInicio;
+            });
     }
 }

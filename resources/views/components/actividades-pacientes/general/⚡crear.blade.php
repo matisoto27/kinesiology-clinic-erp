@@ -171,13 +171,16 @@ new class extends Component
 
     private function fechaDeSemana(string $diaNombre, string $tipoSemana): Carbon
     {
-        $lunes = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $desplazamiento = match ($tipoSemana) {
+            'siguiente' => 1,
+            'subsiguiente' => 2,
+            default => 0,
+        };
 
-        if ($tipoSemana === 'siguiente') {
-            $lunes->addWeek();
-        }
-
-        return $lunes->copy()->addDays(Actividad::diaSemanaAEntero($diaNombre) - 1);
+        return Carbon::now()
+            ->startOfWeek(Carbon::MONDAY)
+            ->addWeeks($desplazamiento)
+            ->addDays(Actividad::diaSemanaAEntero($diaNombre) - 1);
     }
 
     private function esFechaValidaSemanaActual(Carbon $fecha): bool
@@ -272,7 +275,7 @@ new class extends Component
         @if ($this->totalCompleto)
             <div class="mt-6 fila-formulario">
                 <div class="columna-campo flex-1">
-                    <p class="text-white text-lg font-medium">¿Arranca esta semana o la que viene?</p>
+                    <p class="text-white text-lg font-medium">¿En qué semana arranca?</p>
 
                     <label class="flex items-center gap-2">
                         <input
@@ -286,7 +289,12 @@ new class extends Component
 
                     <label class="flex items-center gap-2">
                         <input type="radio" wire:model.live="semanaInicio" value="siguiente">
-                        Semana que viene
+                        Semana siguiente
+                    </label>
+
+                    <label class="flex items-center gap-2">
+                        <input type="radio" wire:model.live="semanaInicio" value="subsiguiente">
+                        Semana siguiente (+)
                     </label>
                 </div>
 

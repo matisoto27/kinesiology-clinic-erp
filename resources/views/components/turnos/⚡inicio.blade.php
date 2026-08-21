@@ -320,22 +320,23 @@ new class extends Component
             $nuevaFechaHora = Carbon::parse($this->fechaSeleccionada . ' ' . $this->horaSeleccionada);
 
             if (!$esGeneral && $this->modoKinesio === 'corregir') {
-                DB::transaction(function () use ($nuevaFechaHora) {
-                    $turno = Turno::lockForUpdate()->findOrFail($this->turnoSeleccionado->id);
-
-                    if (str_contains($turno->estado, 'Presente')) {
-                        throw new ReglaNegocioException('No se puede corregir un turno donde el paciente ya ha asistido.');
-                    }
-
-                    if ($turno->esAusenteAviso()) {
-                        throw new ReglaNegocioException('Este turno ya fue marcado como ausente con avisó.');
-                    }
-
-                    $turno->update(['fecha_hora' => $nuevaFechaHora]);
-                });
+                $turnoService->corregirFecha($this->turnoSeleccionado, $nuevaFechaHora);
 
                 $this->cerrarModal();
                 session()->flash('exito', 'La fecha del turno de Kinesiología ha sido corregida.');
+
+                return;
+            }
+
+            if ($esGeneral && $this->turnoSeleccionado->esReprogramado()) {
+                $turnoService->moverReprogramado(
+                    $this->turnoSeleccionado,
+                    $nuevaFechaHora,
+                    $this->idActividadDestino
+                );
+
+                $this->cerrarModal();
+                session()->flash('exito', 'El turno reprogramado fue actualizado.');
 
                 return;
             }
@@ -465,7 +466,7 @@ new class extends Component
                     </td>
                     <td>
                         <div class="centrado-total">
-                            @if($turno->puedeSerReprogramado())
+                            @if($turno->puedeSerModificado())
                                 <button type="button" wire:click="abrirModal({{ $turno->id }})">
                                     <x-iconos.lapiz />
                                 </button>
@@ -492,7 +493,9 @@ new class extends Component
     @if($mostrarModal && $turnoSeleccionado)
         @php
             $esChooserKinesio = $this->esKinesio && $modoKinesio === null;
-            $esSoloAvisoGeneral = !$this->esKinesio && !$turnoSeleccionado->esAusenteAviso();
+            $esSoloAvisoGeneral = !$this->esKinesio
+                && !$turnoSeleccionado->esAusenteAviso()
+                && !$turnoSeleccionado->esReprogramado();
             $mostrarFechas = !$esChooserKinesio && !$esSoloAvisoGeneral;
         @endphp
         <div class="modal-informativo" wire:keydown.escape.window="cerrarModal">
@@ -504,6 +507,8 @@ new class extends Component
                 <h2 class="modal-informativo__titulo text-center">
                     @if ($this->esKinesio && $modoKinesio === 'corregir')
                         Corregir fecha
+                    @elseif ($turnoSeleccionado->esReprogramado())
+                        Mover turno reprogramado
                     @elseif ($turnoSeleccionado->esAusenteAviso())
                         Asignar nueva fecha
                     @else
@@ -580,6 +585,10 @@ new class extends Component
                             @else
                                 El cupo de esta fecha está libre. Podés asignar otra ahora o cerrar y hacerlo más tarde.
                             @endif
+                        </p>
+                    @elseif ($turnoSeleccionado->esReprogramado())
+                        <p class="mb-4 text-center text-sm text-gray-400">
+                            Podés cambiar la fecha de este turno reprogramado. El ausente avisó original no se modifica.
                         </p>
                     @endif
 

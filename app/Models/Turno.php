@@ -112,21 +112,25 @@ class Turno extends Model
         return $this->id_turno_original !== null;
     }
 
-    public function puedeSerReprogramado(): bool
+    public function puedeSerModificado(): bool
     {
-        if ($this->estado === 'Presente') {
+        if (str_contains((string) $this->estado, 'Presente')) {
             return false;
         }
 
         if ($this->actividadPaciente->actividad->esActividadGeneral()) {
-            if ($this->turnoOriginal || $this->turnoRecuperacion) {
+            if ($this->turnoRecuperacion) {
                 return false;
+            }
+
+            if ($this->esReprogramado()) {
+                return true;
             }
 
             return $this->esAusenteAviso() || $this->fecha_hora->isFuture();
         }
 
-        // Kinesio: el sustituido no se edita; el vigente (original o recupero) sí, para corregir fecha.
+        // Kinesio: se puede corregir la fecha del turno vigente (original o reprogramado, pero no AA).
         return !$this->turnoRecuperacion;
     }
 
