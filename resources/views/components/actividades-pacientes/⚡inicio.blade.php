@@ -284,22 +284,16 @@ new class extends Component
 
                 <tr class="tabla-listado__fila h-28" wire:key="inscripcion-{{ $actPac->id }}">
                     <td colspan="2">
-                        @if ($actPac->esRegular())
-                            @if ($par)
-                                <span class="badge mr-1 bg-indigo-600">
-                                    Dual (x{{ $actPac->frecuencia_total_dual }})
-                                </span>
-                                {{ $actPac->ap_nom_paciente }}
-                            @else
-                                {{ $actPac->nombre_actividad }} | {{ $actPac->ap_nom_paciente }}
-                            @endif
+                        @if ($par)
+                            <span class="badge mr-1 bg-indigo-600">Dual (x{{ $actPac->frecuencia_total_dual }})</span>
+                        @elseif ($actPac->esRegular())
+                            {{ $actPac->nombre_actividad }} |
                         @elseif ($actPac->esGympass())
-                            <span class="badge bg-emerald-600">Paciente Gympass</span>
-                            {{ $actPac->ap_nom_paciente }}
+                            <span class="badge bg-emerald-600">Gympass · {{ $actPac->nombre_actividad }}</span>
                         @else
-                            <span class="badge bg-purple-600">Prueba de Pilates</span>
-                            {{ $actPac->ap_nom_paciente }}
+                            <span class="badge bg-purple-600">Prueba · {{ $actPac->nombre_actividad }}</span>
                         @endif
+                        {{ $actPac->ap_nom_paciente }}
                     </td>
                     <td>
                         {{ $primerTurno?->fecha_hora->format('d/m/Y H:i') ?? '—' }}
@@ -326,7 +320,7 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esRegular() || $actPac->esPruebaPilates())
+                        @if ($actPac->esRegular() || $actPac->esPrueba())
                             <div class="flex flex-col">
                                 <span class="{{ $cobro->fecha_recargo ? 'text-gray-500 text-sm line-through' : 'font-bold' }}">
                                     ${{ number_format($cobro->total_a_pagar, 2, ',', '.') }}

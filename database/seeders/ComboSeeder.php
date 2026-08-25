@@ -17,7 +17,6 @@ class ComboSeeder extends Seeder
             ['id' => 2, 'nombre' => 'Combo x3 sesiones', 'cantidad_sesiones' => 3],
             ['id' => 3, 'nombre' => 'Combo x5 sesiones', 'cantidad_sesiones' => 5],
             ['id' => 4, 'nombre' => 'Combo x10 sesiones', 'cantidad_sesiones' => 10],
-            ['id' => Combo::CLASE_PRUEBA, 'nombre' => 'Clase de prueba', 'cantidad_sesiones' => 1],
         ];
 
         foreach ($combos as $combo) {

@@ -73,32 +73,12 @@ class ActividadCombo extends Model
         return $consulta->where('actividades_combos.activo', true);
     }
 
-    public static function obtenerPrecioPruebaPilates(): float
-    {
-        $vinculo = self::query()
-            ->whereActividad(Actividad::PILATES)
-            ->whereCombo(Combo::CLASE_PRUEBA)
-            ->with(['precioVigente'])
-            ->firstOrFail();
-
-        if (!$vinculo->precioVigente) {
-            throw new ReglaNegocioException('La clase de prueba de Pilates no tiene un precio determinado actualmente.');
-        }
-
-        if (!$vinculo->activo) {
-            throw new ReglaNegocioException('La clase de prueba de Pilates no se encuentra habilitada en este momento.');
-        }
-
-        return (float) $vinculo->precioVigente->valor;
-    }
-
     public static function calcularTotalAPagar(int $idActividad, int $cantidadSesiones, bool $exigirComboExacto = false): float
     {
         $mensajeSesionIndividual = 'La actividad no tiene un precio determinado para su sesión individual.';
 
         $vinculos = self::activo()
             ->whereActividad($idActividad)
-            ->whereHas('combo', fn ($q) => $q->where('id', '!=', Combo::CLASE_PRUEBA))
             ->whereHas('precioVigente')
             ->with(['precioVigente', 'combo'])
             ->get()

@@ -313,7 +313,7 @@ new class extends Component
 
                                 @if ($turno->actividadPaciente->esGympass())
                                     <span class="badge bg-white text-emerald-600">Gympass</span>
-                                @elseif ($turno->actividadPaciente->esPruebaPilates())
+                                @elseif ($turno->actividadPaciente->esPrueba())
                                     <span class="badge bg-white text-purple-600">Prueba</span>
                                 @endif
 

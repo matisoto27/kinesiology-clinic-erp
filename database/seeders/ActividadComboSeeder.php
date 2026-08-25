@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\ActividadCombo;
-use App\Models\Combo;
 use Illuminate\Database\Seeder;
 
 class ActividadComboSeeder extends Seeder
@@ -14,8 +13,6 @@ class ActividadComboSeeder extends Seeder
     public function run(): void
     {
         $actividadesCombos = [
-            // Pilates
-            ['id_actividad' => 2, 'id_combo' => Combo::CLASE_PRUEBA],
             // Kinesiología convencional
             ['id_actividad' => 3, 'id_combo' => 1],
             ['id_actividad' => 3, 'id_combo' => 2],

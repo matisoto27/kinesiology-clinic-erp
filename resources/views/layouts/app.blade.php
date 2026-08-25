@@ -41,7 +41,7 @@
                             <li><a href="{{ route('pacientes.inicio') }}">Lista de pacientes</a></li>
                             <li><a href="{{ route('pacientes.crear') }}">Registrar paciente</a></li>
                             <li><a href="{{ route('pacientes-casuales.inicio') }}">Lista de pacientes casuales</a></li>
-                            <li><a href="{{ route('pacientes-casuales.crear') }}">Registrar paciente casual (Gympass/Prueba pilates)</a></li>
+                            <li><a href="{{ route('pacientes-casuales.crear') }}">Registrar paciente casual (Gympass/Clase de prueba)</a></li>
                         </ul>
                     </li>
 
@@ -56,8 +56,7 @@
                             <li><a href="{{ route('actividades-pacientes.general.crear') }}">Nueva inscripción Gimnasio/Pilates</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.con-orden.crear') }}">Kinesiología (CON orden médica)</a></li>
                             <li><a href="{{ route('actividades-pacientes.kinesiologia.sin-orden.crear') }}">Kinesiología (SIN orden médica)</a></li>
-                            <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'Gympass']) }}">Registrar turnos Gympass</a></li>
-                            <li><a href="{{ route('pacientes-casuales.turnos.crear', ['tipo' => 'PruebaPilates']) }}">Registrar clase de Prueba de Pilates</a></li>
+                            <li><a href="{{ route('pacientes-casuales.turnos.crear') }}">Registrar turnos Gympass/Clase de prueba</a></li>
                         </ul>
                     </li>
 

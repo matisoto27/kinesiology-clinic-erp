@@ -247,10 +247,11 @@ new class extends Component
 
     public function formatearEtiquetaInscripcion(ActividadPaciente $actPac): string
     {
-        if ($actPac->esPruebaPilates()) {
+        if ($actPac->esPrueba()) {
             return sprintf(
-                '[Turno: %s] Prueba de Pilates - %s',
+                '[Turno: %s] Prueba de %s - %s',
                 $actPac->primerTurno->fecha_hora->format('d/m/Y'),
+                $actPac->nombre_actividad,
                 $actPac->ap_nom_paciente
             );
         }

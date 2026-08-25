@@ -2,7 +2,6 @@
 
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
-use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
 use App\Models\PacienteCasual;
 use App\Services\TurnoService;
@@ -10,23 +9,30 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Url;
 use Livewire\Component;
 
 new class extends Component
 {
+    private const MODALIDADES = [
+        'gympass_gimnasio' => 'Gympass Gimnasio',
+        'gympass_pilates' => 'Gympass Pilates',
+        'prueba_gimnasio' => 'Clase de prueba Gimnasio',
+        'prueba_pilates' => 'Clase de prueba Pilates',
+    ];
+
     public string $busqueda = '';
     public ?int $idPacienteSeleccionado = null;
-    public bool $esClasePrueba = false;
+    public string $modalidad = 'gympass_gimnasio';
     public bool $proximaSemana = false;
     public array $turnosSeleccionados = [];
 
-    #[Url]
-    public ?string $tipo = null;
+    public function modalidades(): array
+    {
+        return self::MODALIDADES;
+    }
 
     public function mount()
     {
-        $this->esClasePrueba = $this->tipo === 'PruebaPilates';
         $this->agregarNuevoTurno();
     }
 
@@ -53,7 +59,7 @@ new class extends Component
             $this->resetErrorBag('turnosSeleccionados');
         }
 
-        if ($nombrePropiedad === 'esClasePrueba' || $nombrePropiedad === 'proximaSemana') {
+        if ($nombrePropiedad === 'modalidad' || $nombrePropiedad === 'proximaSemana') {
             $this->limpiarTurnos();
         }
     }
@@ -127,7 +133,7 @@ new class extends Component
     public function actividadActual()
     {
         static $cache = [];
-        $id = $this->esClasePrueba ? 2 : 1;
+        $id = $this->idActividadDeModalidad();
         return $cache[$id] ??= Actividad::findOrFail($id);
     }
 
@@ -150,9 +156,9 @@ new class extends Component
                 $this->revalidarCupos();
 
                 $idActividad = (int) $this->actividadActual->id;
-                $esGympass = $idActividad === 1;
+                $esGympass = $this->esModalidadGympass();
 
-                $totalAPagar = $esGympass ? 0 : ActividadCombo::obtenerPrecioPruebaPilates();
+                $totalAPagar = $esGympass ? 0 : (float) config('precios.clase_prueba');
 
                 $turnosOrdenados = collect($this->turnosSeleccionados)
                     ->sortBy([
@@ -209,8 +215,18 @@ new class extends Component
 
     private function maximoTurnos(): int
     {
-        $max = $this->esClasePrueba ? 1 : count($this->diasSemana);
+        $max = $this->esModalidadGympass() ? count($this->diasSemana) : 1;
         return max($max, 1);
+    }
+
+    private function esModalidadGympass(): bool
+    {
+        return str_starts_with($this->modalidad, 'gympass_');
+    }
+
+    private function idActividadDeModalidad(): int
+    {
+        return str_ends_with($this->modalidad, '_gimnasio') ? Actividad::GIMNASIO : Actividad::PILATES;
     }
 };
 ?>
@@ -234,15 +250,12 @@ new class extends Component
 
         <div class="fila-formulario">
             <div class="columna-campo">
-                <label class="etiqueta-formulario">Modalidad</label>
-                <x-toggle
-                    :activo="$esClasePrueba"
-                    etiquetaIzquierda="Gympass"
-                    etiquetaDerecha="Clase de prueba Pilates"
-                    :colorActivo="$esClasePrueba ? 'bg-purple-600' : 'bg-emerald-600'"
-                    :colorTextoActivo="$esClasePrueba ? 'text-purple-400' : 'text-emerald-400'"
-                    wire:click="$set('esClasePrueba', {{ !$esClasePrueba ? 'true' : 'false' }})"
-                />
+                <label for="modalidad-select" class="etiqueta-formulario">Modalidad</label>
+                <select id="modalidad-select" class="entrada" wire:model.live="modalidad">
+                    @foreach ($this->modalidades() as $valor => $etiqueta)
+                        <option value="{{ $valor }}">{{ $etiqueta }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="columna-campo">
@@ -258,8 +271,8 @@ new class extends Component
 
         <div class="mt-6 relative">
             <h3 class="etiqueta-formulario">
-                {{ $esClasePrueba ? 'Seleccione fecha y hora para la clase de prueba' : 'Seleccione fecha y hora para los turnos' }}
-                <span class="ml-2 text-xs text-blue-400 animate-pulse" wire:loading wire:target="proximaSemana, esClasePrueba">Actualizando...</span>
+                {{ $this->modalidades()[$modalidad] }}: seleccione fecha y hora
+                <span class="ml-2 text-xs text-blue-400 animate-pulse" wire:loading wire:target="proximaSemana, modalidad">Actualizando...</span>
             </h3>
 
             @foreach($turnosSeleccionados as $indice => $turno)
