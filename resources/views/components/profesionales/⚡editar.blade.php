@@ -10,7 +10,6 @@ new class extends Component
     public $profesional;
 
     public $dni, $nombre, $apellido, $activo;
-    public $valorPorHoraStr = '';
 
     public function mount(Profesional $profesional)
     {
@@ -19,7 +18,6 @@ new class extends Component
         $this->dni = $profesional->dni;
         $this->nombre = $profesional->nombre;
         $this->apellido = $profesional->apellido;
-        $this->valorPorHoraStr = number_format($profesional->valor_por_hora, 0, '', '.');
         $this->activo = $profesional->activo ? 1 : 0;
     }
 
@@ -28,19 +26,15 @@ new class extends Component
         $this->validate([
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
-            'valorPorHoraStr' => 'required',
-            'activo' => 'required|boolean'
+            'activo' => 'required|boolean',
         ]);
-
-        $valorPorHora = $this->obtenerValorNumerico($this->valorPorHoraStr);
 
         DB::beginTransaction();
         try {
             $this->profesional->update([
                 'nombre' => trim($this->nombre),
                 'apellido' => trim($this->apellido),
-                'valor_por_hora' => $valorPorHora,
-                'activo' => $this->activo
+                'activo' => $this->activo,
             ]);
             DB::commit();
 
@@ -52,12 +46,6 @@ new class extends Component
             Log::error('[(Livewire) profesionales.editar@actualizar] Error al actualizar el profesional.', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
-    }
-
-    public function obtenerValorNumerico($valorStr)
-    {
-        $limpio = str_replace('.', '', (string) $valorStr);
-        return (int) $limpio;
     }
 
     public function render()
@@ -96,16 +84,6 @@ new class extends Component
 
         <div class="fila-formulario">
             <div class="columna-campo flex-1">
-                <label for="input-valor" class="etiqueta-formulario">Valor por hora</label>
-                <input
-                    id="input-valor"
-                    type="text"
-                    class="entrada"
-                    wire:model="valorPorHoraStr"
-                    x-on:input="$wire.$js.transformarValorPorHora($el)">
-                @error('valorPorHoraStr') <span class="text-red-500 italic">{{ $message }}</span> @enderror
-            </div>
-            <div class="columna-campo flex-1">
                 <label for="select-estado" class="etiqueta-formulario">Estado</label>
                 <select id="select-estado" class="entrada" wire:model.number="activo">
                     <option value="1">Activo</option>
@@ -117,22 +95,3 @@ new class extends Component
         <button type="submit" class="boton-registrar" wire:loading.attr="disabled">Guardar Cambios</button>
     </form>
 </div>
-
-<script>
-    this.$js.transformarValorPorHora = (input) => {
-        let valorIngresado = input.value;
-
-        // Eliminar cualquier cosa que no sea un número
-        valorIngresado = valorIngresado.replace(/[^0-9]/g, '');
-
-        if (valorIngresado.length > 0) {
-            // Convertir a entero para eliminar ceros a la izquierda y limitar a 7 dígitos
-            let numeroLimpio = parseInt(valorIngresado, 10).toString().substring(0, 7);
-
-            // Formatear con puntos de miles
-            input.value = numeroLimpio.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-        } else {
-            input.value = '';
-        }
-    }
-</script>

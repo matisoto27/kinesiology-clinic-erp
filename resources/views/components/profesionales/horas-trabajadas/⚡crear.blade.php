@@ -1,11 +1,14 @@
 <?php
 
+use App\Enums\RubroHorasProfesional;
+use App\Exceptions\ReglaNegocioException;
 use App\Models\Profesional;
-use App\Models\RegistroHoras;
+use App\Services\RegistroHorasService;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
 use Livewire\Component;
 
 new class extends Component
@@ -13,15 +16,19 @@ new class extends Component
     public Collection $profesionales;
 
     public $cantidad_horas = 1;
-    public $total_a_cobrar = 0;
     public $fecha_trabajada = '';
     public $id_profesional = '';
+    public string $rubro = '';
 
-    protected $rules = [
-        'cantidad_horas' => 'required|integer|min:1|max:8',
-        'fecha_trabajada' => 'required|date',
-        'id_profesional' => 'required|exists:profesionales,id',
-    ];
+    protected function rules()
+    {
+        return [
+            'cantidad_horas' => 'required|integer|min:1|max:8',
+            'fecha_trabajada' => 'required|date',
+            'id_profesional' => 'required|exists:profesionales,id',
+            'rubro' => ['required', Rule::enum(RubroHorasProfesional::class)],
+        ];
+    }
 
     public function mount()
     {
@@ -32,11 +39,22 @@ new class extends Component
             ->get();
     }
 
-    public function almacenar()
+    #[Computed]
+    public function totalEstimado(): int
+    {
+        $rubro = RubroHorasProfesional::tryFrom($this->rubro);
+
+        if ($rubro === null || $this->cantidad_horas < 1) {
+            return 0;
+        }
+
+        return app(RegistroHorasService::class)->valorHora($rubro) * (int) $this->cantidad_horas;
+    }
+
+    public function almacenar(RegistroHorasService $registroHorasService)
     {
         $this->validate();
 
-        DB::beginTransaction();
         try {
             $profesional = Profesional::find($this->id_profesional);
 
@@ -45,34 +63,28 @@ new class extends Component
                 return;
             }
 
-            $valorPorHora = $profesional->valor_por_hora;
-            $this->total_a_cobrar = $valorPorHora * $this->cantidad_horas;
+            $rubro = RubroHorasProfesional::from($this->rubro);
 
-            RegistroHoras::create([
-                'valor_hora_profesional' => $valorPorHora,
-                'cantidad_horas' => $this->cantidad_horas,
-                'total_a_cobrar' => $this->total_a_cobrar,
-                'fecha_trabajada' => $this->fecha_trabajada,
-                'id_profesional' => $this->id_profesional
-            ]);
+            $registro = $registroHorasService->registrar(
+                $profesional,
+                $rubro,
+                (int) $this->cantidad_horas,
+                Carbon::parse($this->fecha_trabajada)
+            );
 
-            DB::commit();
-            session()->flash('exito', 'Horas registradas con éxito. Monto a cobrar: $' . number_format($this->total_a_cobrar, 2));
+            session()->flash(
+                'exito',
+                'Horas registradas con éxito. Monto a cobrar: $' . number_format((float) $registro->total_a_cobrar, 2)
+            );
 
-            $this->reset(['cantidad_horas', 'total_a_cobrar', 'id_profesional']);
+            $this->reset(['cantidad_horas', 'id_profesional', 'rubro']);
+            $this->cantidad_horas = 1;
             $this->fecha_trabajada = Carbon::now()->toDateString();
-
+        } catch (ReglaNegocioException $ex) {
+            session()->flash('error', $ex->getMessage());
         } catch (\Throwable $ex) {
-            if ($ex->errorInfo[1] == 1062) {
-                $mensajeError = 'Este profesional ya tiene horas registradas para la fecha seleccionada.';
-            } else {
-                $mensajeError = 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).';
-            }
-
-            DB::rollBack();
             Log::error('[(Livewire) profesionales.horas-trabajadas.crear@almacenar] Error al registrar las horas trabajadas.', ['excepción' => $ex->getMessage()]);
-
-            session()->flash('error', $mensajeError);
+            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
     }
 };
@@ -105,6 +117,22 @@ new class extends Component
 
         <div class="fila-formulario">
             <div class="columna-campo flex-1">
+                <label for="rubro" class="etiqueta-formulario">Actividad</label>
+                <select
+                    id="rubro"
+                    class="entrada @error('rubro') border-red-500 @enderror"
+                    wire:model.live="rubro">
+                    <option value="">Seleccione una actividad</option>
+                    @foreach(RubroHorasProfesional::cases() as $opcion)
+                        <option value="{{ $opcion->value }}">{{ $opcion->etiqueta() }}</option>
+                    @endforeach
+                </select>
+                @error('rubro') <span class="text-red-500 italic">{{ $message }}</span> @enderror
+            </div>
+        </div>
+
+        <div class="fila-formulario">
+            <div class="columna-campo flex-1">
                 <label for="cantidad-horas" class="etiqueta-formulario">Horas trabajadas</label>
                 <input
                     id="cantidad-horas"
@@ -112,7 +140,7 @@ new class extends Component
                     min="1"
                     max="8"
                     class="entrada @error('cantidad_horas') border-red-500 @enderror"
-                    wire:model="cantidad_horas">
+                    wire:model.live="cantidad_horas">
                 @error('cantidad_horas') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
 
@@ -126,6 +154,15 @@ new class extends Component
                 @error('fecha_trabajada') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
         </div>
+
+        @if($rubro !== '' && $cantidad_horas >= 1)
+            <div class="mb-5">
+                <p class="text-gray-300 text-sm">
+                    Total estimado:
+                    <span class="text-emerald-400 font-semibold">${{ number_format($this->totalEstimado, 0, ',', '.') }}</span>
+                </p>
+            </div>
+        @endif
 
         <button type="submit" class="boton-registrar" wire:loading.attr="disabled">Registrar Horas</button>
     </form>

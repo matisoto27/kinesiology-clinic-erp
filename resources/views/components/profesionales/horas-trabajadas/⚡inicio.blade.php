@@ -1,7 +1,8 @@
 <?php
 
+use App\Enums\RubroHorasProfesional;
 use App\Models\RegistroHoras;
-use Illuminate\Support\Facades\DB;
+use App\Services\RegistroHorasService;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -15,6 +16,9 @@ new class extends Component
     #[Url(as: 'profesional')]
     public string $consultaProfesional = '';
 
+    #[Url(as: 'actividad')]
+    public string $filtroRubro = '';
+
     public bool $mostrarModal = false;
     public ?RegistroHoras $registroSeleccionado = null;
     public int $nuevaCantidadHoras = 0;
@@ -25,7 +29,10 @@ new class extends Component
         return RegistroHoras::query()
             ->with('profesional')
             ->when(!empty($this->consultaProfesional), function ($consulta) {
-                $consulta->whereHas('profesional', fn($sc) => $sc->buscarPorApNom($this->consultaProfesional));
+                $consulta->whereHas('profesional', fn ($sc) => $sc->buscarPorApNom($this->consultaProfesional));
+            })
+            ->when($this->filtroRubro !== '', function ($consulta) {
+                $consulta->where('rubro', $this->filtroRubro);
             })
             ->orderByDesc('fecha_trabajada')
             ->paginate(10);
@@ -34,8 +41,11 @@ new class extends Component
     #[Computed]
     public function totalEstimado(): int
     {
-        if (!$this->registroSeleccionado) return 0;
-        return (int) $this->nuevaCantidadHoras * (int) $this->registroSeleccionado->valor_hora_profesional;
+        if (!$this->registroSeleccionado) {
+            return 0;
+        }
+
+        return (int) round($this->nuevaCantidadHoras * (float) $this->registroSeleccionado->valor_hora_aplicado);
     }
 
     public function abrirModal(int $idRegistro)
@@ -45,25 +55,22 @@ new class extends Component
         $this->mostrarModal = true;
     }
 
-    public function actualizar()
+    public function actualizar(RegistroHorasService $registroHorasService)
     {
         $this->validate(['nuevaCantidadHoras' => 'required|integer|min:1|max:8']);
 
         try {
-            DB::transaction(function () {
-                $this->registroSeleccionado->update([
-                    'cantidad_horas' => (int) $this->nuevaCantidadHoras,
-                    'total_a_cobrar' => $this->totalEstimado
-                ]);
-            });
+            $registroHorasService->actualizarCantidadHoras(
+                $this->registroSeleccionado,
+                (int) $this->nuevaCantidadHoras
+            );
 
             $this->cerrarModal();
             session()->flash('exito', '¡Horas actualizadas con éxito!');
-
         } catch (\Throwable $ex) {
             Log::error('[(Livewire)profesionales.horas-trabajadas.inicio@actualizarRegistro] Error al actualizar las horas del registro.', [
                 'id' => $this->registroSeleccionado?->id,
-                'excepción' => $ex->getMessage()
+                'excepción' => $ex->getMessage(),
             ]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
@@ -90,6 +97,16 @@ new class extends Component
                 wire:model.live.debounce.300ms="consultaProfesional"
             >
         </div>
+
+        <div class="columna-campo">
+            <label for="filtro-rubro" class="etiqueta-formulario">Filtrar por actividad</label>
+            <select id="filtro-rubro" class="entrada w-xs" wire:model.live="filtroRubro">
+                <option value="">Todas</option>
+                @foreach(RubroHorasProfesional::cases() as $opcion)
+                    <option value="{{ $opcion->value }}">{{ $opcion->etiqueta() }}</option>
+                @endforeach
+            </select>
+        </div>
     </div>
 
     <x-alerta tipo="exito" />
@@ -100,6 +117,7 @@ new class extends Component
             <tr class="tabla-listado__cabecera">
                 <th>Fecha</th>
                 <th>Profesional</th>
+                <th>Actividad</th>
                 <th>Valor por hora aplicado</th>
                 <th>Cantidad de horas</th>
                 <th>Total a cobrar</th>
@@ -118,7 +136,10 @@ new class extends Component
                         {{ $reg->profesional->apellido }}
                     </td>
                     <td>
-                        ${{ number_format($reg->valor_hora_profesional, 0, ',', '.') }}
+                        {{ $reg->rubro->etiqueta() }}
+                    </td>
+                    <td>
+                        ${{ number_format($reg->valor_hora_aplicado, 0, ',', '.') }}
                     </td>
                     <td class="text-emerald-400 font-semibold">
                         {{ $reg->cantidad_horas }} hs
@@ -136,7 +157,7 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="py-10 text-gray-300 text-center italic">No se encontraron registros.</td>
+                    <td colspan="7" class="py-10 text-gray-300 text-center italic">No se encontraron registros.</td>
                 </tr>
             @endforelse
         </tbody>
@@ -161,6 +182,7 @@ new class extends Component
                         {{ $registroSeleccionado->profesional->apellido }}
                     </p>
                     <p class="text-gray-400 text-base">
+                        {{ $registroSeleccionado->rubro->etiqueta() }} —
                         {{ ucfirst($registroSeleccionado->fecha_trabajada->translatedFormat('l d/m/Y')) }}
                     </p>
                 </div>

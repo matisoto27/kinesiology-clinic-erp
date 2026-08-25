@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('horas_trabajadas', function (Blueprint $table) {
             $table->id();
 
-            $table->decimal('valor_hora_profesional', total: 10, places: 2);
+            $table->string('rubro', 20);
             $table->unsignedTinyInteger('cantidad_horas');
             $table->decimal('total_a_cobrar', total: 10, places: 2);
             $table->date('fecha_trabajada');
@@ -23,7 +23,7 @@ return new class extends Migration
 
             $table->timestamps();
 
-            $table->unique(['id_profesional', 'fecha_trabajada']);
+            $table->unique(['id_profesional', 'fecha_trabajada', 'rubro']);
         });
     }
 

@@ -20,7 +20,6 @@ class Profesional extends Model
         'dni',
         'nombre',
         'apellido',
-        'valor_por_hora',
         'activo' // Temporalmente deja de estar disponible
     ];
 

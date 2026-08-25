@@ -84,7 +84,6 @@ new class extends Component
                 <th>DNI</th>
                 <th>Nombre</th>
                 <th>Apellido</th>
-                <th>Valor por hora</th>
                 <th>Estado</th>
                 <th>Acciones</th>
             </tr>
@@ -95,7 +94,6 @@ new class extends Component
                     <td>{{ $prof->dni }}</td>
                     <td>{{ $prof->nombre }}</td>
                     <td>{{ $prof->apellido }}</td>
-                    <td>${{ number_format($prof->valor_por_hora, 2, ',', '.') }}</td>
                     <td>
                         <span class="px-3 py-1 inline-flex items-center {{ $prof->activo ? 'bg-emerald-500' : 'bg-amber-500' }} text-white text-sm font-semibold rounded">
                             {{ $prof->activo ? 'Activo' : 'Inactivo' }}
@@ -118,7 +116,7 @@ new class extends Component
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" class="py-10 text-center text-gray-300 italic">No se encontraron profesionales para el filtro seleccionado.</td>
+                    <td colspan="5" class="py-10 text-center text-gray-300 italic">No se encontraron profesionales para el filtro seleccionado.</td>
                 </tr>
             @endforelse
         </tbody>
