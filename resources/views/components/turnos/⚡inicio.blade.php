@@ -237,7 +237,12 @@ new class extends Component
         $turno = $this->turnoSeleccionado;
         $inscripcion = $turno->actividadPaciente;
         $turno->loadMissing('turnoOriginal');
-        $fechaReferencia = $turno->turnoOriginal?->fecha_hora ?? $turno->fecha_hora;
+        $original = $turno->turnoOriginal;
+
+        // La ventana de disponibilidad se ancla a la semana del turno original
+        // (Regla de negocio, igual que en TurnoService::moverReprogramado)
+        $fechaReferencia = $original?->fecha_hora ?? $turno->fecha_hora;
+        $fechaVigente = $turno->fecha_hora;
         $actividad = Actividad::findOrFail($idActividad);
         $idPaciente = $inscripcion->id_paciente;
         $inicioSemanaTurno = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
@@ -249,11 +254,18 @@ new class extends Component
             ->filter(fn (string $slot) => Carbon::parse($slot)->gte($comienzo));
 
         if ((int) $inscripcion->id_actividad === $idActividad) {
-            $slotOriginal = $fechaReferencia->format('Y-m-d H:i:s');
+            $slotVigente = $fechaVigente->format('Y-m-d H:i:s');
 
-            if (Carbon::parse($slotOriginal)->gte($comienzo)) {
-                $slots->push($slotOriginal);
+            if (Carbon::parse($slotVigente)->gte($comienzo)) {
+                $slots->push($slotVigente);
             }
+        }
+
+        if ($original) {
+            // Volver a la fecha-hora del turno original no es "mover el reprogramado": es cancelar la reprogramación.
+            // Además, chocaría con el unique (id_act_pac, fecha_hora).
+            $slotOriginal = $original->fecha_hora->format('Y-m-d H:i:s');
+            $slots = $slots->reject(fn (string $slot) => $slot === $slotOriginal);
         }
 
         $this->turnosTotalesDisponibles = $slots->unique()->sort()->values();
@@ -285,14 +297,14 @@ new class extends Component
             ->values()
             ->toArray();
 
-        $fechaActual = $fechaReferencia->format('Y-m-d');
+        $fechaActual = $fechaVigente->format('Y-m-d');
         $this->fechaSeleccionada = in_array($fechaActual, $this->fechasUnicas, true)
             ? $fechaActual
             : ($this->fechasUnicas[0] ?? '');
 
         $this->obtenerHorasParaFecha($this->fechaSeleccionada);
 
-        $horaActual = $fechaReferencia->format('H:i:s');
+        $horaActual = $fechaVigente->format('H:i:s');
         $this->horaSeleccionada = in_array($horaActual, $this->horasDisponiblesParaFecha, true)
             ? $horaActual
             : ($this->horasDisponiblesParaFecha[0] ?? '');

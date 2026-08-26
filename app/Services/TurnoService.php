@@ -201,8 +201,16 @@ class TurnoService
             }
 
             $turno->loadMissing('turnoOriginal');
-            $fechaReferencia = $turno->turnoOriginal?->fecha_hora ?? $turno->fecha_hora;
+            $original = $turno->turnoOriginal;
+
+            $fechaReferencia = $original?->fecha_hora ?? $turno->fecha_hora;
             $this->asegurarFechaReprogramacionValida($fechaReferencia, $nuevaFechaHora);
+
+            if ($original && $nuevaFechaHora->equalTo($original->fecha_hora)) {
+                throw new ReglaNegocioException(
+                    'No se puede mover el turno reprogramado a la fecha del turno original. Para volver a esa fecha, cancelá la reprogramación.'
+                );
+            }
 
             $inscripcionOrigen = $turno->actividadPaciente;
             $inscripcionDestino = $this->resolverInscripcionDestino(
