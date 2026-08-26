@@ -194,18 +194,36 @@ class Turno extends Model
     {
         return $consulta
             ->whereDoesntHave('turnoRecuperacion')
-            ->where('turnos.estado', '!=', 'Ausente avisó');
+            ->where('turnos.estado', '!=', 'Ausente avisó')
+            ->dePacienteActivo();
     }
 
     public function scopeVisiblesEnAgenda(Builder $consulta): Builder
     {
-        return $consulta->where(function (Builder $q) {
-            $q->whereDoesntHave('turnoRecuperacion')
-                ->orWhereHas(
-                    'actividadPaciente.actividad',
-                    fn (Builder $sc) => $sc->where('id_tipo_actividad', Actividad::TIPO_GENERAL)
-                );
-        });
+        return $consulta
+            ->where(function (Builder $q) {
+                $q->whereDoesntHave('turnoRecuperacion')
+                    ->orWhereHas(
+                        'actividadPaciente.actividad',
+                        fn (Builder $sc) => $sc->where('id_tipo_actividad', Actividad::TIPO_GENERAL)
+                    );
+            })
+            ->dePacienteActivo();
+    }
+
+    /**
+     * Excluye turnos cuyo paciente (regular o casual) fue dado de baja (soft delete).
+     * Evita que pacientes eliminados sigan ocupando cupo o apareciendo en la agenda.
+     */
+    public function scopeDePacienteActivo(Builder $consulta): Builder
+    {
+        return $consulta->whereHas(
+            'actividadPaciente',
+            fn (Builder $sc) => $sc->where(function (Builder $q) {
+                $q->whereHas('pacienteRegular')
+                    ->orWhereHas('pacienteCasual');
+            })
+        );
     }
 
     public function scopeCantidadMayorIgualQue(Builder $consulta, int $cantidad): Builder

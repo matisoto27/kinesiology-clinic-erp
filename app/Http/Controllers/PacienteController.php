@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Paciente;
+use App\Services\PacienteService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -39,8 +40,27 @@ class PacienteController extends Controller
 
     public function eliminar(Paciente $paciente)
     {
-        $paciente->delete();
+        try {
+            $resultado = app(PacienteService::class)->eliminar($paciente);
 
-        return redirect()->back()->with('exito', 'El paciente ha sido eliminado correctamente.');
+            $mensaje = 'El paciente ha sido eliminado correctamente.';
+
+            if ($resultado['eliminadas'] > 0) {
+                $mensaje .= " Se liberaron {$resultado['eliminadas']} inscripción(es)/turno(s) futuros que tenía reservados.";
+            }
+
+            if ($resultado['conservadas'] > 0) {
+                $mensaje .= ' Se conservaron inscripciones con historial de asistencia o pagos.';
+            }
+
+            return redirect()->back()->with('exito', $mensaje);
+        } catch (Throwable $th) {
+            Log::error('[PacienteController@eliminar] Error al eliminar el paciente.', [
+                'id_paciente' => $paciente->id,
+                'excepción' => $th->getMessage(),
+            ]);
+
+            return redirect()->back()->with('error', 'Ocurrió un error al intentar eliminar el paciente.');
+        }
     }
 }

@@ -149,6 +149,30 @@ class GenerarTurnosMensualesTest extends TestCase
         $this->assertLessThan($nuevoPilates->id, $nuevoGym->id);
     }
 
+    public function test_no_renueva_si_el_paciente_fijo_fue_eliminado(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAPilates();
+
+        $paciente = $this->crearPaciente();
+        $pacienteFijo = $this->registrarInscripcionSimple($paciente)->pacienteFijo;
+
+        $paciente->delete();
+
+        Carbon::setTestNow('2026-06-23 08:00:00');
+
+        $inscripcionesIniciales = ActividadPaciente::count();
+        $turnosIniciales = Turno::count();
+
+        $this->mockTurnoServiceParaUnaRenovacion();
+        $this->ejecutarGeneradorTurnosMensuales($pacienteFijo->id);
+
+        $this->assertSame($inscripcionesIniciales, ActividadPaciente::count());
+        $this->assertSame($turnosIniciales, Turno::count());
+    }
+
     public function test_no_renueva_par_dual_si_el_menor_primer_turno_esta_fuera_de_la_ventana_de_anticipacion(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
