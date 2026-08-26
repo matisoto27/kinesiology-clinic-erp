@@ -112,6 +112,22 @@ class Turno extends Model
         return $this->id_turno_original !== null;
     }
 
+    public function puedeCancelarReprogramacion(): bool
+    {
+        if (!$this->esAusenteAviso() || $this->esReprogramado()) {
+            return false;
+        }
+
+        $recuperacion = $this->turnoRecuperacion;
+
+        if ($recuperacion === null) {
+            return $this->fecha_hora->isFuture();
+        }
+
+        return $recuperacion->fecha_hora->isFuture()
+            && !str_contains((string) $recuperacion->estado, 'Presente');
+    }
+
     public function puedeSerModificado(): bool
     {
         if (str_contains((string) $this->estado, 'Presente')) {

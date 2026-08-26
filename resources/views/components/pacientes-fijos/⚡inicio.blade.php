@@ -81,7 +81,7 @@ new class extends Component
     <div class="contenedor-listado max-w-screen-3xl">
         <x-alerta tipo="error" />
 
-        <h2 class="titulo-formulario">Listado de pacientes fijos</h2>
+        <h2 class="titulo-formulario">Inscripciones mensuales</h2>
 
         <div class="fila-formulario">
             <div class="columna-campo">

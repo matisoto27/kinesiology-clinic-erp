@@ -162,7 +162,7 @@ new class extends Component
                 : null;
 
             if ($inscripcion->perteneceAPacienteFijo() || ($parDual && $parDual->perteneceAPacienteFijo())) {
-                session()->flash('error', 'Las inscripciones de pacientes fijos no se pueden eliminar desde aquí. Debe dar de baja al paciente desde el listado de Pacientes fijos.');
+                session()->flash('error', 'Las inscripciones de pacientes que acuden de manera mensual no se pueden eliminar desde aquí. Primero debe dar de baja al paciente desde Inscripciones mensuales.');
                 return;
             }
 

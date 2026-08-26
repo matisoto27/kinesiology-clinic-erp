@@ -83,7 +83,7 @@ new class extends Component
                 'actividadPaciente.pacienteRegular:id,nombre,apellido',
                 'actividadPaciente.pacienteCasual:id,nombre,apellido',
                 'turnoOriginal:id,fecha_hora',
-                'turnoRecuperacion:id,id_turno_original',
+                'turnoRecuperacion:id,id_turno_original,fecha_hora,estado',
             ])
             ->when($this->idActividad > 0, fn ($q) => $q->deLaActividad($this->idActividad))
             ->when($this->consultaPaciente !== '', fn ($q) => $q->buscarPaciente($this->consultaPaciente))
@@ -236,16 +236,24 @@ new class extends Component
     {
         $turno = $this->turnoSeleccionado;
         $inscripcion = $turno->actividadPaciente;
-        $fechaHora = $turno->fecha_hora;
+        $turno->loadMissing('turnoOriginal');
+        $fechaReferencia = $turno->turnoOriginal?->fecha_hora ?? $turno->fecha_hora;
         $actividad = Actividad::findOrFail($idActividad);
         $idPaciente = $inscripcion->id_paciente;
-        $comienzo = $fechaHora->copy()->startOfWeek()->subWeek()->startOfDay();
-        $fin = $fechaHora->copy()->startOfWeek()->addWeek()->addDays(4)->endOfDay();
+        $inicioSemanaTurno = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $ahora = now();
+        $comienzo = $inicioSemanaTurno->greaterThan($ahora) ? $inicioSemanaTurno : $ahora->copy();
+        $fin = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY)->addWeek()->addDays(4)->endOfDay();
 
-        $slots = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin));
+        $slots = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin))
+            ->filter(fn (string $slot) => Carbon::parse($slot)->gte($comienzo));
 
         if ((int) $inscripcion->id_actividad === $idActividad) {
-            $slots->push($fechaHora->format('Y-m-d H:i:s'));
+            $slotOriginal = $fechaReferencia->format('Y-m-d H:i:s');
+
+            if (Carbon::parse($slotOriginal)->gte($comienzo)) {
+                $slots->push($slotOriginal);
+            }
         }
 
         $this->turnosTotalesDisponibles = $slots->unique()->sort()->values();
@@ -277,14 +285,14 @@ new class extends Component
             ->values()
             ->toArray();
 
-        $fechaActual = $fechaHora->format('Y-m-d');
+        $fechaActual = $fechaReferencia->format('Y-m-d');
         $this->fechaSeleccionada = in_array($fechaActual, $this->fechasUnicas, true)
             ? $fechaActual
             : ($this->fechasUnicas[0] ?? '');
 
         $this->obtenerHorasParaFecha($this->fechaSeleccionada);
 
-        $horaActual = $fechaHora->format('H:i:s');
+        $horaActual = $fechaReferencia->format('H:i:s');
         $this->horaSeleccionada = in_array($horaActual, $this->horasDisponiblesParaFecha, true)
             ? $horaActual
             : ($this->horasDisponiblesParaFecha[0] ?? '');
@@ -359,6 +367,24 @@ new class extends Component
             Log::error('[(Livewire) turnos.inicio@actualizar] Error al actualizar la fecha del turno.', ['excepción' => $ex->getMessage()]);
 
             $this->cerrarModal();
+            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+        }
+    }
+
+    public function cancelarReprogramacion(int $id, TurnoService $turnoService): void
+    {
+        try {
+            $turnoService->cancelarReprogramacion(Turno::findOrFail($id));
+
+            session()->flash('exito', 'La reprogramación fue cancelada. El turno volvió a estado Ausente.');
+        } catch (ReglaNegocioException $ex) {
+            session()->flash('error', $ex->getMessage());
+        } catch (\Throwable $th) {
+            Log::error('[(Livewire) turnos.inicio@cancelarReprogramacion] Error al cancelar la reprogramación.', [
+                'id' => $id,
+                'excepción' => $th->getMessage(),
+            ]);
+
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
     }
@@ -456,7 +482,22 @@ new class extends Component
                     </td>
                     <td>{{ $turno->fecha_hora->format('d/m/Y H:i') }} hs</td>
                     <td>
-                        @if ($turno->fecha_hora->isFuture() && $turno->estado === 'Ausente')
+                        @if ($turno->puedeCancelarReprogramacion())
+                            <div class="inline-flex items-center justify-center gap-2">
+                                <span class="turno-pasado bg-red-500">{{ $turno->estado }}</span>
+                                <button
+                                    type="button"
+                                    class="text-white hover:text-red-400 transition-colors duration-200"
+                                    title="{{ $turno->turnoRecuperacion ? 'Cancelar reprogramación' : 'Quitar Ausente Avisó' }}"
+                                    wire:click="cancelarReprogramacion({{ $turno->id }})"
+                                    wire:confirm="{{ $turno->turnoRecuperacion
+                                        ? '¿Cancelar la reprogramación del ' . $turno->turnoRecuperacion->fecha_hora->format('d/m/Y H:i') . '? También se quitará el Ausente Avisó del turno original.'
+                                        : '¿Estás seguro de que deseas quitar el Ausente Avisó? (El paciente avisó que al final sí va a asistir)' }}"
+                                    wire:loading.attr="disabled">
+                                    <x-iconos.cruz />
+                                </button>
+                            </div>
+                        @elseif ($turno->fecha_hora->isFuture() && $turno->estado === 'Ausente')
                             <span class="turno-pendiente inline-flex items-center">PENDIENTE</span>
                         @else
                             <span class="turno-pasado {{ str_contains($turno->estado, 'Ausente') ? 'bg-red-500' : 'bg-emerald-500' }}">

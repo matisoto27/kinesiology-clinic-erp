@@ -93,6 +93,8 @@ class TurnoService
             throw new ReglaNegocioException('El turno debe marcarse como Ausente avisó antes de asignar una nueva fecha.');
         }
 
+        $this->asegurarFechaReprogramacionValida($turnoOriginal->fecha_hora, $nuevaFechaHora);
+
         return DB::transaction(function () use ($turnoOriginal, $nuevaFechaHora, $idActividadDestino) {
             $turno = Turno::lockForUpdate()->findOrFail($turnoOriginal->id);
             $turno->load([
@@ -129,6 +131,26 @@ class TurnoService
         });
     }
 
+    public function cancelarReprogramacion(Turno $turnoOriginal): void
+    {
+        DB::transaction(function () use ($turnoOriginal) {
+            $original = Turno::lockForUpdate()->findOrFail($turnoOriginal->id);
+            $original->load('turnoRecuperacion');
+
+            if (!$original->puedeCancelarReprogramacion()) {
+                throw new ReglaNegocioException('No se puede cancelar la reprogramación de este turno.');
+            }
+
+            if ($original->turnoRecuperacion) {
+                $recuperacion = Turno::lockForUpdate()->findOrFail($original->turnoRecuperacion->id);
+                $recuperacion->notas()->delete();
+                $recuperacion->delete();
+            }
+
+            $original->update(['estado' => 'Ausente']);
+        });
+    }
+
     public function corregirFecha(Turno $turno, Carbon $nuevaFechaHora): Turno
     {
         return DB::transaction(function () use ($turno, $nuevaFechaHora) {
@@ -149,6 +171,8 @@ class TurnoService
             if ($vigente->turnoRecuperacion) {
                 throw new ReglaNegocioException('Este turno ya fue reprogramado.');
             }
+
+            $this->asegurarFechaReprogramacionValida($vigente->fecha_hora, $nuevaFechaHora);
 
             $vigente->update(['fecha_hora' => $nuevaFechaHora]);
 
@@ -175,6 +199,10 @@ class TurnoService
             if (!$turno->actividadPaciente->actividad->esActividadGeneral()) {
                 throw new ReglaNegocioException('Solo se puede mover un turno reprogramado de Gimnasio o Pilates.');
             }
+
+            $turno->loadMissing('turnoOriginal');
+            $fechaReferencia = $turno->turnoOriginal?->fecha_hora ?? $turno->fecha_hora;
+            $this->asegurarFechaReprogramacionValida($fechaReferencia, $nuevaFechaHora);
 
             $inscripcionOrigen = $turno->actividadPaciente;
             $inscripcionDestino = $this->resolverInscripcionDestino(
@@ -241,6 +269,19 @@ class TurnoService
         }
 
         return $bloqueado;
+    }
+
+    private function asegurarFechaReprogramacionValida(Carbon $fechaTurno, Carbon $nuevaFechaHora): void
+    {
+        $inicioSemanaTurno = $fechaTurno->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+
+        if ($nuevaFechaHora->lt($inicioSemanaTurno)) {
+            throw new ReglaNegocioException('No se puede reprogramar a una fecha anterior a la semana del turno.');
+        }
+
+        if ($nuevaFechaHora->isPast()) {
+            throw new ReglaNegocioException('No se puede reprogramar a una fecha que ya pasó.');
+        }
     }
 
     private function asegurarSlotDisponible(
