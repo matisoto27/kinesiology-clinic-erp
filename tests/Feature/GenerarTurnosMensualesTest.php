@@ -17,10 +17,9 @@ use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 /**
- * Regla de negocio 9: la renovación mensual se dispara cuando faltan ≤ 7 días
- * para el fin del ciclo (primer turno original + 4 semanas), no en base al
- * último turno generado. En dual, la ancla del ciclo es el menor primer turno
- * entre las dos inscripciones del par.
+ * Regla de negocio: La renovación mensual se dispara cuando faltan (turnos.dias_anticipacion_renovacion) días o menos
+ * para el fin del ciclo (primer turno original + 4 semanas), no en base al último turno generado.
+ * En dual, la ancla del ciclo es el menor primer turno entre las dos inscripciones del par.
  */
 class GenerarTurnosMensualesTest extends TestCase
 {
@@ -33,7 +32,7 @@ class GenerarTurnosMensualesTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_renueva_inscripcion_simple_cuando_faltan_7_dias_o_menos_para_el_fin_del_ciclo(): void
+    public function test_renueva_inscripcion_simple_cuando_faltan_dias_de_anticipacion_o_menos_para_el_fin_del_ciclo(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00'); // lunes, ancla del ciclo
 
@@ -43,8 +42,8 @@ class GenerarTurnosMensualesTest extends TestCase
         $paciente = $this->crearPaciente();
         $pacienteFijo = $this->registrarInscripcionSimple($paciente)->pacienteFijo;
 
-        // Ciclo: [1/6, 29/6). El 23/6 faltan 6 días para el fin (dentro de la ventana de 7).
-        Carbon::setTestNow('2026-06-23 08:00:00');
+        // Ciclo: [1/6, 29/6). Nos ubicamos 1 día dentro de la ventana de anticipación configurada.
+        Carbon::setTestNow(Carbon::parse('2026-06-29 08:00:00')->subDays($this->diasAnticipacion() - 1));
 
         $inscripcionesIniciales = ActividadPaciente::count();
         $turnosIniciales = Turno::count();
@@ -67,7 +66,7 @@ class GenerarTurnosMensualesTest extends TestCase
         $this->assertSame('2026-06-29', $nueva->primerTurno->fecha_hora->format('Y-m-d'));
     }
 
-    public function test_no_renueva_inscripcion_simple_si_faltan_mas_de_7_dias_para_el_fin_del_ciclo(): void
+    public function test_no_renueva_inscripcion_simple_si_faltan_mas_dias_que_la_ventana_de_anticipacion(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
 
@@ -77,8 +76,8 @@ class GenerarTurnosMensualesTest extends TestCase
         $paciente = $this->crearPaciente();
         $pacienteFijo = $this->registrarInscripcionSimple($paciente)->pacienteFijo;
 
-        // Fin del ciclo: 29/6. El 15/6 faltan 14 días, fuera de la ventana de anticipación.
-        Carbon::setTestNow('2026-06-15 08:00:00');
+        // Fin del ciclo: 29/6. Nos ubicamos 1 día fuera de la ventana de anticipación configurada.
+        Carbon::setTestNow(Carbon::parse('2026-06-29 08:00:00')->subDays($this->diasAnticipacion() + 1));
 
         $inscripcionesIniciales = ActividadPaciente::count();
         $turnosIniciales = Turno::count();
@@ -110,8 +109,10 @@ class GenerarTurnosMensualesTest extends TestCase
             ->orderBy('fecha_hora')
             ->value('fecha_hora');
 
-        // Entrar en la ventana de anticipación (7 días) respecto al fin del ciclo.
-        Carbon::setTestNow(Carbon::parse($primerTurnoDelPar)->addWeeks(4)->subDays(3)->setTime(8, 0));
+        // Entrar en la ventana de anticipación configurada respecto al fin del ciclo.
+        Carbon::setTestNow(
+            Carbon::parse($primerTurnoDelPar)->addWeeks(4)->subDays($this->diasAnticipacion() - 1)->setTime(8, 0)
+        );
 
         $inscripcionesIniciales = ActividadPaciente::count();
         $turnosIniciales = Turno::count();
@@ -273,6 +274,11 @@ class GenerarTurnosMensualesTest extends TestCase
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
         ]);
+    }
+
+    private function diasAnticipacion(): int
+    {
+        return (int) config('turnos.dias_anticipacion_renovacion');
     }
 
     private function ejecutarGeneradorTurnosMensuales(int $idPacienteFijo): void

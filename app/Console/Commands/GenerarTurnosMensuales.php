@@ -18,13 +18,11 @@ use Throwable;
 
 class GenerarTurnosMensuales extends Command
 {
-    private const DIAS_ANTICIPACION = 7;
-
     private const SEMANAS_CICLO = 4;
 
     protected $signature = 'app:generar-turnos-mensuales {--id_paciente_fijo=}';
 
-    protected $description = 'Genera la próxima inscripción de pacientes fijos cuando faltan 7 días o menos para el fin del ciclo (primer turno + 4 semanas).';
+    protected $description = 'Genera la próxima inscripción de pacientes fijos dentro de la ventana de anticipación configurada respecto al fin del ciclo (primer turno + 4 semanas).';
 
     public function handle(
         TurnoService $turnoService,
@@ -203,7 +201,8 @@ class GenerarTurnosMensuales extends Command
 
     private function debeRenovar(Carbon $inicioProximoCiclo): bool
     {
-        $limiteAnticipacion = Carbon::now()->addDays(self::DIAS_ANTICIPACION);
+        $diasAnticipacion = (int) config('turnos.dias_anticipacion_renovacion');
+        $limiteAnticipacion = Carbon::now()->addDays($diasAnticipacion);
 
         return $inicioProximoCiclo->lte($limiteAnticipacion);
     }
