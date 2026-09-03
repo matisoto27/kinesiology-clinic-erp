@@ -84,12 +84,12 @@ class ActividadPaciente extends Model
 
     public function pacienteRegular(): BelongsTo
     {
-        return $this->belongsTo(Paciente::class, 'id_paciente');
+        return $this->belongsTo(Paciente::class, 'id_paciente')->withTrashed();
     }
 
     public function pacienteCasual(): BelongsTo
     {
-        return $this->belongsTo(PacienteCasual::class, 'id_paciente_casual');
+        return $this->belongsTo(PacienteCasual::class, 'id_paciente_casual')->withTrashed();
     }
 
     public function turnos(): HasMany

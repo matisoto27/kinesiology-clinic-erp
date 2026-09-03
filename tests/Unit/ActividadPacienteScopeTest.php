@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Paciente;
+use App\Models\PacienteCasual;
 use App\Models\Turno;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -113,6 +114,86 @@ class ActividadPacienteScopeTest extends TestCase
         $this->assertTrue($original->fresh()->esProximaPagable());
         $this->assertFalse($renovacion1->fresh()->esProximaPagable());
         $this->assertFalse($renovacion2->fresh()->esProximaPagable());
+    }
+
+    public function test_ap_nom_paciente_incluye_paciente_regular_dado_de_baja(): void
+    {
+        $paciente = Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Ana',
+            'apellido' => 'García',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+
+        $actPac = ActividadPaciente::create([
+            'id_actividad' => Actividad::KINESIOLOGIA_CONVENCIONAL,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 10,
+            'total_a_pagar' => 0,
+        ]);
+
+        $paciente->delete();
+
+        $inscripcion = ActividadPaciente::with(['pacienteRegular', 'pacienteCasual'])->findOrFail($actPac->id);
+
+        $this->assertSame('García, Ana', $inscripcion->ap_nom_paciente);
+        $this->assertTrue($inscripcion->paciente->trashed());
+    }
+
+    public function test_ap_nom_paciente_incluye_paciente_casual_dado_de_baja(): void
+    {
+        $casual = PacienteCasual::create([
+            'nombre' => 'Luis',
+            'apellido' => 'Pérez',
+            'telefono' => fake()->unique()->numerify('##########'),
+        ]);
+
+        $actPac = ActividadPaciente::create([
+            'id_actividad' => Actividad::GIMNASIO,
+            'id_paciente_casual' => $casual->id,
+            'cant_sesiones' => 1,
+            'total_a_pagar' => 0,
+        ]);
+
+        $casual->delete();
+
+        $inscripcion = ActividadPaciente::with(['pacienteRegular', 'pacienteCasual'])->findOrFail($actPac->id);
+
+        $this->assertSame('Pérez, Luis', $inscripcion->ap_nom_paciente);
+        $this->assertTrue($inscripcion->paciente->trashed());
+    }
+
+    public function test_buscar_paciente_encuentra_inscripcion_de_paciente_dado_de_baja(): void
+    {
+        $paciente = Paciente::create([
+            'dni' => (string) random_int(10000000, 99999999),
+            'nombre' => 'Ana',
+            'apellido' => 'García',
+            'fecha_nac' => '1990-01-01',
+            'domicilio' => 'Calle 123',
+            'telefono' => '1111111111',
+            'profesion' => 'Profesión',
+            'actividad_fisica' => 'Ninguna',
+            'es_adulto_mayor' => false,
+        ]);
+
+        $actPac = ActividadPaciente::create([
+            'id_actividad' => Actividad::KINESIOLOGIA_CONVENCIONAL,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 10,
+            'total_a_pagar' => 0,
+        ]);
+
+        $paciente->delete();
+
+        $resultado = ActividadPaciente::buscarPaciente('García')->pluck('id');
+
+        $this->assertTrue($resultado->contains($actPac->id));
     }
 
     /**

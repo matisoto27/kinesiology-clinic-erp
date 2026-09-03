@@ -220,8 +220,8 @@ class Turno extends Model
         return $consulta->whereHas(
             'actividadPaciente',
             fn (Builder $sc) => $sc->where(function (Builder $q) {
-                $q->whereHas('pacienteRegular')
-                    ->orWhereHas('pacienteCasual');
+                $q->whereHas('pacienteRegular', fn (Builder $p) => $p->withoutTrashed())
+                    ->orWhereHas('pacienteCasual', fn (Builder $p) => $p->withoutTrashed());
             })
         );
     }
