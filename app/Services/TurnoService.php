@@ -282,9 +282,14 @@ class TurnoService
     private function asegurarFechaReprogramacionValida(Carbon $fechaTurno, Carbon $nuevaFechaHora): void
     {
         $inicioSemanaTurno = $fechaTurno->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
+        $finVentana = $fechaTurno->copy()->startOfWeek(Carbon::MONDAY)->addWeeks(2)->addDays(4)->endOfDay();
 
         if ($nuevaFechaHora->lt($inicioSemanaTurno)) {
             throw new ReglaNegocioException('No se puede reprogramar a una fecha anterior a la semana del turno.');
+        }
+
+        if ($nuevaFechaHora->gt($finVentana)) {
+            throw new ReglaNegocioException('No se puede reprogramar más allá del viernes de la segunda semana siguiente.');
         }
 
         if ($nuevaFechaHora->isPast()) {

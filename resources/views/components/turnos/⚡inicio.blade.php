@@ -248,7 +248,7 @@ new class extends Component
         $inicioSemanaTurno = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY)->startOfDay();
         $ahora = now();
         $comienzo = $inicioSemanaTurno->greaterThan($ahora) ? $inicioSemanaTurno : $ahora->copy();
-        $fin = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY)->addWeek()->addDays(4)->endOfDay();
+        $fin = $fechaReferencia->copy()->startOfWeek(Carbon::MONDAY)->addWeeks(2)->addDays(4)->endOfDay();
 
         $slots = collect($actividad->turnosDisponibles($idPaciente, $comienzo, $fin))
             ->filter(fn (string $slot) => Carbon::parse($slot)->gte($comienzo));
