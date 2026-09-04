@@ -6,6 +6,7 @@ use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Caja;
 use App\Models\Egreso;
+use App\Models\Ingreso;
 use App\Models\Paciente;
 use App\Models\Pago;
 use App\Models\Profesional;
@@ -79,9 +80,57 @@ class MovimientosTest extends TestCase
 
         Livewire::test('movimientos')
             ->set('filtroMetodo', 'efectivo')
-            ->set('filtroTipo', 'ingreso')
+            ->set('filtroTipo', 'pagos_actividades')
             ->assertSee('Ingreso de Caja')
             ->assertDontSee('Transferencia recibida');
+    }
+
+    public function test_filtro_de_ingreso_incluye_solo_pagos_varios(): void
+    {
+        $profesional = $this->crearProfesional();
+        $paciente = $this->crearPaciente();
+        $this->crearCaja();
+        $this->crearPago($profesional, 'Efectivo');
+        $this->crearEgreso($profesional, 'Efectivo');
+        $this->crearIngreso($profesional, $paciente, 'Transferencia');
+
+        Livewire::test('movimientos')
+            ->set('filtroTipo', 'pagos_varios')
+            ->set('filtroMetodo', 'todos')
+            ->assertSee('Pagos varios')
+            ->assertSee($paciente->apellido_nombre)
+            ->assertDontSee('Egreso de Caja');
+    }
+
+    public function test_todos_los_movimientos_incluye_pagos_ingresos_y_egresos(): void
+    {
+        $profesional = $this->crearProfesional();
+        $paciente = $this->crearPaciente();
+        $this->crearCaja();
+        $this->crearPago($profesional, 'Efectivo');
+        $this->crearEgreso($profesional, 'Efectivo');
+        $this->crearIngreso($profesional, $paciente, 'Efectivo');
+
+        Livewire::test('movimientos')
+            ->assertSee('Pago #1')
+            ->assertSee('Pagos varios')
+            ->assertSee('Egreso de Caja');
+    }
+
+    public function test_buscar_por_paciente_filtra_pagos_e_ingresos_pero_excluye_egresos(): void
+    {
+        $profesional = $this->crearProfesional();
+        $paciente = $this->crearPaciente(apellido: 'Fernández');
+        $this->crearCaja();
+        $this->crearPago($profesional, 'Efectivo', $paciente);
+        $this->crearEgreso($profesional, 'Efectivo');
+        $this->crearIngreso($profesional, $paciente, 'Efectivo');
+
+        Livewire::test('movimientos')
+            ->set('consultaPaciente', 'Fernández')
+            ->assertSee('Pago #1')
+            ->assertSee('Pagos varios')
+            ->assertDontSee('Egreso de Caja');
     }
 
     private function crearProfesional(): Profesional
@@ -102,12 +151,12 @@ class MovimientosTest extends TestCase
         ]);
     }
 
-    private function crearPago(Profesional $profesional, string $metodo): Pago
+    private function crearPaciente(string $nombre = 'Luis', string $apellido = 'Pérez'): Paciente
     {
-        $paciente = Paciente::create([
+        return Paciente::create([
             'dni' => (string) random_int(10000000, 99999999),
-            'nombre' => 'Luis',
-            'apellido' => 'Pérez',
+            'nombre' => $nombre,
+            'apellido' => $apellido,
             'fecha_nac' => '1990-01-01',
             'domicilio' => 'Calle 123',
             'telefono' => '1111111111',
@@ -115,6 +164,11 @@ class MovimientosTest extends TestCase
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
         ]);
+    }
+
+    private function crearPago(Profesional $profesional, string $metodo, ?Paciente $paciente = null): Pago
+    {
+        $paciente ??= $this->crearPaciente();
 
         $inscripcion = ActividadPaciente::create([
             'id_actividad' => Actividad::PILATES,
@@ -143,6 +197,17 @@ class MovimientosTest extends TestCase
             'metodo' => $metodo,
             'monto' => 500,
             'motivo' => 'Motivo de prueba ' . $metodo,
+            'id_profesional' => $profesional->id,
+        ]);
+    }
+
+    private function crearIngreso(Profesional $profesional, Paciente $paciente, string $metodo): Ingreso
+    {
+        return Ingreso::create([
+            'metodo' => $metodo,
+            'monto' => 23000,
+            'motivo' => 'Venta de almohadita',
+            'id_paciente' => $paciente->id,
             'id_profesional' => $profesional->id,
         ]);
     }

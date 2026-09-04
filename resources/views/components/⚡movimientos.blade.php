@@ -2,6 +2,7 @@
 
 use App\Models\Caja;
 use App\Models\Egreso;
+use App\Models\Ingreso;
 use App\Models\Pago;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
@@ -13,7 +14,10 @@ new class extends Component
 {
     use WithPagination;
 
+    #[Url(as: 'metodo')]
     public string $filtroMetodo = 'todos';
+
+    #[Url(as: 'tipo')]
     public string $filtroTipo = 'todos';
 
     #[Url(as: 'paciente')]
@@ -37,10 +41,11 @@ new class extends Component
     #[Computed]
     public function movimientos()
     {
+        $pagos = collect();
         $ingresos = collect();
         $egresos = collect();
 
-        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'ingreso') {
+        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'pagos_actividades') {
             $consulta = Pago::with([
                 'actividadPaciente.actividad',
                 'actividadPaciente.pacienteRegular',
@@ -61,13 +66,37 @@ new class extends Component
                 );
             }
 
-            $ingresos = $consulta
+            $pagos = $consulta
                 ->latest()
                 ->take(500)
                 ->get()
                 ->each(function ($pago) {
-                    $pago->tipo = 'ingreso';
+                    $pago->tipo = 'pagos_actividades';
                     $pago->fecha = $pago->created_at;
+                });
+        }
+
+        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'pagos_varios') {
+            $consultaIngresos = Ingreso::with(['paciente', 'profesional']);
+
+            if ($this->filtroMetodo !== 'todos') {
+                $consultaIngresos->where('metodo', $this->mapearMetodo($this->filtroMetodo));
+            }
+
+            if ($this->consultaPaciente !== '') {
+                $consultaIngresos->whereHas(
+                    'paciente',
+                    fn ($q) => $q->buscarPorApNom($this->consultaPaciente)
+                );
+            }
+
+            $ingresos = $consultaIngresos
+                ->latest()
+                ->take(500)
+                ->get()
+                ->each(function ($ingreso) {
+                    $ingreso->tipo = 'pagos_varios';
+                    $ingreso->fecha = $ingreso->created_at;
                 });
         }
 
@@ -88,7 +117,8 @@ new class extends Component
                 });
         }
 
-        $movimientos = $ingresos
+        $movimientos = $pagos
+            ->concat($ingresos)
             ->concat($egresos)
             ->sortByDesc('fecha')
             ->values();
@@ -167,7 +197,8 @@ new class extends Component
                 wire:model.live="filtroTipo"
             >
                 <option value="todos">Todos los movimientos</option>
-                <option value="ingreso">Ingresos (Pagos de pacientes)</option>
+                <option value="pagos_actividades">Pagos actividades</option>
+                <option value="pagos_varios">Pagos varios</option>
                 <option value="egreso">Egresos</option>
             </select>
         </div>
@@ -205,7 +236,7 @@ new class extends Component
                     <td>{{ $mov->fecha->format('d/m/Y H:i') }}</td>
                     <td>{{ $mov->profesional->nombre }} {{ $mov->profesional->apellido}}</td>
                     <td>
-                        @if($mov->tipo === 'ingreso')
+                        @if($mov->tipo === 'pagos_actividades')
                             @php
                                 $actPac = $mov->actividadPaciente;
                                 $cantidad = (int) $actPac->cant_sesiones;
@@ -245,6 +276,18 @@ new class extends Component
                             <span class="group-hover:text-emerald-900">
                                 {{ $mov->actividadPaciente->ap_nom_paciente }}
                             </span>
+                        @elseif($mov->tipo === 'pagos_varios')
+                            <small class="block text-emerald-400 group-hover:text-emerald-900 font-bold tracking-wide uppercase">
+                                Pagos varios
+                            </small>
+
+                            <span class="group-hover:text-emerald-900">
+                                {{ $mov->paciente->apellido_nombre }}
+                            </span>
+
+                            <span class="block text-gray-300 italic group-hover:text-emerald-900">
+                                {{ $mov->motivo }}
+                            </span>
                         @else
                             <span class="text-gray-300 italic group-hover:text-emerald-900">
                                 {{ $mov->motivo }}
@@ -252,17 +295,17 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if($mov->tipo === 'ingreso')
-                            <span class="badge bg-emerald-500">
-                                {{ $mov->metodo === 'Efectivo' ? 'Ingreso de Caja' : 'Transferencia recibida' }}
-                            </span>
-                        @else
+                        @if($mov->tipo === 'egreso')
                             <span class="badge bg-red-500">
                                 {{ $mov->metodo === 'Efectivo' ? 'Egreso de Caja' : 'Transferencia enviada' }}
                             </span>
+                        @else
+                            <span class="badge bg-emerald-500">
+                                {{ $mov->metodo === 'Efectivo' ? 'Ingreso de Caja' : 'Transferencia recibida' }}
+                            </span>
                         @endif
                     </td>
-                    <td class="{{ $mov->tipo === 'ingreso' ? 'text-emerald-400' : 'text-red-400' }} font-bold">
+                    <td class="{{ $mov->tipo === 'egreso' ? 'text-red-400' : 'text-emerald-400' }} font-bold">
                         {{ $mov->tipo === 'egreso' ? '-' : '+' }} ${{ number_format($mov->monto, 2, ',', '.') }}
                     </td>
                 </tr>

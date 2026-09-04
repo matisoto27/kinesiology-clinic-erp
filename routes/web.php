@@ -63,6 +63,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::view('/turnos/calendario', 'turnos.calendario')->name('turnos.calendario');
 
     Route::livewire('/egresos/crear', 'egresos.crear')->name('egresos.crear');
+    Route::livewire('/ingresos/crear', 'ingresos.crear')->name('ingresos.crear');
     Route::livewire('/movimientos', 'movimientos')->name('movimientos');
     Route::livewire('/profesionales/horas-trabajadas/crear', 'profesionales.horas-trabajadas.crear')->name('horas-trabajadas.crear');
 
