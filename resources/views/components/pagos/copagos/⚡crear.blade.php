@@ -7,6 +7,7 @@ use App\Models\Profesional;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -17,6 +18,7 @@ new class extends Component
     public $montoStr = '';
     public $monto;
     public $metodo = 'Efectivo';
+    public bool $procesando = false;
 
     #[Computed]
     public function actividadesPacientes()
@@ -45,15 +47,21 @@ new class extends Component
 
     public function almacenar()
     {
-        $this->monto = $this->obtenerMontoParaEnviar($this->montoStr);
-        $this->validate([
-            'idActPac' => 'required|exists:actividades_pacientes,id',
-            'idProfesional' => 'required|exists:profesionales,id',
-            'monto' => 'required|numeric|gt:0',
-            'metodo' => 'required|in:Efectivo,Transferencia'
-        ]);
+        if ($this->procesando) {
+            return;
+        }
+
+        $this->procesando = true;
 
         try {
+            $this->monto = $this->obtenerMontoParaEnviar($this->montoStr);
+            $this->validate([
+                'idActPac' => 'required|exists:actividades_pacientes,id',
+                'idProfesional' => 'required|exists:profesionales,id',
+                'monto' => 'required|numeric|gt:0',
+                'metodo' => 'required|in:Efectivo,Transferencia'
+            ]);
+
             DB::transaction(function () {
                 $columna = $this->metodo === 'Efectivo' ? 'saldo_efectivo' : 'saldo_transferencia';
                 Caja::lockForUpdate()->firstOrFail()->increment($columna, $this->monto);
@@ -69,9 +77,13 @@ new class extends Component
 
             return redirect()->route('movimientos')->with('exito', '¡El copago ha sido registrado con éxito!');
 
+        } catch (ValidationException $ex) {
+            throw $ex;
         } catch (\Throwable $th) {
             Log::error('[(Livewire) pagos.copagos.crear@almacenar] Error al registrar copago.', ['excepción' => $th->getMessage()]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+        } finally {
+            $this->procesando = false;
         }
     }
 
@@ -103,7 +115,7 @@ new class extends Component
                         'entrada w-full',
                         'border-red-500 border-2' => $errors->has('idActPac')
                     ])
-                    wire:model.live="idActPac"
+                    wire:model="idActPac"
                     required
                 >
                     <option value="" disabled selected>Seleccione un registro de sesiones</option>
@@ -127,7 +139,7 @@ new class extends Component
                         'entrada',
                         'border-red-500 border-2' => $errors->has('idProfesional')
                     ])
-                    wire:model.live="idProfesional"
+                    wire:model="idProfesional"
                     required
                 >
                     <option value="" disabled selected>Seleccione un profesional</option>
@@ -164,7 +176,7 @@ new class extends Component
                         'entrada',
                         'border-red-500 border-2' => $errors->has('metodo')
                     ])
-                    wire:model.live="metodo"
+                    wire:model="metodo"
                     required
                 >
                     <option value="Efectivo">Efectivo</option>
@@ -174,7 +186,15 @@ new class extends Component
             </div>
         </div>
 
-        <button type="submit" class="boton-registrar" wire:loading.attr="disabled">Registrar</button>
+        <button
+            type="submit"
+            class="boton-registrar"
+            wire:loading.attr="disabled"
+            wire:target="almacenar"
+        >
+            <span wire:loading.remove wire:target="almacenar">Registrar</span>
+            <span wire:loading wire:target="almacenar">Registrando...</span>
+        </button>
     </form>
 </div>
 
