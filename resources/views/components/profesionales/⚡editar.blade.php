@@ -12,7 +12,7 @@ new class extends Component
     public string $dni = '';
     public string $nombre = '';
     public string $apellido = '';
-    public bool $activo = false;
+    public string $activo = '1';
 
     public function mount(Profesional $profesional)
     {
@@ -21,7 +21,7 @@ new class extends Component
         $this->dni = $profesional->dni;
         $this->nombre = $profesional->nombre;
         $this->apellido = $profesional->apellido;
-        $this->activo = $profesional->activo;
+        $this->activo = $profesional->activo ? '1' : '0';
     }
 
     public function actualizar()
@@ -37,7 +37,7 @@ new class extends Component
                 $this->profesional->update([
                     'nombre' => trim($this->nombre),
                     'apellido' => trim($this->apellido),
-                    'activo' => $this->activo,
+                    'activo' => (bool) (int) $this->activo,
                 ]);
             });
 
@@ -82,7 +82,7 @@ new class extends Component
         <div class="fila-formulario">
             <div class="columna-campo flex-1">
                 <label for="select-estado" class="etiqueta-formulario">Estado</label>
-                <select id="select-estado" class="entrada" wire:model.boolean="activo">
+                <select id="select-estado" class="entrada" wire:model="activo">
                     <option value="1">Activo</option>
                     <option value="0">Inactivo</option>
                 </select>

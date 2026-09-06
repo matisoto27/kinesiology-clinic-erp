@@ -209,6 +209,12 @@ new class extends Component
         $this->reset(['contenidoNuevaNota', 'mostrarModalAgregar']);
     }
 
+    public function cancelarNota()
+    {
+        $this->reset(['contenidoNuevaNota', 'mostrarModalAgregar']);
+        $this->resetValidation();
+    }
+
     public function eliminarNota($idNota)
     {
         NotaTurno::where('id', $idNota)
@@ -219,6 +225,7 @@ new class extends Component
     public function cerrarModales()
     {
         $this->reset(['idTurnoSeleccionado', 'mostrarModalNotas', 'mostrarModalAgregar', 'contenidoNuevaNota']);
+        $this->resetValidation();
     }
 };
 ?>
@@ -232,9 +239,9 @@ new class extends Component
                     id="filtro-tipo"
                     class="entrada"
                     wire:model.live="idTipoActividad">
-                    <option value="0">Todos los tipos</option>
+                    <option value="0" @selected($idTipoActividad === 0)>Todos los tipos</option>
                     @foreach($tiposActividad as $tipo)
-                        <option value="{{ $tipo->id }}">{{ $tipo->descripcion }}</option>
+                        <option wire:key="tipo-{{ $tipo->id }}" value="{{ $tipo->id }}" @selected($idTipoActividad === $tipo->id)>{{ $tipo->descripcion }}</option>
                     @endforeach
                 </select>
             </div>
@@ -246,9 +253,9 @@ new class extends Component
                     class="entrada"
                     @if($idTipoActividad === 0) disabled @endif
                     wire:model.live="idActividad">
-                    <option value="0">Todas las actividades</option>
+                    <option value="0" @selected($idActividad === 0)>Todas las actividades</option>
                     @foreach($this->actividadesFiltradas as $act)
-                        <option value="{{ $act->id }}">{{ $act->nombre }}</option>
+                        <option wire:key="act-{{ $act->id }}" value="{{ $act->id }}" @selected($idActividad === $act->id)>{{ $act->nombre }}</option>
                     @endforeach
                 </select>
             </div>
@@ -256,9 +263,9 @@ new class extends Component
             <div class="flex flex-col">
                 <label for="filtro-horario" class="etiqueta-formulario">Franja horaria</label>
                 <select id="filtro-horario" class="entrada" wire:model.live="nroHorario">
-                    <option value="0">Cualquier horario</option>
-                    <option value="1">Turno mañana</option>
-                    <option value="2">Turno tarde</option>
+                    <option value="0" @selected($nroHorario === 0)>Cualquier horario</option>
+                    <option value="1" @selected($nroHorario === 1)>Turno mañana</option>
+                    <option value="2" @selected($nroHorario === 2)>Turno tarde</option>
                 </select>
             </div>
         </div>
@@ -296,12 +303,14 @@ new class extends Component
                 <div class="min-h-[176px] p-2 flex flex-col justify-center gap-1 bg-gray-50">
                     @foreach($turnos as $turno)
                         <button
+                            wire:key="turno-{{ $turno->id }}"
                             @class([
                                 'p-2 w-full flex flex-col items-start text-white text-xs leading-tight rounded shadow-sm',
                                 'bg-red-700 cursor-not-allowed' => $turno->esAusenteAviso(),
                                 'hover:brightness-110 transition-all' => !$turno->esAusenteAviso(),
                                 $this->obtenerColorTurno($turno, $loop->index) => !$turno->esAusenteAviso()
                             ])
+                            @disabled($turno->esAusenteAviso())
                             wire:click="obtenerNotasDelTurno({{ $turno->id }})"
                         >
                             <div class="flex items-center gap-1">
@@ -355,7 +364,7 @@ new class extends Component
 
                 <div class="p-6 max-h-[60vh] space-y-4 overflow-y-auto">
                     @forelse($this->turnoActual->notas as $nota)
-                        <div class="p-3 flex justify-between items-start bg-gray-50 border-[#3A8F8E] border-l-4 rounded shadow-sm group">
+                        <div wire:key="nota-{{ $nota->id }}" class="p-3 flex justify-between items-start bg-gray-50 border-[#3A8F8E] border-l-4 rounded shadow-sm group">
                             <div>
                                 <p class="text-gray-400 text-[10px] font-bold uppercase">{{ $nota->created_at->diffForHumans() }}</p>
                                 <p class="text-gray-700 text-sm">{{ $nota->contenido }}</p>
@@ -413,7 +422,7 @@ new class extends Component
                     </button>
                     <button
                         class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
-                        wire:click="$set('mostrarModalAgregar', false); $set('contenidoNuevaNota', '')">
+                        wire:click="cancelarNota">
                         Volver
                     </button>
                 </div>

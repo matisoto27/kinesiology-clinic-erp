@@ -45,7 +45,9 @@ class PacientesInicioTest extends TestCase
             ->call('verDetalle', $paciente->id)
             ->assertSet('idPacienteSeleccionado', $paciente->id)
             ->assertSee('IAPOS')
-            ->assertSee('María García');
+            ->assertSee('María García')
+            ->assertSee('Sin antecedentes patológicos.')
+            ->assertSee('No registra síntomas activos.');
 
         $detalle = $componente->instance()->detallePaciente();
 

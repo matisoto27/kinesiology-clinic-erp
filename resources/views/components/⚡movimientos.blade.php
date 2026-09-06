@@ -216,9 +216,9 @@ new class extends Component
                 class="entrada"
                 wire:model.live="filtroMetodo"
             >
-                <option value="todos">Todos los métodos</option>
-                <option value="efectivo">Efectivo (Caja)</option>
-                <option value="transferencia">Transferencia</option>
+                <option value="todos" @selected($filtroMetodo === 'todos')>Todos los métodos</option>
+                <option value="efectivo" @selected($filtroMetodo === 'efectivo')>Efectivo (Caja)</option>
+                <option value="transferencia" @selected($filtroMetodo === 'transferencia')>Transferencia</option>
             </select>
         </div>
 
@@ -229,10 +229,10 @@ new class extends Component
                 class="entrada"
                 wire:model.live="filtroTipo"
             >
-                <option value="todos">Todos los movimientos</option>
-                <option value="pagos_actividades">Pagos actividades</option>
-                <option value="pagos_varios">Pagos varios</option>
-                <option value="egreso">Egresos</option>
+                <option value="todos" @selected($filtroTipo === 'todos')>Todos los movimientos</option>
+                <option value="pagos_actividades" @selected($filtroTipo === 'pagos_actividades')>Pagos actividades</option>
+                <option value="pagos_varios" @selected($filtroTipo === 'pagos_varios')>Pagos varios</option>
+                <option value="egreso" @selected($filtroTipo === 'egreso')>Egresos</option>
             </select>
         </div>
 
@@ -265,7 +265,7 @@ new class extends Component
         <tbody>
             @php $movimientos = $this->movimientos; @endphp
             @forelse($movimientos as $mov)
-                <tr class="tabla-listado__fila group">
+                <tr wire:key="movimiento-{{ $mov->tipo }}-{{ $mov->id }}" class="tabla-listado__fila group">
                     <td>{{ $mov->fecha->format('d/m/Y H:i') }}</td>
                     <td>{{ $mov->profesional->nombre }} {{ $mov->profesional->apellido}}</td>
                     <td>

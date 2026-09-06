@@ -222,38 +222,34 @@ new class extends Component
                             <p class="mb-2 modal-informativo__etiqueta">¿Tiene algún antecedente patológico?</p>
 
                             <div class="space-y-3">
-                                @foreach($datos['patologias'] ?? [] as $patologia)
+                                @forelse($datos['patologias'] ?? [] as $patologia)
                                     <div class="modal-informativo__elemento-lista" wire:key="patologia-{{ $patologia['id'] }}">
                                         <p class="modal-informativo__etiqueta">{{ $patologia['fecha_desde'] }}</p>
                                         <p class="modal-informativo__valor">{{ $patologia['nombre'] }}</p>
                                     </div>
-                                @endforeach
+                                @empty
+                                    <div class="modal-informativo__sin-valor">
+                                        Sin antecedentes patológicos.
+                                    </div>
+                                @endforelse
                             </div>
-
-                            @if(empty($datos['patologias']))
-                                <div class="modal-informativo__sin-valor">
-                                    Sin antecedentes patológicos.
-                                </div>
-                            @endif
                         </div>
 
                         <div class="modal-informativo__seccion">
                             <p class="mb-2 modal-informativo__etiqueta">¿Presenta algún síntoma?</p>
 
                             <div class="space-y-3">
-                                @foreach($datos['sintomas'] ?? [] as $sintoma)
+                                @forelse($datos['sintomas'] ?? [] as $sintoma)
                                     <div class="modal-informativo__elemento-lista" wire:key="sintoma-{{ $sintoma['id'] }}">
                                         <p class="modal-informativo__etiqueta">{{ $sintoma['fecha_desde'] }}</p>
                                         <p class="modal-informativo__valor">{{ $sintoma['nombre'] }}</p>
                                     </div>
-                                @endforeach
+                                @empty
+                                    <div class="modal-informativo__sin-valor">
+                                        No registra síntomas activos.
+                                    </div>
+                                @endforelse
                             </div>
-
-                            @if(empty($datos['sintomas']))
-                                <div class="modal-informativo__sin-valor">
-                                    No registra síntomas activos.
-                                </div>
-                            @endif
                         </div>
                     </div>
 
