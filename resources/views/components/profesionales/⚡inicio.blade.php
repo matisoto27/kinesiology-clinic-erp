@@ -1,62 +1,51 @@
 <?php
 
 use App\Models\Profesional;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 new class extends Component
 {
+    use WithPagination;
+
+    #[Url(as: 'estado')]
     public string $filtroEstado = 'todos';
-    public Collection $profesionales;
 
-    public function mount()
+    public function updatingFiltroEstado(): void
     {
-        $this->cargarDatos();
+        $this->resetPage();
     }
 
-    public function updatedFiltroEstado()
+    #[Computed]
+    public function profesionales()
     {
-        $this->cargarDatos();
-    }
-
-    protected function cargarDatos()
-    {
-        $consulta = Profesional::query();
-
-        if ($this->filtroEstado === 'activos') {
-            $consulta->where('activo', true);
-        } elseif ($this->filtroEstado === 'inactivos') {
-            $consulta->where('activo', false);
-        }
-
-        $this->profesionales = $consulta->orderByDesc('nombre')->get();
+        return Profesional::query()
+            ->when($this->filtroEstado === 'activos', fn ($consulta) => $consulta->where('activo', true))
+            ->when($this->filtroEstado === 'inactivos', fn ($consulta) => $consulta->where('activo', false))
+            ->orderByDesc('nombre')
+            ->paginate(10);
     }
 
     public function eliminar(int $id)
     {
-        DB::beginTransaction();
-
         try {
-            $profesional = Profesional::findOrFail($id);
-            $profesional->delete();
+            DB::transaction(function () use ($id) {
+                $profesional = Profesional::findOrFail($id);
+                $profesional->delete();
+            });
 
-            DB::commit();
             session()->flash('exito', 'El profesional ha sido eliminado correctamente.');
-
-            $this->cargarDatos();
         } catch (\Throwable $ex) {
-            DB::rollBack();
             Log::error('[(Livewire) profesionales.inicio@eliminar] Error al eliminar el profesional.', [
                 'id' => $id,
                 'excepción' => $ex->getMessage()
             ]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
-    }
-
-    public function render()
-    {
-        return $this->view();
     }
 };
 ?>
@@ -89,8 +78,8 @@ new class extends Component
             </tr>
         </thead>
         <tbody>
-            @forelse($profesionales as $prof)
-                <tr class="tabla-listado__fila">
+            @forelse($this->profesionales as $prof)
+                <tr class="tabla-listado__fila" wire:key="profesional-{{ $prof->id }}">
                     <td>{{ $prof->dni }}</td>
                     <td>{{ $prof->nombre }}</td>
                     <td>{{ $prof->apellido }}</td>
@@ -101,7 +90,7 @@ new class extends Component
                     </td>
                     <td>
                         <div class="flex justify-center items-center space-x-4">
-                            <a href="{{ route('profesionales.editar', ['profesional' => $prof['id']]) }}" class="accion-editar">
+                            <a href="{{ route('profesionales.editar', ['profesional' => $prof->id]) }}" class="accion-editar">
                                 <x-iconos.lapiz />
                             </a>
                             <button
@@ -121,4 +110,8 @@ new class extends Component
             @endforelse
         </tbody>
     </table>
+
+    <div class="mt-4">
+        {{ $this->profesionales->links(data: ['scrollTo' => false]) }}
+    </div>
 </div>

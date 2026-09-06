@@ -79,7 +79,7 @@ new class extends Component
         </thead>
         <tbody>
             @forelse($this->registrosFiltrados as $actCom)
-                <tr class="tabla-listado__fila">
+                <tr class="tabla-listado__fila" wire:key="actividad-combo-{{ $actCom->id }}">
                     <td>{{ $actCom->nombre_actividad }}</td>
                     <td>{{ $actCom->combo->nombre }}</td>
                     <td>{{ $actCom->combo->cantidad_sesiones }}</td>

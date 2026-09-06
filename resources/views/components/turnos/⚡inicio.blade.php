@@ -472,7 +472,7 @@ new class extends Component
 
         <tbody>
             @forelse($this->turnos as $turno)
-                <tr class="tabla-listado__fila">
+                <tr class="tabla-listado__fila" wire:key="turno-{{ $turno->id }}">
                     <td>
                         @if ($turno->actividadPaciente->esRegular())
                             {{ $turno->actividadPaciente->nombre_actividad }} |

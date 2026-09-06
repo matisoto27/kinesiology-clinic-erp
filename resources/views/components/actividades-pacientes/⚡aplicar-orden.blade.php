@@ -9,11 +9,11 @@ use Livewire\Component;
 
 new class extends Component
 {
-    public $cantidad_sesiones = '';
+    public $cantidadSesiones = '';
     public $dia;
     public $mes;
     public $anio;
-    public $id_act_pac = '';
+    public $idActPac = '';
 
     public function mount()
     {
@@ -25,7 +25,7 @@ new class extends Component
 
     public function updatedCantidadSesiones()
     {
-        $this->id_act_pac = '';
+        $this->idActPac = '';
     }
 
     public function updatedMes() { $this->validarDia(); }
@@ -42,7 +42,7 @@ new class extends Component
     #[Computed]
     public function inscripcionesFiltradas()
     {
-        if (empty($this->cantidad_sesiones)) {
+        if (empty($this->cantidadSesiones)) {
             return collect();
         }
 
@@ -56,7 +56,7 @@ new class extends Component
             ->conActividad()
             ->deTipo(2)
             ->whereNull('actividades_pacientes.fecha_emision_ord')
-            ->where('cant_sesiones', $this->cantidad_sesiones)
+            ->where('cant_sesiones', $this->cantidadSesiones)
             ->whereHas('pacienteRegular', function($consulta) {
                 $consulta->tieneObraSocial();
             })
@@ -76,17 +76,17 @@ new class extends Component
     public function aplicarOrden()
     {
         $this->validate([
-            'id_act_pac' => 'required|exists:actividades_pacientes,id',
+            'idActPac' => 'required|exists:actividades_pacientes,id',
             'dia' => 'required|integer|min:1|max:31',
             'mes' => 'required|integer|min:1|max:12',
             'anio' => 'required|integer',
-            'cantidad_sesiones'=>'required|in:5,10'
+            'cantidadSesiones'=>'required|in:5,10'
         ]);
 
         DB::beginTransaction();
 
         try {
-            $inscripcion = ActividadPaciente::findOrFail($this->id_act_pac);
+            $inscripcion = ActividadPaciente::findOrFail($this->idActPac);
             $inscripcion->update([
                 'fecha_emision_ord'  => Carbon::create($this->anio, $this->mes, $this->dia),
                 'pago_completado'    => true
@@ -118,14 +118,14 @@ new class extends Component
                 <label for="cantidad-select" class="etiqueta-formulario">Sesiones que cubre la orden</label>
                 <select
                     id="cantidad-select"
-                    class="entrada w-full @error('cantidad_sesiones') border-red-500 @enderror"
-                    wire:model.live="cantidad_sesiones"
+                    class="entrada w-full @error('cantidadSesiones') border-red-500 @enderror"
+                    wire:model.live="cantidadSesiones"
                     required>
                     <option value="" disabled selected>Seleccione una cantidad</option>
                     <option value="5">5 sesiones</option>
                     <option value="10">10 sesiones</option>
                 </select>
-                @error('cantidad_sesiones') <span class="text-red-500 italic text-sm">{{ $message }}</span> @enderror
+                @error('cantidadSesiones') <span class="text-red-500 italic text-sm">{{ $message }}</span> @enderror
             </div>
             <div class="columna-campo flex-1">
                 <h3 class="etiqueta-formulario">Fecha de emisión de la orden médica</h3>
@@ -158,16 +158,16 @@ new class extends Component
                 <p class="mb-1 text-gray-300 italic">Solo se muestran sesiones sin pagos registrados.</p>
                 <select
                     id="act-pac-select"
-                    class="entrada @error('id_act_pac') border-red-500 @enderror"
-                    wire:model.live="id_act_pac"
+                    class="entrada @error('idActPac') border-red-500 @enderror"
+                    wire:model.live="idActPac"
                     @if($this->inscripcionesFiltradas->isEmpty()) disabled @endif
                     required
                 >
                     <option value="" selected>
-                        @if(empty($this->cantidad_sesiones))
+                        @if(empty($this->cantidadSesiones))
                             Primero seleccione una cantidad
                         @elseif($this->inscripcionesFiltradas->isEmpty())
-                            No hay inscripciones de {{ $this->cantidad_sesiones }} sesiones
+                            No hay inscripciones de {{ $this->cantidadSesiones }} sesiones
                         @else
                             Seleccione un registro de sesiones
                         @endif
@@ -179,7 +179,7 @@ new class extends Component
                         </option>
                     @endforeach
                 </select>
-                @error('id_act_pac') <span class="text-red-500 italic text-sm">{{ $message }}</span> @enderror
+                @error('idActPac') <span class="text-red-500 italic text-sm">{{ $message }}</span> @enderror
             </div>
         </div>
 

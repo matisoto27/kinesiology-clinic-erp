@@ -20,10 +20,10 @@ new class extends Component
     public ?int $idPacienteSeleccionado = null;
 
     public string $metodo = '';
-    public $montoStr = '';
-    public $monto;
-    public $motivo;
-    public $id_profesional;
+    public string $montoStr = '';
+    public float $monto = 0.0;
+    public string $motivo = '';
+    public ?int $idProfesional = null;
 
     protected function rules()
     {
@@ -32,7 +32,7 @@ new class extends Component
             'metodo' => 'required|in:Efectivo,Transferencia',
             'monto' => ['required', 'numeric', 'gt:0'],
             'motivo' => 'required|string|max:255',
-            'id_profesional' => 'required|exists:profesionales,id',
+            'idProfesional' => 'required|exists:profesionales,id',
         ];
     }
 
@@ -113,7 +113,7 @@ new class extends Component
                     'monto' => $this->monto,
                     'motivo' => $this->motivo,
                     'id_paciente' => $this->idPacienteSeleccionado,
-                    'id_profesional' => $this->id_profesional,
+                    'id_profesional' => $this->idProfesional,
                 ]);
             });
 
@@ -177,8 +177,8 @@ new class extends Component
                 <label for="id-profesional" class="etiqueta-formulario">Profesional que lo realiza</label>
                 <select
                     id="id-profesional"
-                    class="entrada @error('id_profesional') border-red-500 @enderror"
-                    wire:model="id_profesional">
+                    class="entrada @error('idProfesional') border-red-500 @enderror"
+                    wire:model="idProfesional">
                     <option value="">Seleccione un profesional</option>
 
                     @foreach($profesionales as $prof)
@@ -187,7 +187,7 @@ new class extends Component
                         </option>
                     @endforeach
                 </select>
-                @error('id_profesional') <span class="text-red-500 text-xs italic">{{ $message }}</span> @enderror
+                @error('idProfesional') <span class="text-red-500 text-xs italic">{{ $message }}</span> @enderror
             </div>
 
             <div class="columna-campo flex-1">

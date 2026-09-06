@@ -23,7 +23,7 @@ new class extends Component
     public string $idProfesional = '';
     public string $metodo = '';
     public string $montoStr = '';
-    public $monto;
+    public float $monto = 0.0;
 
     protected function rules()
     {

@@ -108,10 +108,10 @@ class RegistroHorasTest extends TestCase
         $profesional = $this->crearProfesional();
 
         Livewire::test('profesionales.horas-trabajadas.crear')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('rubro', RubroHorasProfesional::Gimnasio->value)
-            ->set('cantidad_horas', 2)
-            ->set('fecha_trabajada', '2026-08-20')
+            ->set('cantidadHoras', 2)
+            ->set('fechaTrabajada', '2026-08-20')
             ->call('almacenar')
             ->assertHasNoErrors();
 

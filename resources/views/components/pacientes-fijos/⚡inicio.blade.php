@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Actividad;
+use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
 use App\Services\PacienteFijoService;
 use Carbon\Carbon;
@@ -54,6 +55,32 @@ new class extends Component
                 ->whereHas('horarios', fn ($sc) => $sc->where('id_actividad', Actividad::PILATES)))
             ->orderByDesc('pacientes_fijos.created_at')
             ->paginate(10);
+    }
+
+    #[Computed]
+    public function idsPacientesCursandoInscripcion(): array
+    {
+        $idsPacientes = $this->pacientesFijos->pluck('id_paciente')->unique()->values();
+
+        if ($idsPacientes->isEmpty()) {
+            return [];
+        }
+
+        $ahora = Carbon::now();
+
+        $consultaBase = fn () => ActividadPaciente::query()
+            ->whereIn('id_paciente', $idsPacientes)
+            ->whereIn('id_actividad', [Actividad::GIMNASIO, Actividad::PILATES]);
+
+        $conPasadoOPresente = $consultaBase()
+            ->whereHas('turnos', fn ($q) => $q->whereNull('id_turno_original')->where('fecha_hora', '<=', $ahora))
+            ->pluck('id_paciente');
+
+        $conFuturoOPresente = $consultaBase()
+            ->whereHas('turnos', fn ($q) => $q->whereNull('id_turno_original')->where('fecha_hora', '>=', $ahora))
+            ->pluck('id_paciente');
+
+        return $conPasadoOPresente->intersect($conFuturoOPresente)->unique()->values()->all();
     }
 
     public function eliminar($id)
@@ -119,7 +146,7 @@ new class extends Component
                     @forelse($this->pacientesFijos as $pacFijo)
                         @php($actividadesAgrupadas = $pacFijo->horarios->groupBy(fn ($hor) => $hor->actividad->nombre))
                         @php($esDualConPareja = $actividadesAgrupadas->count() > 1)
-                        @php($puedeEditar = $pacFijo->estaCursandoInscripcion())
+                        @php($puedeEditar = in_array($pacFijo->id_paciente, $this->idsPacientesCursandoInscripcion, true))
                         <tr class="group tabla-listado__fila" wire:key="paciente-fijo-{{ $pacFijo->id }}">
                             <td>{{ $pacFijo->paciente->apellido_nombre }}</td>
                             <td>

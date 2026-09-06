@@ -19,7 +19,7 @@ class EgresoCrearTest extends TestCase
         $this->crearCaja(saldoEfectivo: 10000, saldoTransferencia: 8000);
 
         Livewire::test('egresos.crear')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Compra de insumo')
             ->set('metodo', 'Efectivo')
             ->set('monto', 3500)
@@ -42,7 +42,7 @@ class EgresoCrearTest extends TestCase
         $this->crearCaja(saldoEfectivo: 10000, saldoTransferencia: 8000);
 
         Livewire::test('egresos.crear')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Pago a proveedor')
             ->set('metodo', 'Transferencia')
             ->set('monto', 2500)
@@ -63,7 +63,7 @@ class EgresoCrearTest extends TestCase
         $this->crearCaja(saldoEfectivo: 1000, saldoTransferencia: 50000);
 
         Livewire::test('egresos.crear')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Compra de insumo')
             ->set('metodo', 'Efectivo')
             ->set('monto', 1000.01)
@@ -80,7 +80,7 @@ class EgresoCrearTest extends TestCase
         $this->crearCaja(saldoEfectivo: 10000, saldoTransferencia: 1000);
 
         Livewire::test('egresos.crear')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Transferencia al banco')
             ->set('metodo', 'Transferencia')
             ->set('monto', 2500)
@@ -99,7 +99,7 @@ class EgresoCrearTest extends TestCase
         $this->crearCaja(saldoEfectivo: 1500, saldoTransferencia: 0);
 
         Livewire::test('egresos.crear')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Cierre de caja')
             ->set('metodo', 'Efectivo')
             ->set('monto', 1500)

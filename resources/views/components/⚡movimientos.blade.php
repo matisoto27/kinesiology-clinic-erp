@@ -4,11 +4,14 @@ use App\Models\Caja;
 use App\Models\Egreso;
 use App\Models\Ingreso;
 use App\Models\Pago;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
-use Illuminate\Pagination\LengthAwarePaginator;
 
 new class extends Component
 {
@@ -41,98 +44,128 @@ new class extends Component
     #[Computed]
     public function movimientos()
     {
-        $pagos = collect();
-        $ingresos = collect();
-        $egresos = collect();
-
-        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'pagos_actividades') {
-            $consulta = Pago::with([
-                'actividadPaciente.actividad',
-                'actividadPaciente.pacienteRegular',
-                'actividadPaciente.pacienteCasual',
-                'actividadPaciente.primerTurno',
-                'actividadPaciente.actPacDual.primerTurno',
-                'profesional'
-            ]);
-
-            if ($this->filtroMetodo !== 'todos') {
-                $consulta->where('metodo', $this->mapearMetodo($this->filtroMetodo));
-            }
-
-            if ($this->consultaPaciente !== '') {
-                $consulta->whereHas(
-                    'actividadPaciente',
-                    fn ($q) => $q->buscarPaciente($this->consultaPaciente)
-                );
-            }
-
-            $pagos = $consulta
-                ->latest()
-                ->take(500)
-                ->get()
-                ->each(function ($pago) {
-                    $pago->tipo = 'pagos_actividades';
-                    $pago->fecha = $pago->created_at;
-                });
-        }
-
-        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'pagos_varios') {
-            $consultaIngresos = Ingreso::with(['paciente', 'profesional']);
-
-            if ($this->filtroMetodo !== 'todos') {
-                $consultaIngresos->where('metodo', $this->mapearMetodo($this->filtroMetodo));
-            }
-
-            if ($this->consultaPaciente !== '') {
-                $consultaIngresos->whereHas(
-                    'paciente',
-                    fn ($q) => $q->buscarPorApNom($this->consultaPaciente)
-                );
-            }
-
-            $ingresos = $consultaIngresos
-                ->latest()
-                ->take(500)
-                ->get()
-                ->each(function ($ingreso) {
-                    $ingreso->tipo = 'pagos_varios';
-                    $ingreso->fecha = $ingreso->created_at;
-                });
-        }
-
-        if ($this->consultaPaciente === '' && ($this->filtroTipo === 'todos' || $this->filtroTipo === 'egreso')) {
-            $consultaEgresos = Egreso::with('profesional');
-
-            if ($this->filtroMetodo !== 'todos') {
-                $consultaEgresos->where('metodo', $this->mapearMetodo($this->filtroMetodo));
-            }
-
-            $egresos = $consultaEgresos
-                ->latest()
-                ->take(500)
-                ->get()
-                ->each(function ($egreso) {
-                    $egreso->tipo = 'egreso';
-                    $egreso->fecha = $egreso->created_at;
-                });
-        }
-
-        $movimientos = $pagos
-            ->concat($ingresos)
-            ->concat($egresos)
-            ->sortByDesc('fecha')
-            ->values();
-
         $porPagina = 5;
         $paginaActual = $this->getPage();
 
-        return new LengthAwarePaginator(
-            $movimientos->forPage($paginaActual, $porPagina),
-            $movimientos->count(),
-            $porPagina,
-            $paginaActual,
-            ['path' => request()->url()]
-        );
+        $subconsultas = collect();
+
+        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'pagos_actividades') {
+            $subconsultas->push($this->consultaResumenPagos());
+        }
+
+        if ($this->filtroTipo === 'todos' || $this->filtroTipo === 'pagos_varios') {
+            $subconsultas->push($this->consultaResumenIngresos());
+        }
+
+        if ($this->consultaPaciente === '' && ($this->filtroTipo === 'todos' || $this->filtroTipo === 'egreso')) {
+            $subconsultas->push($this->consultaResumenEgresos());
+        }
+
+        if ($subconsultas->isEmpty()) {
+            return new LengthAwarePaginator(collect(), 0, $porPagina, $paginaActual, ['path' => request()->url()]);
+        }
+
+        $union = $subconsultas->shift();
+        $subconsultas->each(fn (QueryBuilder $sub) => $union->unionAll($sub));
+
+        $paginador = $union->orderByDesc('fecha')->paginate($porPagina, ['*'], 'page', $paginaActual);
+        $paginador->setCollection($this->hidratarMovimientos(collect($paginador->items())));
+
+        return $paginador;
+    }
+
+    private function consultaResumenPagos(): QueryBuilder
+    {
+        $consulta = Pago::query()->select(['id', DB::raw("'pagos_actividades' as tipo"), 'created_at as fecha']);
+
+        if ($this->filtroMetodo !== 'todos') {
+            $consulta->where('metodo', $this->mapearMetodo($this->filtroMetodo));
+        }
+
+        if ($this->consultaPaciente !== '') {
+            $consulta->whereHas(
+                'actividadPaciente',
+                fn ($q) => $q->buscarPaciente($this->consultaPaciente)
+            );
+        }
+
+        return $consulta->toBase();
+    }
+
+    private function consultaResumenIngresos(): QueryBuilder
+    {
+        $consulta = Ingreso::query()->select(['id', DB::raw("'pagos_varios' as tipo"), 'created_at as fecha']);
+
+        if ($this->filtroMetodo !== 'todos') {
+            $consulta->where('metodo', $this->mapearMetodo($this->filtroMetodo));
+        }
+
+        if ($this->consultaPaciente !== '') {
+            $consulta->whereHas(
+                'paciente',
+                fn ($q) => $q->buscarPorApNom($this->consultaPaciente)
+            );
+        }
+
+        return $consulta->toBase();
+    }
+
+    private function consultaResumenEgresos(): QueryBuilder
+    {
+        $consulta = Egreso::query()->select(['id', DB::raw("'egreso' as tipo"), 'created_at as fecha']);
+
+        if ($this->filtroMetodo !== 'todos') {
+            $consulta->where('metodo', $this->mapearMetodo($this->filtroMetodo));
+        }
+
+        return $consulta->toBase();
+    }
+
+    /**
+     * @param  Collection<int, object{id: int, tipo: string, fecha: string}>  $filas
+     */
+    private function hidratarMovimientos(Collection $filas): Collection
+    {
+        $idsPorTipo = $filas->groupBy('tipo')->map(fn ($grupo) => $grupo->pluck('id'));
+
+        $pagosPorId = Pago::with([
+            'actividadPaciente.actividad',
+            'actividadPaciente.pacienteRegular',
+            'actividadPaciente.pacienteCasual',
+            'actividadPaciente.primerTurno',
+            'actividadPaciente.actPacDual.primerTurno',
+            'profesional'
+        ])->whereIn('id', $idsPorTipo->get('pagos_actividades', collect()))->get()->keyBy('id');
+
+        $ingresosPorId = Ingreso::with(['paciente', 'profesional'])
+            ->whereIn('id', $idsPorTipo->get('pagos_varios', collect()))
+            ->get()
+            ->keyBy('id');
+
+        $egresosPorId = Egreso::with('profesional')
+            ->whereIn('id', $idsPorTipo->get('egreso', collect()))
+            ->get()
+            ->keyBy('id');
+
+        return $filas
+            ->map(function ($fila) use ($pagosPorId, $ingresosPorId, $egresosPorId) {
+                $modelo = match ($fila->tipo) {
+                    'pagos_actividades' => $pagosPorId->get($fila->id),
+                    'pagos_varios' => $ingresosPorId->get($fila->id),
+                    default => $egresosPorId->get($fila->id),
+                };
+
+                if ($modelo === null) {
+                    return null;
+                }
+
+                $modelo->tipo = $fila->tipo;
+                $modelo->fecha = $modelo->created_at;
+
+                return $modelo;
+            })
+            ->filter()
+            ->values();
     }
 
     #[Computed]

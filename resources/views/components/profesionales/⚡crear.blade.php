@@ -7,42 +7,47 @@ use Livewire\Component;
 
 new class extends Component
 {
-    public $dni;
-    public $nombre;
-    public $apellido;
+    public string $dni = '';
+    public string $nombre = '';
+    public string $apellido = '';
 
-    protected $rules = [
-        'dni' => 'required|unique:profesionales,dni|numeric|digits_between:7,8',
-        'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
-        'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
-    ];
+    protected function rules(): array
+    {
+        return [
+            'dni' => 'required|unique:profesionales,dni|numeric|digits_between:7,8',
+            'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
+            'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
+        ];
+    }
 
-    protected $messages = [
-        'dni.required' => 'El DNI es obligatorio.',
-        'dni.unique' => 'Ya existe un profesional registrado con este DNI.',
-        'nombre.required' => 'El nombre es obligatorio.',
-        'apellido.required' => 'El apellido es obligatorio.',
-        'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
-        'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
-    ];
+    protected function messages(): array
+    {
+        return [
+            'dni.required' => 'El DNI es obligatorio.',
+            'dni.unique' => 'Ya existe un profesional registrado con este DNI.',
+            'nombre.required' => 'El nombre es obligatorio.',
+            'apellido.required' => 'El apellido es obligatorio.',
+            'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
+            'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
+        ];
+    }
 
     public function almacenar()
     {
         $this->validate();
 
-        DB::beginTransaction();
         try {
-            Profesional::create([
-                'dni' => $this->dni,
-                'nombre' => $this->nombre,
-                'apellido' => $this->apellido,
-            ]);
-            DB::commit();
+            DB::transaction(function () {
+                Profesional::create([
+                    'dni' => $this->dni,
+                    'nombre' => $this->nombre,
+                    'apellido' => $this->apellido,
+                ]);
+            });
 
             return redirect()->route('profesionales.inicio')->with('exito', '¡Profesional registrado con éxito!');
 
         } catch (\Throwable $ex) {
-            DB::rollBack();
             Log::error('[(Livewire) profesionales.crear@almacenar] Error al registrar el profesional.', ['excepción' => $ex->getMessage()]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }

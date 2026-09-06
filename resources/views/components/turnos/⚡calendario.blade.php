@@ -127,7 +127,13 @@ new class extends Component
     }
 
     #[Computed]
-    public function turnos()
+    public function diasSemana()
+    {
+        return collect(range(0, 4))->map(fn($d) => $this->diaInicio->copy()->addDays($d)->format('Y-m-d'));
+    }
+
+    #[Computed]
+    public function turnosAgrupados()
     {
         $diaInicio = $this->diaInicio; // Lunes
         $diaFin = $diaInicio->copy()->addDays(4); // Viernes
@@ -214,14 +220,6 @@ new class extends Component
     {
         $this->reset(['idTurnoSeleccionado', 'mostrarModalNotas', 'mostrarModalAgregar', 'contenidoNuevaNota']);
     }
-
-    public function render()
-    {
-        return $this->view([
-            'turnosAgrupados' => $this->turnos,
-            'diasSemana' => collect(range(0, 4))->map(fn($d) => $this->diaInicio->copy()->addDays($d)->format('Y-m-d'))
-        ]);
-    }
 };
 ?>
 
@@ -281,7 +279,7 @@ new class extends Component
 
     <div class="grid grid-cols-[128px_repeat(5,1fr)] border-black border divide-black divide-x divide-y">
         <div class="centrado-total h-14 bg-[#3A8F8E] text-white font-bold">Hora Ingreso</div>
-        @foreach ($diasSemana as $diaSemana)
+        @foreach ($this->diasSemana as $diaSemana)
             <div class="centrado-total h-14 bg-[#3A8F8E] text-white font-bold">
                 {{ ucwords(Carbon::parse($diaSemana)->translatedFormat('l d')) }}
             </div>
@@ -292,8 +290,8 @@ new class extends Component
                 {{ $horaInicio }} hs
             </div>
 
-            @foreach ($diasSemana as $diaSemana)
-                @php $turnos = $turnosAgrupados[$diaSemana][$horaInicio] ?? []; @endphp
+            @foreach ($this->diasSemana as $diaSemana)
+                @php $turnos = $this->turnosAgrupados[$diaSemana][$horaInicio] ?? []; @endphp
 
                 <div class="min-h-[176px] p-2 flex flex-col justify-center gap-1 bg-gray-50">
                     @foreach($turnos as $turno)

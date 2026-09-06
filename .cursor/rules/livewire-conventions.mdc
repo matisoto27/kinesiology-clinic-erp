@@ -1,0 +1,131 @@
+---
+description: Convenciones de estilo para componentes Livewire (single-file, sintaxis ⚡)
+globs: resources/views/components/**/⚡*.blade.php
+alwaysApply: false
+---
+
+# Convenciones para componentes Livewire
+
+## 1. Tipado estricto en propiedades públicas
+
+Toda `public` property lleva tipo explícito (`string`, `int`, `float`, `bool`, `?int`,
+`array`, `Collection`, etc.), incluidas las que van a un `wire:model`. Siempre con
+un valor por defecto coherente con el tipo (evita errores de "typed property must
+not be accessed before initialization").
+
+```php
+// ❌ BAD
+public $montoStr = '';
+public $monto;
+public $motivo;
+
+// ✅ GOOD
+public string $montoStr = '';
+public float $monto = 0.0;
+public string $motivo = '';
+```
+
+Una property por línea, nunca declaraciones múltiples (`public $a, $b, $c;`).
+
+## 2. camelCase para nombres de propiedades
+
+Las properties del componente van en camelCase, sin importar cómo se llame la
+columna en la base de datos. El mapeo a snake_case se hace solo al persistir.
+
+```php
+// ❌ BAD
+public ?int $id_profesional = null;
+Egreso::create(['id_profesional' => $this->id_profesional]);
+
+// ✅ GOOD
+public ?int $idProfesional = null;
+Egreso::create(['id_profesional' => $this->idProfesional]);
+```
+
+## 3. `rules()` / `messages()` / `validationAttributes()` como métodos
+
+Nunca como propiedades estáticas (`protected $rules = [...]`). Usar métodos
+permite lógica condicional y es el estilo predominante en el proyecto.
+
+```php
+// ❌ BAD
+protected $rules = ['dni' => 'required|numeric'];
+
+// ✅ GOOD
+protected function rules(): array
+{
+    return ['dni' => 'required|numeric'];
+}
+```
+
+## 4. Transacciones con closure
+
+Usar `DB::transaction(function () {...})` en vez de
+`beginTransaction()/commit()/rollBack()` manual. Laravel garantiza el rollback
+automático ante cualquier excepción no capturada dentro del closure.
+
+```php
+// ❌ BAD
+DB::beginTransaction();
+try {
+    Modelo::create([...]);
+    DB::commit();
+} catch (\Throwable $ex) {
+    DB::rollBack();
+    // ...
+}
+
+// ✅ GOOD
+DB::transaction(function () {
+    Modelo::create([...]);
+});
+```
+
+## 5. No declarar `render()` manualmente
+
+En componentes de un solo archivo (`new class extends Component { ... }; ?> <div>...`),
+Livewire renderiza automáticamente el HTML que sigue al `?>`. No agregar:
+
+```php
+// ❌ BAD (dead code)
+public function render()
+{
+    return $this->view();
+}
+```
+
+## 6. Catálogos estáticos: `#[Locked]` + `mount()`, no `#[Computed]`
+
+Para listas que no cambian durante la interacción del usuario (ej. profesionales
+activos para un `<select>`), cargarlas una vez en `mount()` con `#[Locked]`.
+
+```php
+// ❌ BAD (re-ejecuta la query en cada request que dispara un render)
+#[Computed]
+public function profesionales()
+{
+    return Profesional::select('id', 'nombre', 'apellido')->get();
+}
+
+// ✅ GOOD
+#[Locked]
+public Collection $profesionales;
+
+public function mount(): void
+{
+    $this->profesionales = Profesional::activo()
+        ->orderBy('apellido')
+        ->orderBy('nombre')
+        ->get(['id', 'nombre', 'apellido']);
+}
+```
+
+`#[Computed]` queda reservado para valores derivados de otras properties
+reactivas (ej. sugerencias de búsqueda, deuda calculada según una selección).
+
+## Al aplicar estas convenciones
+
+Si renombrás o retipás una property, actualizá también:
+- Los `wire:model` / `@error(...)` / `id="..."` correspondientes en el HTML del componente.
+- Los tests Feature que usan `Livewire::test(...)->set('propiedad', ...)` o
+  `->assertHasErrors([...])` con el nombre viejo.

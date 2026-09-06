@@ -22,7 +22,7 @@ class IngresoCrearTest extends TestCase
 
         Livewire::test('ingresos.crear')
             ->set('idPacienteSeleccionado', $paciente->id)
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Venta de almohadita')
             ->set('metodo', 'Efectivo')
             ->set('monto', 3500)
@@ -49,7 +49,7 @@ class IngresoCrearTest extends TestCase
 
         Livewire::test('ingresos.crear')
             ->set('idPacienteSeleccionado', $paciente->id)
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Venta de almohadita')
             ->set('metodo', 'Transferencia')
             ->set('monto', 23000)
@@ -79,7 +79,7 @@ class IngresoCrearTest extends TestCase
             ->call('seleccionarSugerencia', $paciente->id, 'Pérez, Luis')
             ->assertSet('idPacienteSeleccionado', $paciente->id)
             ->assertSet('busqueda', 'Pérez, Luis')
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Venta de almohadita')
             ->set('metodo', 'Efectivo')
             ->set('monto', 5000)
@@ -110,7 +110,7 @@ class IngresoCrearTest extends TestCase
 
         Livewire::test('ingresos.crear')
             ->set('idPacienteSeleccionado', $paciente->id)
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Venta de almohadita')
             ->set('metodo', 'Efectivo')
             ->set('monto', 999999)
@@ -128,7 +128,7 @@ class IngresoCrearTest extends TestCase
 
         Livewire::test('ingresos.crear')
             ->call('almacenar')
-            ->assertHasErrors(['idPacienteSeleccionado', 'id_profesional', 'metodo', 'monto', 'motivo']);
+            ->assertHasErrors(['idPacienteSeleccionado', 'idProfesional', 'metodo', 'monto', 'motivo']);
 
         $this->assertSame(0, Ingreso::count());
     }
@@ -141,7 +141,7 @@ class IngresoCrearTest extends TestCase
 
         Livewire::test('ingresos.crear')
             ->set('idPacienteSeleccionado', $paciente->id)
-            ->set('id_profesional', $profesional->id)
+            ->set('idProfesional', $profesional->id)
             ->set('motivo', 'Venta de almohadita')
             ->set('metodo', 'Efectivo')
             ->set('monto', 0)

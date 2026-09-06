@@ -15,24 +15,24 @@ new class extends Component
 {
     public Collection $profesionales;
 
-    public $cantidad_horas = 1;
-    public $fecha_trabajada = '';
-    public $id_profesional = '';
+    public int $cantidadHoras = 1;
+    public string $fechaTrabajada = '';
+    public ?int $idProfesional = null;
     public string $rubro = '';
 
     protected function rules()
     {
         return [
-            'cantidad_horas' => 'required|integer|min:1|max:8',
-            'fecha_trabajada' => 'required|date',
-            'id_profesional' => 'required|exists:profesionales,id',
+            'cantidadHoras' => 'required|integer|min:1|max:8',
+            'fechaTrabajada' => 'required|date',
+            'idProfesional' => 'required|exists:profesionales,id',
             'rubro' => ['required', Rule::enum(RubroHorasProfesional::class)],
         ];
     }
 
     public function mount()
     {
-        $this->fecha_trabajada = Carbon::now()->toDateString();
+        $this->fechaTrabajada = Carbon::now()->toDateString();
 
         $this->profesionales = Profesional::where('activo', true)
             ->orderByDesc('nombre')
@@ -44,11 +44,11 @@ new class extends Component
     {
         $rubro = RubroHorasProfesional::tryFrom($this->rubro);
 
-        if ($rubro === null || $this->cantidad_horas < 1) {
+        if ($rubro === null || $this->cantidadHoras < 1) {
             return 0;
         }
 
-        return app(RegistroHorasService::class)->valorHora($rubro) * (int) $this->cantidad_horas;
+        return app(RegistroHorasService::class)->valorHora($rubro) * (int) $this->cantidadHoras;
     }
 
     public function almacenar(RegistroHorasService $registroHorasService)
@@ -56,10 +56,10 @@ new class extends Component
         $this->validate();
 
         try {
-            $profesional = Profesional::find($this->id_profesional);
+            $profesional = Profesional::find($this->idProfesional);
 
             if (!$profesional) {
-                $this->addError('id_profesional', 'El profesional seleccionado no existe.');
+                $this->addError('idProfesional', 'El profesional seleccionado no existe.');
                 return;
             }
 
@@ -68,8 +68,8 @@ new class extends Component
             $registro = $registroHorasService->registrar(
                 $profesional,
                 $rubro,
-                (int) $this->cantidad_horas,
-                Carbon::parse($this->fecha_trabajada)
+                (int) $this->cantidadHoras,
+                Carbon::parse($this->fechaTrabajada)
             );
 
             session()->flash(
@@ -77,9 +77,9 @@ new class extends Component
                 'Horas registradas con éxito. Monto a cobrar: $' . number_format((float) $registro->total_a_cobrar, 2)
             );
 
-            $this->reset(['cantidad_horas', 'id_profesional', 'rubro']);
-            $this->cantidad_horas = 1;
-            $this->fecha_trabajada = Carbon::now()->toDateString();
+            $this->reset(['cantidadHoras', 'idProfesional', 'rubro']);
+            $this->cantidadHoras = 1;
+            $this->fechaTrabajada = Carbon::now()->toDateString();
         } catch (ReglaNegocioException $ex) {
             session()->flash('error', $ex->getMessage());
         } catch (\Throwable $ex) {
@@ -102,8 +102,8 @@ new class extends Component
                 <label for="id-profesional" class="etiqueta-formulario">Seleccione la opción con su nombre</label>
                 <select
                     id="id-profesional"
-                    class="entrada @error('id_profesional') border-red-500 @enderror"
-                    wire:model="id_profesional">
+                    class="entrada @error('idProfesional') border-red-500 @enderror"
+                    wire:model="idProfesional">
                     <option value="">Seleccione un profesional</option>
                     @foreach($profesionales as $prof)
                         <option value="{{ $prof->id }}">
@@ -111,7 +111,7 @@ new class extends Component
                         </option>
                     @endforeach
                 </select>
-                @error('id_profesional') <span class="text-red-500 italic">{{ $message }}</span> @enderror
+                @error('idProfesional') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
         </div>
 
@@ -139,9 +139,9 @@ new class extends Component
                     type="number"
                     min="1"
                     max="8"
-                    class="entrada @error('cantidad_horas') border-red-500 @enderror"
-                    wire:model.live="cantidad_horas">
-                @error('cantidad_horas') <span class="text-red-500 italic">{{ $message }}</span> @enderror
+                    class="entrada @error('cantidadHoras') border-red-500 @enderror"
+                    wire:model.live="cantidadHoras">
+                @error('cantidadHoras') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
 
             <div class="columna-campo flex-1">
@@ -149,13 +149,13 @@ new class extends Component
                 <input
                     id="fecha-trabajada"
                     type="date"
-                    class="entrada @error('fecha_trabajada') border-red-500 @enderror"
-                    wire:model="fecha_trabajada">
-                @error('fecha_trabajada') <span class="text-red-500 italic">{{ $message }}</span> @enderror
+                    class="entrada @error('fechaTrabajada') border-red-500 @enderror"
+                    wire:model="fechaTrabajada">
+                @error('fechaTrabajada') <span class="text-red-500 italic">{{ $message }}</span> @enderror
             </div>
         </div>
 
-        @if($rubro !== '' && $cantidad_horas >= 1)
+        @if($rubro !== '' && $cantidadHoras >= 1)
             <div class="mb-5">
                 <p class="text-gray-300 text-sm">
                     Total estimado:

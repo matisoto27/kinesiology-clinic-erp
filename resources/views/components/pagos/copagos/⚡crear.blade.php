@@ -5,20 +5,30 @@ use App\Models\Caja;
 use App\Models\Pago;
 use App\Models\Profesional;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 new class extends Component
 {
-    public $idActPac = '';
-    public $idProfesional = '';
-    public $montoStr = '';
-    public $monto;
-    public $metodo = 'Efectivo';
+    #[Locked]
+    public Collection $profesionales;
+
+    public string $idActPac = '';
+    public string $idProfesional = '';
+    public string $montoStr = '';
+    public float $monto = 0.0;
+    public string $metodo = 'Efectivo';
     public bool $procesando = false;
+
+    public function mount(): void
+    {
+        $this->profesionales = Profesional::select('id', 'nombre', 'apellido')->get();
+    }
 
     #[Computed]
     public function actividadesPacientes()
@@ -37,12 +47,6 @@ new class extends Component
             ->tienePacienteRegular()
             ->get()
             ->sortByDesc(fn (ActividadPaciente $actPac) => $actPac->primerTurno->fecha_hora);
-    }
-
-    #[Computed]
-    public function profesionales()
-    {
-        return Profesional::select('id', 'nombre', 'apellido')->get();
     }
 
     public function almacenar()

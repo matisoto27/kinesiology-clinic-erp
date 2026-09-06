@@ -14,6 +14,8 @@ new class extends Component
     #[Url(as: 'paciente')]
     public string $consultaPaciente = '';
 
+    public ?int $idPacienteSeleccionado = null;
+
     public function updatingConsultaPaciente(): void
     {
         $this->resetPage();
@@ -23,16 +25,39 @@ new class extends Component
     public function pacientes()
     {
         return Paciente::query()
-            ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'actividad_fisica', 'es_adulto_mayor', 'vive_con', 'created_at'])
+            ->select(['id', 'dni', 'nombre', 'apellido', 'fecha_nac', 'domicilio', 'telefono', 'profesion', 'created_at'])
+            ->when(!empty($this->consultaPaciente), fn($consulta) => $consulta->buscarPorApNom($this->consultaPaciente))
+            ->latest()
+            ->paginate(10);
+    }
+
+    public function verDetalle(int $id): void
+    {
+        $this->idPacienteSeleccionado = $id;
+    }
+
+    public function cerrarDetalle(): void
+    {
+        $this->idPacienteSeleccionado = null;
+    }
+
+    #[Computed]
+    public function detallePaciente(): ?array
+    {
+        if ($this->idPacienteSeleccionado === null) {
+            return null;
+        }
+
+        $paciente = Paciente::query()
             ->with([
                 'afiliacionVigente.obraSocial',
                 'contactosEmergencia:id,nombre,telefono,vinculo,id_paciente',
                 'patologias:id,nombre',
                 'sintomasActivos:id,nombre',
             ])
-            ->when(!empty($this->consultaPaciente), fn($consulta) => $consulta->buscarPorApNom($this->consultaPaciente))
-            ->latest()
-            ->paginate(10);
+            ->find($this->idPacienteSeleccionado);
+
+        return $paciente ? (new PacienteResource($paciente))->resolve() : null;
     }
 };
 ?>
@@ -55,7 +80,7 @@ new class extends Component
 
     <x-alerta tipo="exito" />
 
-    <div x-data="{ mostrarInfo: false, datos: {} }" @keydown.escape.window="mostrarInfo = false; datos = {}">
+    <div>
         <table class="tabla-listado">
             <thead>
                 <tr class="tabla-listado__cabecera">
@@ -74,21 +99,20 @@ new class extends Component
 
             <tbody>
                 @forelse($this->pacientes as $pac)
-                    @php($datosPac = (new PacienteResource($pac))->resolve())
                     <tr class="tabla-listado__fila" wire:key="paciente-{{ $pac->id }}">
-                        <td>{{ $datosPac['dni'] }}</td>
-                        <td>{{ $datosPac['apellido_nombre'] }}</td>
-                        <td>{{ $datosPac['fecha_nac'] }}</td>
-                        <td>{{ $datosPac['edad'] }}</td>
-                        <td>{{ $datosPac['domicilio'] }}</td>
-                        <td>{{ $datosPac['telefono'] }}</td>
+                        <td>{{ $pac->dni }}</td>
+                        <td>{{ $pac->apellido_nombre }}</td>
+                        <td>{{ $pac->fecha_nacimiento }}</td>
+                        <td>{{ $pac->edad }}</td>
+                        <td>{{ $pac->domicilio }}</td>
+                        <td>{{ $pac->telefono }}</td>
                         <td class="break-words">
-                            {{ $datosPac['profesion'] }}
+                            {{ $pac->profesion }}
                         </td>
-                        <td>{{ $datosPac['created_at'] }}</td>
+                        <td>{{ $pac->fecha_ingreso }}</td>
                         <td>
                             <div class="flex justify-center items-center">
-                                <button type="button" @click="mostrarInfo = true; datos = @js($datosPac)">
+                                <button type="button" wire:click="verDetalle({{ $pac->id }})">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                         <circle cx="12" cy="12" r="10"></circle>
                                         <line x1="12" y1="16" x2="12" y2="12"></line>
@@ -126,120 +150,129 @@ new class extends Component
             {{ $this->pacientes->links(data: ['scrollTo' => false]) }}
         </div>
 
-        <div class="modal-informativo" x-show="mostrarInfo" x-cloak x-transition.opacity>
-            <div class="modal-informativo__ventana" @click.outside="mostrarInfo = false; datos = {}">
-                <button class="modal-informativo__cerrar" @click="mostrarInfo = false; datos = {}">
-                    <x-iconos.cruz />
-                </button>
+        @if($this->detallePaciente)
+            @php($datos = $this->detallePaciente)
+            <div class="modal-informativo" wire:keydown.escape.window="cerrarDetalle">
+                <div class="modal-informativo__ventana" wire:click.outside="cerrarDetalle">
+                    <button class="modal-informativo__cerrar" wire:click="cerrarDetalle">
+                        <x-iconos.cruz />
+                    </button>
 
-                <h2 class="modal-informativo__titulo" x-text="'Información de ' + datos.apellido_nombre"></h2>
+                    <h2 class="modal-informativo__titulo">Información de {{ $datos['apellido_nombre'] }}</h2>
 
-                <div class="space-y-3">
-                    <div class="modal-informativo__seccion flex justify-between items-center">
-                        <div>
-                            <p class="modal-informativo__etiqueta">¿Realiza actividad física?</p>
-                            <p class="modal-informativo__valor" x-text="datos.actividad_fisica"></p>
+                    <div class="space-y-3">
+                        <div class="modal-informativo__seccion flex justify-between items-center">
+                            <div>
+                                <p class="modal-informativo__etiqueta">¿Realiza actividad física?</p>
+                                <p class="modal-informativo__valor">{{ $datos['actividad_fisica'] }}</p>
+                            </div>
+                            <div class="text-[#006E6B]">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                            </div>
                         </div>
-                        <div class="text-[#006E6B]">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                        </div>
-                    </div>
 
-                    <div class="modal-informativo__seccion">
-                        <p class="modal-informativo__etiqueta">¿Es adulto mayor?</p>
-                        <p class="modal-informativo__valor" x-text="datos.es_adulto_mayor ? 'Si' : 'No'"></p>
+                        <div class="modal-informativo__seccion">
+                            <p class="modal-informativo__etiqueta">¿Es adulto mayor?</p>
+                            <p class="modal-informativo__valor">{{ $datos['es_adulto_mayor'] ? 'Si' : 'No' }}</p>
 
-                        <template x-if="datos.es_adulto_mayor">
-                            <div class="mt-2 pt-2 space-y-2 border-gray-200 border-t">
-                                <div>
-                                    <p class="modal-informativo__etiqueta">¿Con quién vive?</p>
-                                    <p class="modal-informativo__valor" x-text="datos.vive_con"></p>
-                                </div>
-                                <div>
-                                    <p class="mb-1 modal-informativo__etiqueta">Contactos de Emergencia</p>
-                                    <div class="space-y-2">
-                                        <template x-for="contacto in datos.contactos_emergencia" :key="contacto.id">
-                                            <div class="p-2 bg-gray-50 border-gray-200 border rounded-lg">
-                                                <div class="flex justify-between">
-                                                    <div>
-                                                        <p class="text-[#3A8F8E] text-sm font-semibold" x-text="contacto.vinculo"></p>
-                                                        <p class="modal-informativo__valor" x-text="contacto.nombre"></p>
-                                                    </div>
-                                                    <div class="text-right">
-                                                        <p class="modal-informativo__etiqueta">Teléfono</p>
-                                                        <p class="modal-informativo__valor" x-text="contacto.telefono"></p>
+                            @if($datos['es_adulto_mayor'])
+                                <div class="mt-2 pt-2 space-y-2 border-gray-200 border-t">
+                                    <div>
+                                        <p class="modal-informativo__etiqueta">¿Con quién vive?</p>
+                                        <p class="modal-informativo__valor">{{ $datos['vive_con'] }}</p>
+                                    </div>
+                                    <div>
+                                        <p class="mb-1 modal-informativo__etiqueta">Contactos de Emergencia</p>
+                                        <div class="space-y-2">
+                                            @forelse($datos['contactos_emergencia'] ?? [] as $contacto)
+                                                <div class="p-2 bg-gray-50 border-gray-200 border rounded-lg" wire:key="contacto-{{ $contacto['id'] }}">
+                                                    <div class="flex justify-between">
+                                                        <div>
+                                                            <p class="text-[#3A8F8E] text-sm font-semibold">{{ $contacto['vinculo'] }}</p>
+                                                            <p class="modal-informativo__valor">{{ $contacto['nombre'] }}</p>
+                                                        </div>
+                                                        <div class="text-right">
+                                                            <p class="modal-informativo__etiqueta">Teléfono</p>
+                                                            <p class="modal-informativo__valor">{{ $contacto['telefono'] }}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </template>
-
-                                        <div class="modal-informativo__sin-valor" x-show="!datos.contactos_emergencia || datos.contactos_emergencia.length === 0">
-                                            No hay contactos de emergencia registrados.
+                                            @empty
+                                                <div class="modal-informativo__sin-valor">
+                                                    No hay contactos de emergencia registrados.
+                                                </div>
+                                            @endforelse
                                         </div>
                                     </div>
                                 </div>
+                            @endif
+                        </div>
+
+                        <div class="modal-informativo__seccion">
+                            <p class="mb-2 modal-informativo__etiqueta">Obra Social</p>
+
+                            @if($datos['obra_social'])
+                                <p class="modal-informativo__valor">{{ $datos['obra_social'] }}</p>
+                            @else
+                                <p class="modal-informativo__sin-valor">Sin una obra social registrada.</p>
+                            @endif
+                        </div>
+
+                        <div class="modal-informativo__seccion">
+                            <p class="mb-2 modal-informativo__etiqueta">¿Tiene algún antecedente patológico?</p>
+
+                            <div class="space-y-3">
+                                @foreach($datos['patologias'] ?? [] as $patologia)
+                                    <div class="modal-informativo__elemento-lista" wire:key="patologia-{{ $patologia['id'] }}">
+                                        <p class="modal-informativo__etiqueta">{{ $patologia['fecha_desde'] }}</p>
+                                        <p class="modal-informativo__valor">{{ $patologia['nombre'] }}</p>
+                                    </div>
+                                @endforeach
                             </div>
-                        </template>
-                    </div>
 
-                    <div class="modal-informativo__seccion">
-                        <p class="mb-2 modal-informativo__etiqueta">Obra Social</p>
-
-                        <p class="modal-informativo__valor" x-show="datos.obra_social" x-text="datos.obra_social"></p>
-                        <p class="modal-informativo__sin-valor" x-show="!datos.obra_social">Sin una obra social registrada.</p>
-                    </div>
-
-                    <div class="modal-informativo__seccion">
-                        <p class="mb-2 modal-informativo__etiqueta">¿Tiene algún antecedente patológico?</p>
-
-                        <div class="space-y-3">
-                            <template x-for="patologia in datos.patologias" :key="patologia.id">
-                                <div class="modal-informativo__elemento-lista">
-                                    <p class="modal-informativo__etiqueta" x-text="patologia.fecha_desde"></p>
-                                    <p class="modal-informativo__valor" x-text="patologia.nombre"></p>
+                            @if(empty($datos['patologias']))
+                                <div class="modal-informativo__sin-valor">
+                                    Sin antecedentes patológicos.
                                 </div>
-                            </template>
+                            @endif
                         </div>
 
-                        <div class="modal-informativo__sin-valor" x-show="!datos.patologias || datos.patologias.length === 0">
-                            Sin antecedentes patológicos.
-                        </div>
-                    </div>
+                        <div class="modal-informativo__seccion">
+                            <p class="mb-2 modal-informativo__etiqueta">¿Presenta algún síntoma?</p>
 
-                    <div class="modal-informativo__seccion">
-                        <p class="mb-2 modal-informativo__etiqueta">¿Presenta algún síntoma?</p>
+                            <div class="space-y-3">
+                                @foreach($datos['sintomas'] ?? [] as $sintoma)
+                                    <div class="modal-informativo__elemento-lista" wire:key="sintoma-{{ $sintoma['id'] }}">
+                                        <p class="modal-informativo__etiqueta">{{ $sintoma['fecha_desde'] }}</p>
+                                        <p class="modal-informativo__valor">{{ $sintoma['nombre'] }}</p>
+                                    </div>
+                                @endforeach
+                            </div>
 
-                        <div class="space-y-3">
-                            <template x-for="sintoma in datos.sintomas" :key="sintoma.id">
-                                <div class="modal-informativo__elemento-lista">
-                                    <p class="modal-informativo__etiqueta" x-text="sintoma.fecha_desde"></p>
-                                    <p class="modal-informativo__valor" x-text="sintoma.nombre"></p>
+                            @if(empty($datos['sintomas']))
+                                <div class="modal-informativo__sin-valor">
+                                    No registra síntomas activos.
                                 </div>
-                            </template>
-                        </div>
-
-                        <div class="modal-informativo__sin-valor" x-show="!datos.sintomas || datos.sintomas.length === 0">
-                            No registra síntomas activos.
+                            @endif
                         </div>
                     </div>
-                </div>
 
-                <div class="modal-informativo__seccion-acciones">
-                    <button
-                        class="modal-informativo__accion bg-gray-100 hover:bg-gray-200 text-gray-700"
-                        @click="mostrarInfo = false; datos = {}"
-                    >
-                            Cerrar
-                    </button>
-                    <a
-                        :href="'{{ route('pacientes.editar', ['paciente' => 'ID_P']) }}'.replace('ID_P', datos.id)"
-                        class="modal-informativo__accion bg-[#3A8F8E] hover:bg-[#014745] text-white"
-                        x-show="datos.id"
-                    >
-                        Editar paciente
-                    </a>
+                    <div class="modal-informativo__seccion-acciones">
+                        <button
+                            class="modal-informativo__accion bg-gray-100 hover:bg-gray-200 text-gray-700"
+                            wire:click="cerrarDetalle"
+                        >
+                                Cerrar
+                        </button>
+                        <a
+                            href="{{ route('pacientes.editar', ['paciente' => $datos['id']]) }}"
+                            class="modal-informativo__accion bg-[#3A8F8E] hover:bg-[#014745] text-white"
+                        >
+                            Editar paciente
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
+        @endif
     </div>
 </div>

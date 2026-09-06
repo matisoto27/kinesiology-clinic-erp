@@ -94,12 +94,12 @@ class PacienteRegistroTest extends TestCase
             'dni' => '99887766',
             'nombre' => 'Luis',
             'apellido' => 'Pérez',
-            'fecha_nac' => '1990-01-01',
+            'fechaNac' => '1990-01-01',
             'domicilio' => 'Calle 123',
             'telefono' => '3333333333',
             'profesion' => 'Docente',
-            'actividad_fisica' => 'Moderada',
-            'es_adulto_mayor' => false,
+            'actividadFisica' => 'Moderada',
+            'esAdultoMayor' => false,
         ];
 
         return array_merge($base, $extra);

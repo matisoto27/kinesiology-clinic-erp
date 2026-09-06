@@ -16,18 +16,18 @@ new class extends Component
     use ManejaBuscadorPatologias;
     use ManejaBuscadorSintomas;
 
-    public $dni;
-    public $nombre;
-    public $apellido;
-    public $fecha_nac;
-    public $domicilio;
-    public $telefono;
-    public $profesion;
-    public $actividad_fisica;
-    public $es_adulto_mayor = false;
-    public $vive_solo = true;
-    public $vive_con;
-    public $contactos = [];
+    public string $dni = '';
+    public string $nombre = '';
+    public string $apellido = '';
+    public string $fechaNac = '';
+    public string $domicilio = '';
+    public string $telefono = '';
+    public string $profesion = '';
+    public string $actividadFisica = '';
+    public bool $esAdultoMayor = false;
+    public bool $viveSolo = true;
+    public ?string $viveCon = null;
+    public array $contactos = [];
 
     protected function rules()
     {
@@ -41,15 +41,15 @@ new class extends Component
             ],
             'nombre' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
-            'fecha_nac' => 'required|date|before:today',
+            'fechaNac' => 'required|date|before:today',
             'domicilio' => 'required|string|regex:/^[A-Za-z0-9\s.,áéíóúÁÉÍÓÚñÑ#-]+$/|max:100',
             'telefono' => 'required|numeric|digits_between:8,20',
             'profesion' => 'required|string|max:40',
-            'actividad_fisica' => 'required|string|in:Sedentario,Ocasional,Moderada,Intensa,Alto rendimiento/Competencia',
-            'es_adulto_mayor' => 'required|boolean',
-            'vive_solo' => 'exclude_if:es_adulto_mayor,false|boolean',
-            'vive_con' => 'exclude_if:es_adulto_mayor,false|required_if:vive_solo,false|nullable|string|regex:/^[A-Za-z0-9\s.,()áéíóúÁÉÍÓÚñÑ]+$/|min:1|max:150',
-            'contactos' => 'exclude_if:es_adulto_mayor,false|nullable|array|max:3',
+            'actividadFisica' => 'required|string|in:Sedentario,Ocasional,Moderada,Intensa,Alto rendimiento/Competencia',
+            'esAdultoMayor' => 'required|boolean',
+            'viveSolo' => 'exclude_if:esAdultoMayor,false|boolean',
+            'viveCon' => 'exclude_if:esAdultoMayor,false|required_if:viveSolo,false|nullable|string|regex:/^[A-Za-z0-9\s.,()áéíóúÁÉÍÓÚñÑ]+$/|min:1|max:150',
+            'contactos' => 'exclude_if:esAdultoMayor,false|nullable|array|max:3',
             'contactos.*.nombre' => 'required_with:contactos|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:100',
             'contactos.*.telefono' => 'required_with:contactos|numeric|digits_between:8,20',
             'contactos.*.vinculo' => 'required_with:contactos|string|in:Cónyuge,Hijo/a,Hermano/a,Otro',
@@ -62,7 +62,7 @@ new class extends Component
             'dni.unique' => 'Ya existe un paciente con ese DNI.',
             'nombre.regex' => 'El nombre solo puede contener letras y espacios.',
             'apellido.regex' => 'El apellido solo puede contener letras y espacios.',
-            'vive_con.required_if' => 'Por favor, especifique con quién vive el paciente.',
+            'viveCon.required_if' => 'Por favor, especifique con quién vive el paciente.',
         ];
     }
 
@@ -70,11 +70,11 @@ new class extends Component
     {
         return [
             'dni' => 'DNI',
-            'fecha_nac' => 'fecha de nacimiento',
+            'fechaNac' => 'fecha de nacimiento',
             'telefono' => 'teléfono',
             'profesion' => 'profesión',
-            'actividad_fisica' => 'actividad física',
-            'vive_con' => 'detalle con quién vive',
+            'actividadFisica' => 'actividad física',
+            'viveCon' => 'detalle con quién vive',
             'contactos' => 'contactos de emergencia',
             'contactos.*.nombre' => 'nombre del contacto',
             'contactos.*.telefono' => 'teléfono del contacto',
@@ -92,13 +92,13 @@ new class extends Component
     public function updatedEsAdultoMayor($value)
     {
         if (!$value) {
-            $this->vive_solo = true;
-            $this->vive_con = null;
+            $this->viveSolo = true;
+            $this->viveCon = null;
             $this->contactos = [];
 
             $this->resetValidation([
-                'vive_solo',
-                'vive_con',
+                'viveSolo',
+                'viveCon',
                 'contactos',
                 'contactos.*'
             ]);
@@ -108,8 +108,8 @@ new class extends Component
     public function updatedViveSolo($value)
     {
         if ($value) {
-            $this->vive_con = null;
-            $this->resetValidation('vive_con');
+            $this->viveCon = null;
+            $this->resetValidation('viveCon');
         }
     }
 
@@ -171,18 +171,18 @@ new class extends Component
                     'dni' => $this->dni,
                     'nombre' => $this->nombre,
                     'apellido' => $this->apellido,
-                    'fecha_nac' => $this->fecha_nac,
+                    'fecha_nac' => $this->fechaNac,
                     'domicilio' => $this->domicilio,
                     'telefono' => $this->telefono,
                     'profesion' => $this->profesion,
-                    'actividad_fisica' => $this->actividad_fisica,
-                    'es_adulto_mayor' => $this->es_adulto_mayor,
-                    'vive_con' => $this->es_adulto_mayor
-                        ? ($this->vive_solo ? 'SOLO' : $this->vive_con)
+                    'actividad_fisica' => $this->actividadFisica,
+                    'es_adulto_mayor' => $this->esAdultoMayor,
+                    'vive_con' => $this->esAdultoMayor
+                        ? ($this->viveSolo ? 'SOLO' : $this->viveCon)
                         : null
                 ]);
 
-                if ($this->es_adulto_mayor && !empty($this->contactos)) {
+                if ($this->esAdultoMayor && !empty($this->contactos)) {
                     $datosContactos = array_map(function ($cont) {
                         unset($cont['clave']);
                         $cont['nombre'] = mb_convert_case(mb_strtolower(trim($cont['nombre'])), MB_CASE_TITLE, "UTF-8");
@@ -227,20 +227,20 @@ new class extends Component
             'dni' => $this->dni,
             'nombre' => $this->nombre,
             'apellido' => $this->apellido,
-            'fecha_nac' => $this->fecha_nac,
+            'fecha_nac' => $this->fechaNac,
             'domicilio' => $this->domicilio,
             'telefono' => $this->telefono,
             'profesion' => $this->profesion,
-            'actividad_fisica' => $this->actividad_fisica,
-            'es_adulto_mayor' => $this->es_adulto_mayor,
-            'vive_con' => $this->es_adulto_mayor
-                ? ($this->vive_solo ? 'SOLO' : $this->vive_con)
+            'actividad_fisica' => $this->actividadFisica,
+            'es_adulto_mayor' => $this->esAdultoMayor,
+            'vive_con' => $this->esAdultoMayor
+                ? ($this->viveSolo ? 'SOLO' : $this->viveCon)
                 : null,
         ]);
 
         $paciente->contactosEmergencia()->delete();
 
-        if ($this->es_adulto_mayor && !empty($this->contactos)) {
+        if ($this->esAdultoMayor && !empty($this->contactos)) {
             $datosContactos = array_map(function ($cont) {
                 unset($cont['clave']);
                 $cont['nombre'] = mb_convert_case(mb_strtolower(trim($cont['nombre'])), MB_CASE_TITLE, "UTF-8");
@@ -331,11 +331,11 @@ new class extends Component
                     type="date"
                     @class([
                         'entrada-simple',
-                        'border-red-500 border-2' => $errors->has('fecha_nac')
+                        'border-red-500 border-2' => $errors->has('fechaNac')
                     ])
-                    wire:model="fecha_nac"
+                    wire:model="fechaNac"
                 >
-                @error('fecha_nac') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
+                @error('fechaNac') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
             </div>
 
             <div class="columna-campo">
@@ -389,16 +389,16 @@ new class extends Component
                     id="input-actividad-fisica"
                     @class([
                         'entrada-simple',
-                        'border-red-500 border-2' => $errors->has('actividad_fisica')
+                        'border-red-500 border-2' => $errors->has('actividadFisica')
                     ])
-                    wire:model="actividad_fisica"
+                    wire:model="actividadFisica"
                 >
                     <option value="">Seleccione una frecuencia</option>
                     @foreach(['Sedentario', 'Ocasional', 'Moderada', 'Intensa', 'Alto rendimiento/Competencia'] as $op)
                         <option value="{{ $op }}">{{ $op }}</option>
                     @endforeach
                 </select>
-                @error('actividad_fisica') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
+                @error('actividadFisica') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
             </div>
 
             @include('components.pacientes.buscador-obra-social')
@@ -409,19 +409,19 @@ new class extends Component
                         id="checkbox-adulto-mayor"
                         type="checkbox"
                         class="checkbox-formulario"
-                        wire:model.live="es_adulto_mayor"
+                        wire:model.live="esAdultoMayor"
                     >
                     <label for="checkbox-adulto-mayor" class="etiqueta-formulario">¿Es adulto mayor?</label>
                 </div>
 
-                @if($es_adulto_mayor)
+                @if($esAdultoMayor)
                     <div class="space-y-5">
                         <div class="flex items-center gap-1">
-                            <input id="checkbox-vive-solo" class="checkbox-formulario" type="checkbox" wire:model.live="vive_solo">
+                            <input id="checkbox-vive-solo" class="checkbox-formulario" type="checkbox" wire:model.live="viveSolo">
                             <label for="checkbox-vive-solo" class="etiqueta-formulario">¿Vive solo?</label>
                         </div>
 
-                        @if(!$vive_solo)
+                        @if(!$viveSolo)
                             <div class="columna-campo">
                                 <label for="input-vive-con" class="etiqueta-formulario">¿Con quién vive?</label>
                                 <input
@@ -430,11 +430,11 @@ new class extends Component
                                     placeholder="Ejemplo: Juan (esposo), Mariana (hija)"
                                     @class([
                                         'entrada-simple',
-                                        'border-red-500 border-2' => $errors->has('vive_con')
+                                        'border-red-500 border-2' => $errors->has('viveCon')
                                     ])
-                                    wire:model="vive_con"
+                                    wire:model="viveCon"
                                 >
-                                @error('vive_con') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
+                                @error('viveCon') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         @endif
 
