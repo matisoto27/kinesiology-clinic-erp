@@ -31,8 +31,8 @@
         @class([
             'p-2 w-full text-xl rounded-t-lg focus:outline-none',
             'rounded-b-lg' => strlen($busqueda) < 2 || $idSeleccionado,
-            'bg-[#3A8F8E] text-white' => !$idSeleccionado,
-            'bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed' => $idSeleccionado
+            'bg-[#3A8F8E] text-white placeholder:text-white' => !$idSeleccionado,
+            'bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed placeholder:text-[#E0F0F0]' => $idSeleccionado
         ])
         @disabled($idSeleccionado)
         wire:model.live.debounce.300ms="busqueda"

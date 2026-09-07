@@ -1,14 +1,6 @@
-@import 'tailwindcss';
-
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
-@source '../**/*.blade.php';
-@source '../**/*.js';
-
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
-    --font-lato: 'Lato', sans-serif;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer components {
     .buscador {
@@ -16,7 +8,12 @@
     }
 
     .buscador input {
-        @apply p-2 text-xl text-white focus:outline-none w-full;
+        @apply p-2 text-xl text-white placeholder:text-white bg-transparent focus:outline-none w-full;
+    }
+
+    .buscador input:disabled {
+        @apply bg-transparent text-[#E0F0F0] cursor-not-allowed opacity-100 placeholder:text-[#E0F0F0];
+        -webkit-text-fill-color: #E0F0F0;
     }
 
     .sugerencias {
@@ -42,10 +39,11 @@
     .checkbox-formulario,
     .dias-container input[type="checkbox"] {
         @apply accent-[#F5D500] h-4 w-4 cursor-pointer;
+    }
 
-        &:disabled {
-            @apply cursor-not-allowed opacity-50;
-        }
+    .checkbox-formulario:disabled,
+    .dias-container input[type="checkbox"]:disabled {
+        @apply cursor-not-allowed opacity-50;
     }
 
     .fila-formulario {
@@ -65,11 +63,12 @@
     }
 
     .entrada {
-        @apply bg-[#3A8F8E] p-2 rounded-xl text-xl text-white;
+        @apply bg-[#3A8F8E] p-2 rounded-xl text-xl text-white placeholder:text-white;
+    }
 
-        &:disabled {
-            @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
-        }
+    .entrada:disabled {
+        @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed placeholder:text-[#E0F0F0];
+        -webkit-text-fill-color: #E0F0F0;
     }
 
     .entrada-info {
@@ -77,15 +76,16 @@
     }
 
     .entrada-simple {
-        @apply bg-[#3A8F8E] px-3 py-2 rounded-md text-white outline-none transition-all;
+        @apply bg-[#3A8F8E] px-3 py-2 rounded-md text-white placeholder:text-white outline-none transition-all;
+    }
 
-        &:focus {
-            @apply bg-[#014745] ring-2 ring-[#F5D500];
-        }
+    .entrada-simple:focus {
+        @apply bg-[#014745] ring-2 ring-[#F5D500];
+    }
 
-        &:disabled {
-            @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
-        }
+    .entrada-simple:disabled {
+        @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed placeholder:text-[#E0F0F0];
+        -webkit-text-fill-color: #E0F0F0;
     }
 
     .alerta {
@@ -102,10 +102,10 @@
 
     .boton-registrar {
         @apply py-2 active:scale-95 bg-[#3A8F8E] cursor-pointer font-semibold text-white hover:bg-[#F5D500] hover:scale-105 hover:text-black transform transition-all ease-in-out duration-300 rounded-md w-full;
+    }
 
-        &:disabled {
-            @apply cursor-not-allowed opacity-50;
-        }
+    .boton-registrar:disabled {
+        @apply cursor-not-allowed opacity-50;
     }
 
     .tabla-listado {
@@ -186,11 +186,15 @@
     }
 
     .menu-desplegable > button {
-        @apply px-4 h-full flex items-center gap-1 hover:bg-[#2f7a79] transition;
+        @apply px-4 h-full flex items-center gap-1 text-white hover:bg-[#2f7a79] transition;
     }
 
     .menu-desplegable ul {
-        @apply hidden group-hover:block absolute w-56 z-50 bg-white text-gray-800 border-[#006E6B] border-t-2 shadow-xl;
+        @apply hidden absolute w-56 z-50 bg-white text-gray-800 border-[#006E6B] border-t-2 shadow-xl;
+    }
+
+    .menu-desplegable:hover ul {
+        @apply block;
     }
 
     .menu-desplegable ul li a {
@@ -210,7 +214,7 @@
     }
 
     .dias-container {
-        @apply mb-4 h-30 flex justify-around items-center bg-[#3A8F8E] border border-[#F5D500] rounded-lg text-white;
+        @apply mb-4 h-28 flex justify-around items-center bg-[#3A8F8E] border border-[#F5D500] rounded-lg text-white;
     }
 
     .semanas-container {
@@ -219,13 +223,13 @@
 
     .primer-fecha-select {
         @apply bg-[#006E6B] border-2 border-gray-200 outline-none p-2 rounded-xl text-xl text-white;
+    }
 
-        &:disabled {
-            @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
-        }
+    .primer-fecha-select:disabled {
+        @apply bg-[#6BA9A9] text-[#E0F0F0] cursor-not-allowed;
+    }
 
-        &:focus {
-            @apply border-[#F5D500];
-        }
+    .primer-fecha-select:focus {
+        @apply border-[#F5D500];
     }
 }

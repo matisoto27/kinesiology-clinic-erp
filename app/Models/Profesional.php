@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 
 class Profesional extends Model
 {
-    use SoftDeletes; // No trabaja más en Punto-Kinésico
+    use SoftDeletes; // No trabaja más en la clínica
 
     protected $table = 'profesionales';
 

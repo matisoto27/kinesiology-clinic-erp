@@ -17,7 +17,7 @@
                     required
                 />
                 @error('error') 
-                    <div class="text-red-500 text-md">{{ $message }}</div>
+                    <div class="text-red-500 text-sm">{{ $message }}</div>
                 @enderror
             </div>
             <button type="submit" class="boton-registrar">Verificar</button>
