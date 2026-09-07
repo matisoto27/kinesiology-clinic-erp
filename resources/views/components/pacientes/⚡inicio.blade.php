@@ -2,10 +2,12 @@
 
 use App\Http\Resources\PacienteResource;
 use App\Models\Paciente;
+use App\Services\PacienteService;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Log;
 
 new class extends Component
 {
@@ -39,6 +41,32 @@ new class extends Component
     public function cerrarDetalle(): void
     {
         $this->idPacienteSeleccionado = null;
+    }
+
+    public function eliminar(Paciente $paciente): void
+    {
+        try {
+            $resultado = app(PacienteService::class)->eliminar($paciente);
+
+            $mensaje = 'El paciente ha sido eliminado correctamente.';
+
+            if ($resultado['eliminadas'] > 0) {
+                $mensaje .= " Se liberaron {$resultado['eliminadas']} inscripción(es)/turno(s) futuros que tenía reservados.";
+            }
+
+            if ($resultado['conservadas'] > 0) {
+                $mensaje .= ' Se conservaron inscripciones con historial de asistencia o pagos.';
+            }
+
+            session()->flash('exito', $mensaje);
+        } catch (\Throwable $th) {
+            Log::error('[(Livewire) pacientes.inicio@eliminar] Error al eliminar el paciente.', [
+                'id_paciente' => $paciente->id,
+                'excepción' => $th->getMessage(),
+            ]);
+
+            session()->flash('error', 'Ocurrió un error al intentar eliminar el paciente.');
+        }
     }
 
     #[Computed]
@@ -126,13 +154,14 @@ new class extends Component
                                 <a href="{{ route('pacientes.editar', ['paciente' => $pac->id]) }}" class="accion-editar">
                                     <x-iconos.lapiz />
                                 </a>
-                                <form action="{{ route('pacientes.eliminar', ['paciente' => $pac->id]) }}" method="POST" onsubmit="return confirm('¿Desea eliminar a este paciente?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-white hover:text-red-400 transition-colors duration-200">
-                                        <x-iconos.basura />
-                                    </button>
-                                </form>
+                                <button
+                                    type="button"
+                                    wire:click="eliminar({{ $pac->id }})"
+                                    wire:confirm="¿Desea eliminar a este paciente?"
+                                    class="text-white hover:text-red-400 transition-colors duration-200"
+                                >
+                                    <x-iconos.basura />
+                                </button>
                             </div>
                         </td>
                     </tr>

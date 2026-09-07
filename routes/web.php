@@ -1,10 +1,8 @@
 <?php
 
 use App\Http\Controllers\AccesoController;
-use App\Http\Controllers\ActividadComboController;
 use App\Http\Controllers\ActividadController;
 use App\Http\Controllers\ActividadPacienteController;
-use App\Http\Controllers\NotaTurnoController;
 use App\Http\Controllers\PacienteController;
 use App\Http\Controllers\PrecioController;
 use Illuminate\Support\Facades\Route;
@@ -16,10 +14,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
         Route::get('/actividades/{id}/turnos-disponibles', 'obtenerTurnosDisponibles');
     });
     Route::view('/actividades/turnos-disponibles', 'actividades.turnos-disponibles')->name('actividades.turnos-disponibles');
-
-    Route::controller(ActividadComboController::class)->group(function () {
-        Route::get('/actividades-combos/{id}/precio-vigente', 'obtenerPrecioVigente');
-    });
 
     Route::controller(ActividadPacienteController::class)->group(function () {
         Route::post('/actividades-pacientes', 'store')->name('actividades-pacientes.store');
@@ -35,7 +29,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::controller(PacienteController::class)->group(function () {
         Route::view('/pacientes', 'pacientes.inicio')->name('pacientes.inicio');
         Route::get('/buscar-pacientes', 'buscarPorNombre');
-        Route::delete('/pacientes/{paciente}', 'eliminar')->name('pacientes.eliminar');
     });
     Route::livewire('/pacientes/crear', 'pacientes.crear')->name('pacientes.crear');
     Route::livewire('/pacientes/{paciente}/editar', 'pacientes.editar')->name('pacientes.editar');
@@ -51,12 +44,6 @@ Route::middleware(['verificar.acceso'])->group(function () {
     Route::livewire('/pagos/crear', 'pagos.crear')->name('pagos.crear');
     Route::livewire('/actividades-pacientes/{id}/pagos/crear', 'pagos.crear')->name('actividades-pacientes.pagos.crear');
     Route::livewire('/pagos/copagos/crear', 'pagos.copagos.crear')->name('copagos.crear');
-
-    Route::controller(NotaTurnoController::class)->group(function () {
-        Route::get('/turnos/{id}/notas', 'obtenerNotasDesdeTurno');
-        Route::post('/turnos/{id}/notas', 'almacenar');
-        Route::delete('/notas/{id}', 'eliminar');
-    });
 
     Route::view('/home', 'principal')->name('inicio');
     Route::view('/turnos', 'turnos.inicio')->name('turnos.inicio');

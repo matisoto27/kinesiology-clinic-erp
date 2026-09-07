@@ -10,7 +10,7 @@ use App\Models\Profesional;
 use App\Models\Turno;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -45,11 +45,11 @@ class PacienteEliminarTest extends TestCase
         Turno::create(['id_act_pac' => $actPac->id, 'fecha_hora' => '2026-06-10 10:00:00', 'estado' => 'Ausente']);
         Turno::create(['id_act_pac' => $actPac->id, 'fecha_hora' => '2026-06-20 10:00:00', 'estado' => 'Ausente']);
 
-        $this->withoutMiddleware(ValidateCsrfToken::class)
-            ->withSession(['autorizado' => true])
-            ->delete(route('pacientes.eliminar', ['paciente' => $paciente->id]))
-            ->assertRedirect()
-            ->assertSessionHas('exito');
+        $this->withSession(['autorizado' => true]);
+
+        Livewire::test('pacientes.inicio')
+            ->call('eliminar', $paciente->id)
+            ->assertSee('El paciente ha sido eliminado correctamente.');
 
         $this->assertTrue($paciente->fresh()->trashed());
         $this->assertSame(0, ActividadPaciente::where('id_paciente', $paciente->id)->count());
@@ -82,11 +82,11 @@ class PacienteEliminarTest extends TestCase
 
         $turnosIniciales = Turno::where('id_act_pac', $actPac->id)->count();
 
-        $this->withoutMiddleware(ValidateCsrfToken::class)
-            ->withSession(['autorizado' => true])
-            ->delete(route('pacientes.eliminar', ['paciente' => $paciente->id]))
-            ->assertRedirect()
-            ->assertSessionHas('exito');
+        $this->withSession(['autorizado' => true]);
+
+        Livewire::test('pacientes.inicio')
+            ->call('eliminar', $paciente->id)
+            ->assertSee('El paciente ha sido eliminado correctamente.');
 
         $this->assertTrue($paciente->fresh()->trashed());
         // Se conserva el historial (pagos o asistencia registrada)...
