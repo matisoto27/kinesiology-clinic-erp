@@ -41,8 +41,15 @@ class ActividadPacienteService
                 exigirComboExacto: $esConOrden
             );
 
+            $turnos = $this->prepararTurnos($validados);
+            $this->asegurarCicloSinSolapamiento(
+                (int) $validados['id_paciente'],
+                (int) $validados['id_actividad'],
+                $turnos
+            );
+
             $actividadPaciente = $this->crearInscripcion($validados, $esConOrden);
-            $this->persistirTurnos($actividadPaciente, $validados);
+            $actividadPaciente->turnos()->createMany($turnos);
 
             return $actividadPaciente;
         });
@@ -204,13 +211,83 @@ class ActividadPacienteService
         ]);
     }
 
-    private function persistirTurnos(ActividadPaciente $actividadPaciente, array $validados): void
+    /**
+     * @return list<array{fecha_hora: string}>
+     */
+    private function prepararTurnos(array $validados): array
     {
-        $turnosParaInsertar = $validados['autogenerados']
+        return $validados['autogenerados']
             ? $this->prepararTurnosAutomaticos($validados)
             : $this->turnoService->prepararTurnosManuales($validados['turnos']);
+    }
 
-        $actividadPaciente->turnos()->createMany($turnosParaInsertar);
+    /**
+     * Impide un ciclo paralelo de la misma actividad: los intervalos
+     * [primer turno, último turno] (por día) no pueden solaparse.
+     *
+     * @param  list<array{fecha_hora: string}>  $turnos
+     */
+    private function asegurarCicloSinSolapamiento(int $idPaciente, int $idActividad, array $turnos): void
+    {
+        $rangoNuevo = $this->rangoDeTurnos($turnos);
+
+        if ($rangoNuevo === null) {
+            return;
+        }
+
+        [$inicioNuevo, $finNuevo] = $rangoNuevo;
+
+        $ciclos = ActividadPaciente::query()
+            ->where('id_paciente', $idPaciente)
+            ->where('id_actividad', $idActividad)
+            ->join('turnos', 'turnos.id_act_pac', '=', 'actividades_pacientes.id')
+            ->whereNull('turnos.id_turno_original')
+            ->groupBy('actividades_pacientes.id')
+            ->select('actividades_pacientes.id')
+            ->selectRaw('MIN(turnos.fecha_hora) as ciclo_inicio')
+            ->selectRaw('MAX(turnos.fecha_hora) as ciclo_fin')
+            ->orderBy('actividades_pacientes.id')
+            ->get();
+
+        foreach ($ciclos as $ciclo) {
+            $inicio = Carbon::parse($ciclo->ciclo_inicio)->startOfDay();
+            $fin = Carbon::parse($ciclo->ciclo_fin)->startOfDay();
+
+            if ($inicioNuevo->gt($fin) || $finNuevo->lt($inicio)) {
+                continue;
+            }
+
+            $nombreActividad = Actividad::query()->whereKey($idActividad)->value('nombre');
+
+            throw new ReglaNegocioException(sprintf(
+                'El paciente ya tiene una inscripción de %s con turnos entre el %s y el %s. Reprograme esos turnos o elimine esa inscripción antes de cargar otra.',
+                $nombreActividad,
+                $inicio->format('d/m/Y'),
+                $fin->format('d/m/Y'),
+            ));
+        }
+    }
+
+    /**
+     * @param  list<array{fecha_hora: string}>  $turnos
+     * @return array{0: Carbon, 1: Carbon}|null
+     */
+    private function rangoDeTurnos(array $turnos): ?array
+    {
+        if ($turnos === []) {
+            return null;
+        }
+
+        $inicio = null;
+        $fin = null;
+
+        foreach ($turnos as $turno) {
+            $fecha = Carbon::parse($turno['fecha_hora'])->startOfDay();
+            $inicio = $inicio === null || $fecha->lt($inicio) ? $fecha : $inicio;
+            $fin = $fin === null || $fecha->gt($fin) ? $fecha : $fin;
+        }
+
+        return [$inicio, $fin];
     }
 
     private function enriquecerDatosConOrden(array $validados, Carbon $ahora): array

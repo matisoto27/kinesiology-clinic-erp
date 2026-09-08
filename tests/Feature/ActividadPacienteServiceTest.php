@@ -237,7 +237,7 @@ class ActividadPacienteServiceTest extends TestCase
         $this->assertCount(4, $actividadPaciente->turnos);
     }
 
-    public function test_permite_doble_inscripcion_kine_el_mismo_dia_porque_no_aplica_ventana_general(): void
+    public function test_rechaza_segunda_inscripcion_kine_si_los_ciclos_se_solapan(): void
     {
         Carbon::setTestNow('2026-06-02 09:00:00');
 
@@ -246,10 +246,11 @@ class ActividadPacienteServiceTest extends TestCase
         $payload = $this->payloadSinOrdenKine($actividad, $paciente, 5);
 
         $this->service->registrar($payload);
-        $this->service->registrar($payload);
 
-        $this->assertSame(2, ActividadPaciente::count());
-        $this->assertSame(10, Turno::count());
+        $this->expectException(ReglaNegocioException::class);
+        $this->expectExceptionMessage('El paciente ya tiene una inscripción de');
+
+        $this->service->registrar($payload);
     }
 
     public function test_revierte_transaccion_si_falla_creacion_de_turnos(): void
