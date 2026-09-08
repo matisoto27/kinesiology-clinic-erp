@@ -28,13 +28,13 @@ new class extends Component
     public bool $viveSolo = true;
     public ?string $viveCon = null;
     public array $contactos = [];
+    public array $erroresJs = [];
 
     protected function rules()
     {
         return array_merge([
             'dni' => [
                 'required',
-                'numeric',
                 'digits_between:7,8',
                 // Solo activos: un soft-deleted se restaura en el alta.
                 Rule::unique('pacientes', 'dni')->whereNull('deleted_at'),
@@ -43,7 +43,7 @@ new class extends Component
             'apellido' => 'required|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:30',
             'fechaNac' => 'required|date|before:today',
             'domicilio' => 'required|string|regex:/^[A-Za-z0-9\s.,áéíóúÁÉÍÓÚñÑ#-]+$/|max:100',
-            'telefono' => 'required|numeric|digits_between:8,20',
+            'telefono' => 'required|digits_between:8,20',
             'profesion' => 'required|string|max:40',
             'actividadFisica' => 'required|string|in:Sedentario,Ocasional,Moderada,Intensa,Alto rendimiento/Competencia',
             'esAdultoMayor' => 'required|boolean',
@@ -51,7 +51,7 @@ new class extends Component
             'viveCon' => 'exclude_if:esAdultoMayor,false|required_if:viveSolo,false|nullable|string|regex:/^[A-Za-z0-9\s.,()áéíóúÁÉÍÓÚñÑ]+$/|min:1|max:150',
             'contactos' => 'exclude_if:esAdultoMayor,false|nullable|array|max:3',
             'contactos.*.nombre' => 'required_with:contactos|regex:/^[A-Za-záéíóúÁÉÍÓÚñÑ\s]+$/|max:100',
-            'contactos.*.telefono' => 'required_with:contactos|numeric|digits_between:8,20',
+            'contactos.*.telefono' => 'required_with:contactos|digits_between:8,20',
             'contactos.*.vinculo' => 'required_with:contactos|string|in:Cónyuge,Hijo/a,Hermano/a,Otro',
         ], $this->reglasPatologiasSeleccionadas(), $this->reglasSintomasSeleccionados(), $this->reglasObraSocialSeleccionada());
     }
@@ -89,51 +89,16 @@ new class extends Component
         ];
     }
 
-    public function updatedEsAdultoMayor($value)
+    public function almacenar()
     {
-        if (!$value) {
+        if (!$this->esAdultoMayor) {
             $this->viveSolo = true;
             $this->viveCon = null;
             $this->contactos = [];
-
-            $this->resetValidation([
-                'viveSolo',
-                'viveCon',
-                'contactos',
-                'contactos.*'
-            ]);
-        }
-    }
-
-    public function updatedViveSolo($value)
-    {
-        if ($value) {
+        } elseif ($this->viveSolo) {
             $this->viveCon = null;
-            $this->resetValidation('viveCon');
         }
-    }
 
-    public function agregarContacto()
-    {
-        if (count($this->contactos) < 3) {
-            $this->contactos[] = [
-                'clave' => uniqid(),
-                'nombre' => '',
-                'telefono' => '',
-                'vinculo' => ''
-            ];
-        }
-    }
-
-    public function eliminarContacto($indice)
-    {
-        unset($this->contactos[$indice]);
-        $this->contactos = array_values($this->contactos);
-        $this->resetValidation('contactos.*');
-    }
-
-    public function almacenar()
-    {
         $this->validate();
 
         $this->nombre = mb_convert_case(mb_strtolower(trim($this->nombre)), MB_CASE_TITLE, "UTF-8");
@@ -184,7 +149,7 @@ new class extends Component
 
                 if ($this->esAdultoMayor && !empty($this->contactos)) {
                     $datosContactos = array_map(function ($cont) {
-                        unset($cont['clave']);
+                        unset($cont['clave'], $cont['id']);
                         $cont['nombre'] = mb_convert_case(mb_strtolower(trim($cont['nombre'])), MB_CASE_TITLE, "UTF-8");
                         return $cont;
                     }, $this->contactos);
@@ -242,7 +207,7 @@ new class extends Component
 
         if ($this->esAdultoMayor && !empty($this->contactos)) {
             $datosContactos = array_map(function ($cont) {
-                unset($cont['clave']);
+                unset($cont['clave'], $cont['id']);
                 $cont['nombre'] = mb_convert_case(mb_strtolower(trim($cont['nombre'])), MB_CASE_TITLE, "UTF-8");
 
                 return $cont;
@@ -268,6 +233,13 @@ new class extends Component
         }
 
         $this->persistirObraSocial($paciente);
+    }
+
+    public function rendering(): void
+    {
+        $this->erroresJs = collect($this->getErrorBag()->messages())
+            ->map(fn ($mensajes) => $mensajes[0])
+            ->toArray();
     }
 };
 ?>
@@ -403,108 +375,7 @@ new class extends Component
 
             @include('components.pacientes.buscador-obra-social')
 
-            <div class="space-y-5">
-                <div class="flex items-center gap-1">
-                    <input
-                        id="checkbox-adulto-mayor"
-                        type="checkbox"
-                        class="checkbox-formulario"
-                        wire:model.live="esAdultoMayor"
-                    >
-                    <label for="checkbox-adulto-mayor" class="etiqueta-formulario">¿Es adulto mayor?</label>
-                </div>
-
-                @if($esAdultoMayor)
-                    <div class="space-y-5">
-                        <div class="flex items-center gap-1">
-                            <input id="checkbox-vive-solo" class="checkbox-formulario" type="checkbox" wire:model.live="viveSolo">
-                            <label for="checkbox-vive-solo" class="etiqueta-formulario">¿Vive solo?</label>
-                        </div>
-
-                        @if(!$viveSolo)
-                            <div class="columna-campo">
-                                <label for="input-vive-con" class="etiqueta-formulario">¿Con quién vive?</label>
-                                <input
-                                    id="input-vive-con"
-                                    type="text"
-                                    placeholder="Ejemplo: Juan (esposo), Mariana (hija)"
-                                    @class([
-                                        'entrada-simple',
-                                        'border-red-500 border-2' => $errors->has('viveCon')
-                                    ])
-                                    wire:model="viveCon"
-                                >
-                                @error('viveCon') <span class="mt-1 text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                        @endif
-
-                        @foreach($contactos as $indice => $contacto)
-                            <div class="mb-5 pb-5 border-[#F5D500] border-b" wire:key="contacto-{{ $contacto['clave'] }}">
-                                <div class="mb-4 flex items-center justify-between">
-                                    <h3 class="text-[#F5D500] text-xl font-medium">Contacto de emergencia {{ $indice + 1 }}</h3>
-                                    <button type="button" class="text-red-500 text-md hover:text-red-400" wire:click="eliminarContacto({{ $indice }})">Eliminar</button>
-                                </div>
-
-                                <div class="mb-4 columna-campo">
-                                    <label for="contacto_{{ $indice }}_nombre" class="etiqueta-formulario">Nombre</label>
-                                    <input
-                                        id="contacto_{{ $indice }}_nombre"
-                                        type="text"
-                                        placeholder="Ingrese nombre del contacto"
-                                        @class([
-                                            'entrada-simple',
-                                            'border-red-500 border-2' => $errors->has("contactos.{$indice}.nombre")
-                                        ])
-                                        wire:model="contactos.{{ $indice }}.nombre"
-                                    >
-                                    @error("contactos.{$indice}.nombre") <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                </div>
-
-                                <div class="mb-4 columna-campo">
-                                    <label for="contacto_{{ $indice }}_telefono" class="etiqueta-formulario">Teléfono</label>
-                                    <input
-                                        id="contacto_{{ $indice }}_telefono"
-                                        type="text"
-                                        placeholder="Ingrese teléfono del contacto"
-                                        @class([
-                                            'entrada-simple',
-                                            'border-red-500 border-2' => $errors->has("contactos.{$indice}.telefono")
-                                        ])
-                                        wire:model="contactos.{{ $indice }}.telefono"
-                                    >
-                                    @error("contactos.{$indice}.telefono") <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                </div>
-
-                                <div class="columna-campo">
-                                    <label for="contacto_{{ $indice }}_vinculo" class="etiqueta-formulario">Vínculo</label>
-                                    <select
-                                        id="contacto_{{ $indice }}_vinculo"
-                                        @class([
-                                            'entrada-simple',
-                                            'border-red-500 border-2' => $errors->has("contactos.{$indice}.vinculo")
-                                        ])
-                                        wire:model="contactos.{{ $indice }}.vinculo"
-                                    >
-                                        <option value="">¿Qué vínculo tiene con el paciente?</option>
-                                        @foreach(['Cónyuge', 'Hijo/a', 'Hermano/a', 'Otro'] as $opcion)
-                                            <option value="{{ $opcion }}">{{ $opcion }}</option>
-                                        @endforeach
-                                    </select>
-                                    @error("contactos.{$indice}.vinculo") <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                </div>
-                            </div>
-                        @endforeach
-
-                        <div class="flex justify-center">
-                            @if (count($contactos) < 3)
-                                <button type="button" class="px-4 py-2 bg-blue-500 hover:bg-blue-700 text-white rounded" wire:click="agregarContacto">Añadir Contacto de Emergencia</button>
-                            @else
-                                <p class="mt-2 text-red-500 text-sm">Has alcanzado el máximo de contactos de emergencia.</p>
-                            @endif
-                        </div>
-                    </div>
-                @endif
-            </div>
+            @include('components.pacientes.partials.adulto-mayor')
 
             <x-pacientes.buscador-patologias />
 
