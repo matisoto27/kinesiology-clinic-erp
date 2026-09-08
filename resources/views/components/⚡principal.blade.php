@@ -4,6 +4,7 @@ use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -151,6 +152,81 @@ new class extends Component
     }
 
     #[Computed]
+    public function proximosVencimientosFijos(): LengthAwarePaginator
+    {
+        $ahora = Carbon::now();
+        $hoy = Carbon::today();
+        $finVentana = $ahora->copy()->startOfWeek(Carbon::MONDAY)->addWeeks(2); // lunes de la 3ra semana (límite exclusivo)
+        $porPagina = 8;
+        $pagina = $this->getPage('vencimientos');
+
+        $items = ActividadPaciente::query()
+            ->whereHas('pacienteFijo')
+            ->whereHas('actividad', fn ($q) => $q->porTipo(Actividad::TIPO_GENERAL))
+            ->with([
+                'pacienteRegular:id,nombre,apellido',
+                'primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora,turnos.id_turno_original',
+                'actPacDual.primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora,turnos.id_turno_original',
+                'pagos:id,id_act_pac,monto',
+            ])
+            ->get()
+            ->filter(fn (ActividadPaciente $i) => $i->primerTurno !== null)
+            ->groupBy('id_paciente')
+            ->map(function (Collection $grupo) use ($ahora, $finVentana, $hoy) {
+                $ciclos = $grupo
+                    ->filter(fn (ActividadPaciente $i) => !$i->esDualCompleto() || $i->esPrimeraDual())
+                    ->map(fn (ActividadPaciente $i) => (object) [
+                        'id' => $i->id,
+                        'fecha' => ($i->esDualCompleto() && $i->actPacDual?->primerTurno)
+                            ? $i->primerTurno->fecha_hora->min($i->actPacDual->primerTurno->fecha_hora)
+                            : $i->primerTurno->fecha_hora,
+                        'debe' => $i->calcularDeuda() > 0,
+                    ])
+                    ->sortBy('fecha')
+                    ->values();
+
+                $actual = $ciclos->last(fn ($c) => $c->fecha->lte($ahora));
+
+                if ($actual && $actual->debe) {
+                    $fecha = $actual->fecha;
+                } else {
+                    $proximo = $actual
+                        ? $ciclos->first(fn ($c) => $c->id > $actual->id)
+                        : $ciclos->first();
+
+                    if (!$proximo || $proximo->fecha->gte($finVentana)) {
+                        return null;
+                    }
+
+                    $fecha = $proximo->fecha;
+                }
+
+                $paciente = $grupo->first()->pacienteRegular;
+
+                return (object) [
+                    'id' => $grupo->first()->id_paciente,
+                    'paciente' => trim(($paciente->nombre ?? '') . ' ' . ($paciente->apellido ?? '')),
+                    'fecha' => $fecha,
+                    'urgente' => $fecha->copy()->startOfDay()->lte($hoy),
+                ];
+            })
+            ->filter()
+            ->sortBy('fecha')
+            ->values();
+
+        return new LengthAwarePaginator(
+            $items->forPage($pagina, $porPagina)->values(),
+            $items->count(),
+            $porPagina,
+            $pagina,
+            [
+                'pageName' => 'vencimientos',
+                'onEachSide' => 1,
+            ]
+        );
+    }
+
+    #[Computed]
     public function turnos()
     {
         $this->horaActual;
@@ -258,7 +334,7 @@ new class extends Component
 };
 ?>
 
-<div class="mx-auto my-5 flex flex-col lg:flex-row max-w-7xl gap-3">
+<div class="mx-auto my-5 flex flex-col lg:flex-row max-w-8xl gap-3">
     <div class="px-8 py-5 shrink-0 bg-[#006E6B] rounded-3xl w-full lg:w-[22rem]">
         <h3 class="mb-4 text-2xl font-bold text-white">Pacientes fijos que no están asistiendo ni pagando</h3>
         <table class="w-full overflow-hidden rounded-xl">
@@ -473,6 +549,34 @@ new class extends Component
 
         <div class="mt-4">
             {{ $this->turnos->links(data: ['scrollTo' => false]) }}
+        </div>
+    </div>
+
+    <div class="px-8 py-5 shrink-0 bg-[#006E6B] rounded-3xl w-full lg:w-[22rem]">
+        <h3 class="mb-4 text-2xl font-bold text-white">Fechas de abono próximas</h3>
+        <table class="w-full overflow-hidden rounded-xl">
+            <thead class="bg-[#014745] text-white">
+                <tr>
+                    <th class="py-3 text-center">Paciente</th>
+                    <th class="py-3 text-center">Fecha</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white">
+                @forelse($this->proximosVencimientosFijos as $item)
+                    <tr class="border-b last:border-b-0" wire:key="vencimiento-fijo-{{ $item->id }}">
+                        <td class="px-2 py-3 text-center">{{ $item->paciente }}</td>
+                        <td class="px-2 py-3 text-center {{ $item->urgente ? 'font-semibold text-red-600' : '' }}">{{ $item->fecha->format('d/m/Y') }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="2" class="py-4 text-center italic">Ninguno por ahora.</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
+
+        <div class="mt-4">
+            {{ $this->proximosVencimientosFijos->links(data: ['scrollTo' => false]) }}
         </div>
     </div>
 </div>
