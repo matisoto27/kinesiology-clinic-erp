@@ -7,7 +7,6 @@ use App\Models\ActividadPaciente;
 use App\Models\PacienteFijo;
 use App\Models\PrecioMensual;
 use App\Services\TurnoService;
-use App\Support\Turnos\ExpansorTurnosPatron;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Console\Command;
@@ -24,10 +23,8 @@ class GenerarTurnosMensuales extends Command
 
     protected $description = 'Genera la próxima inscripción de pacientes fijos dentro de la ventana de anticipación configurada respecto al fin del ciclo (primer turno + 4 semanas).';
 
-    public function handle(
-        TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron
-    ): void {
+    public function handle(TurnoService $turnoService): void
+    {
         $consulta = PacienteFijo::query()
             ->select('id', 'id_paciente')
             ->whereHas('paciente')
@@ -43,7 +40,7 @@ class GenerarTurnosMensuales extends Command
             );
 
             if ($horariosPorActividad->count() > 1) {
-                $this->procesarPatronDual($pacFijo, $horariosPorActividad, $turnoService, $expansorTurnosPatron);
+                $this->procesarPatronDual($pacFijo, $horariosPorActividad, $turnoService);
                 continue;
             }
 
@@ -52,8 +49,7 @@ class GenerarTurnosMensuales extends Command
                     $pacFijo,
                     (int) $idActividad,
                     $horarios,
-                    $turnoService,
-                    $expansorTurnosPatron
+                    $turnoService
                 );
             }
         }
@@ -63,8 +59,7 @@ class GenerarTurnosMensuales extends Command
         PacienteFijo $pacFijo,
         int $idActividad,
         Collection $horarios,
-        TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron
+        TurnoService $turnoService
     ): void {
         $actPac = $this->obtenerUltimaInscripcion($idActividad, $pacFijo->id_paciente);
 
@@ -87,7 +82,6 @@ class GenerarTurnosMensuales extends Command
                 $inicioProximoCiclo,
                 $pacFijo,
                 $turnoService,
-                $expansorTurnosPatron,
                 $horariosPaciente
             ) {
                 $this->crearInscripcionDesdeAncla(
@@ -96,7 +90,6 @@ class GenerarTurnosMensuales extends Command
                     $inicioProximoCiclo,
                     $horariosPaciente,
                     $turnoService,
-                    $expansorTurnosPatron,
                     PrecioMensual::obtenerVigentePorFrecuencia(count($horariosPaciente))
                 );
             });
@@ -108,8 +101,7 @@ class GenerarTurnosMensuales extends Command
     private function procesarPatronDual(
         PacienteFijo $pacFijo,
         Collection $horariosPorActividad,
-        TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron
+        TurnoService $turnoService
     ): void {
         $horariosGym = $horariosPorActividad->get(Actividad::GIMNASIO);
         $horariosPilates = $horariosPorActividad->get(Actividad::PILATES);
@@ -151,7 +143,6 @@ class GenerarTurnosMensuales extends Command
                 $actPacPilates,
                 $inicioProximoCiclo,
                 $turnoService,
-                $expansorTurnosPatron,
                 $horariosGymFormateados,
                 $horariosPilatesFormateados,
                 $frecuenciaTotal
@@ -164,7 +155,6 @@ class GenerarTurnosMensuales extends Command
                     $inicioProximoCiclo,
                     $horariosGymFormateados,
                     $turnoService,
-                    $expansorTurnosPatron,
                     $precioPlan
                 );
 
@@ -174,7 +164,6 @@ class GenerarTurnosMensuales extends Command
                     $inicioProximoCiclo,
                     $horariosPilatesFormateados,
                     $turnoService,
-                    $expansorTurnosPatron,
                     0.0
                 );
 
@@ -248,7 +237,6 @@ class GenerarTurnosMensuales extends Command
         Carbon $anclaProximoCiclo,
         array $horariosPaciente,
         TurnoService $turnoService,
-        ExpansorTurnosPatron $expansorTurnosPatron,
         float $totalAPagar
     ): ActividadPaciente {
         $actPacOrigen->loadMissing('actividad');
@@ -260,22 +248,13 @@ class GenerarTurnosMensuales extends Command
             throw new Exception('No hay horarios fijos para generar la próxima inscripción.');
         }
 
-        $expansion = $expansorTurnosPatron->expandir(
+        $preparacion = $turnoService->prepararDesdePatron(
+            $actPacOrigen->actividad,
+            $idPaciente,
             $anclaProximoCiclo,
             $horariosPaciente,
             $cantidadSesiones,
             $frecuenciaSemanal
-        );
-
-        if ($expansion['turnos'] === []) {
-            throw new Exception('No se pudieron calcular turnos para el próximo ciclo del paciente fijo.');
-        }
-
-        $preparacion = $turnoService->prepararFechas(
-            $actPacOrigen->actividad,
-            $idPaciente,
-            $expansion['turnos'],
-            $expansion['semanas']
         );
 
         if ($preparacion->huboReemplazos()) {

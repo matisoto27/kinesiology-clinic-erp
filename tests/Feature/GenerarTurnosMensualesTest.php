@@ -11,6 +11,7 @@ use App\Models\Turno;
 use App\Services\ActividadPacienteService;
 use App\Services\TurnoService;
 use App\Support\Registros\ResultadoInscripcionGeneral;
+use App\Support\Turnos\ExpansorTurnosPatron;
 use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -292,10 +293,17 @@ class GenerarTurnosMensualesTest extends TestCase
     private function mockTurnoServiceParaUnaRenovacion(): void
     {
         $this->mock(TurnoService::class, function ($mock) {
-            $mock->shouldReceive('prepararFechas')
-                ->andReturnUsing(function ($actividad, $idPaciente, array $turnosSolicitados) {
+            $mock->shouldReceive('prepararDesdePatron')
+                ->andReturnUsing(function ($actividad, $idPaciente, $fechaAncla, array $patron, int $cantidadSesiones) {
+                    $turnos = (new ExpansorTurnosPatron())->expandir(
+                        $fechaAncla,
+                        $patron,
+                        $cantidadSesiones,
+                        count($patron)
+                    )['turnos'];
+
                     return ResultadoPreparacionTurnos::desdeFechasExactas(
-                        collect($turnosSolicitados)->values()->map(
+                        collect($turnos)->values()->map(
                             fn ($fecha) => Carbon::parse($fecha)->format('Y-m-d H:i:s')
                         )->all()
                     );

@@ -15,6 +15,7 @@ use App\Services\ActividadPacienteService;
 use App\Services\HorarioPacienteFijoService;
 use App\Services\TurnoService;
 use App\Support\Registros\ResultadoInscripcionGeneral;
+use App\Support\Turnos\ExpansorTurnosPatron;
 use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1097,10 +1098,17 @@ class HorarioPacienteFijoEdicionTest extends TestCase
     private function mockTurnoServiceSinValidarCupo(): void
     {
         $this->mock(TurnoService::class, function ($mock) {
-            $mock->shouldReceive('prepararFechas')
-                ->andReturnUsing(function ($actividad, $idPaciente, array $turnosSolicitados) {
+            $mock->shouldReceive('prepararDesdePatronSinReemplazo')
+                ->andReturnUsing(function ($fechaAncla, array $patron, int $cantidadSesiones, int $frecuenciaSemanal) {
+                    $turnos = (new ExpansorTurnosPatron())->expandir(
+                        $fechaAncla,
+                        $patron,
+                        $cantidadSesiones,
+                        $frecuenciaSemanal
+                    )['turnos'];
+
                     return ResultadoPreparacionTurnos::desdeFechasExactas(
-                        collect($turnosSolicitados)->values()->map(
+                        collect($turnos)->values()->map(
                             fn ($fecha) => Carbon::parse($fecha)->format('Y-m-d H:i:s')
                         )->all()
                     );

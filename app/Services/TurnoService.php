@@ -7,20 +7,104 @@ use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Turno;
 use App\Support\Turnos\AsignacionTurno;
+use App\Support\Turnos\ExpansorTurnosPatron;
 use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class TurnoService
 {
+    public function __construct(
+        private ExpansorTurnosPatron $expansorTurnosPatron,
+    ) {}
+
+    /**
+     * Expande un patrón semanal y asigna cupo con reemplazo si hace falta.
+     *
+     * @param  array<int, array{dia_semana: string, hora_inicio: string}>  $patron
+     */
+    public function prepararDesdePatron(
+        Actividad $actividad,
+        int $idPaciente,
+        Carbon $fechaAncla,
+        array $patron,
+        int $cantidadSesiones,
+        int $frecuenciaSemanal
+    ): ResultadoPreparacionTurnos {
+        $expansion = $this->expansorTurnosPatron->expandir(
+            $fechaAncla,
+            $patron,
+            $cantidadSesiones,
+            $frecuenciaSemanal
+        );
+
+        if ($expansion['turnos'] === []) {
+            throw new ReglaNegocioException('No se pudieron calcular turnos para la inscripción.');
+        }
+
+        return $this->asignarConReemplazo($actividad, $idPaciente, $expansion['turnos']);
+    }
+
+    /**
+     * Expande un patrón semanal sin buscar reemplazos (Gym/Pilates fijo).
+     *
+     * @param  array<int, array{dia_semana: string, hora_inicio: string}>  $patron
+     */
+    public function prepararDesdePatronSinReemplazo(
+        Carbon $fechaAncla,
+        array $patron,
+        int $cantidadSesiones,
+        int $frecuenciaSemanal
+    ): ResultadoPreparacionTurnos {
+        $expansion = $this->expansorTurnosPatron->expandir(
+            $fechaAncla,
+            $patron,
+            $cantidadSesiones,
+            $frecuenciaSemanal
+        );
+
+        return $this->prepararExactosDesdeCarbons($expansion['turnos']);
+    }
+
+    /**
+     * @param  list<string>  $fechasHora
+     */
+    public function prepararExactos(array $fechasHora): ResultadoPreparacionTurnos
+    {
+        sort($fechasHora);
+
+        return ResultadoPreparacionTurnos::desdeFechasExactas($fechasHora);
+    }
+
     /**
      * @param  list<Carbon>  $turnosSolicitados
      */
-    public function prepararFechas(
+    private function prepararExactosDesdeCarbons(array $turnosSolicitados): ResultadoPreparacionTurnos
+    {
+        if ($turnosSolicitados === []) {
+            throw new ReglaNegocioException('No se pudieron calcular turnos para la inscripción.');
+        }
+
+        foreach ($turnosSolicitados as $turno) {
+            if ($turno->isPast()) {
+                throw new ReglaNegocioException(
+                    'Alguno de los turnos de la inscripción ya quedó en el pasado. Vuelva a seleccionar la fecha de inicio.'
+                );
+            }
+        }
+
+        return ResultadoPreparacionTurnos::desdeFechasExactas(
+            array_map(fn (Carbon $turno) => $turno->toDateTimeString(), $turnosSolicitados)
+        );
+    }
+
+    /**
+     * @param  list<Carbon>  $turnosSolicitados
+     */
+    private function asignarConReemplazo(
         Actividad $actividad,
         int $idPaciente,
-        array $turnosSolicitados,
-        int $semanasNecesarias
+        array $turnosSolicitados
     ): ResultadoPreparacionTurnos {
         $primerTurno = $turnosSolicitados[0];
         $ultimoTurno = $turnosSolicitados[array_key_last($turnosSolicitados)];
@@ -54,16 +138,6 @@ class TurnoService
         }
 
         return new ResultadoPreparacionTurnos($asignaciones);
-    }
-
-    /**
-     * @param  list<string>  $turnos
-     */
-    public function prepararTurnosManuales(array $turnos): ResultadoPreparacionTurnos
-    {
-        sort($turnos);
-
-        return ResultadoPreparacionTurnos::desdeFechasExactas($turnos);
     }
 
     public function validarCuposTurnosCasuales(

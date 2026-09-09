@@ -12,11 +12,9 @@ use App\Models\PrecioMensual;
 use App\Support\Registros\ModalidadRegistro;
 use App\Support\Registros\ResultadoInscripcionGeneral;
 use App\Support\Registros\ResultadoRegistroActividadPaciente;
-use App\Support\Turnos\ExpansorTurnosPatron;
 use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class ActividadPacienteService
 {
@@ -24,7 +22,6 @@ class ActividadPacienteService
 
     public function __construct(
         private TurnoService $turnoService,
-        private ExpansorTurnosPatron $expansorTurnosPatron,
     ) {}
 
     public function registrar(array $validados): ResultadoRegistroActividadPaciente
@@ -114,11 +111,14 @@ class ActividadPacienteService
                     ->values()
                     ->all();
 
-                $expansion = $this->expansorTurnosPatron->expandir($fechaAncla, $patron, $cantSesiones, $frecuencia);
-
-                $actividadPaciente->turnos()->createMany(
-                    $this->prepararTurnosGenerales($expansion['turnos'])
+                $preparacion = $this->turnoService->prepararDesdePatronSinReemplazo(
+                    $fechaAncla,
+                    $patron,
+                    $cantSesiones,
+                    $frecuencia
                 );
+
+                $actividadPaciente->turnos()->createMany($preparacion->paraPersistir());
 
                 $inscripciones->put($idActividad, $actividadPaciente);
             }
@@ -182,29 +182,6 @@ class ActividadPacienteService
         }
     }
 
-    /**
-     * @param  list<Carbon>  $turnosSolicitados
-     * @return list<array{fecha_hora: string}>
-     */
-    private function prepararTurnosGenerales(array $turnosSolicitados): array
-    {
-        if ($turnosSolicitados === []) {
-            throw new ReglaNegocioException('No se pudieron calcular turnos para la inscripción.');
-        }
-
-        foreach ($turnosSolicitados as $turno) {
-            if ($turno->isPast()) {
-                throw new ReglaNegocioException(
-                    'Alguno de los turnos de la inscripción ya quedó en el pasado. Vuelva a seleccionar la fecha de inicio.'
-                );
-            }
-        }
-
-        return array_map(fn (Carbon $turno) => [
-            'fecha_hora' => $turno->toDateTimeString(),
-        ], $turnosSolicitados);
-    }
-
     private function crearInscripcion(array $validados, bool $pagoCompletado): ActividadPaciente
     {
         return ActividadPaciente::create([
@@ -219,9 +196,20 @@ class ActividadPacienteService
 
     private function prepararTurnos(array $validados): ResultadoPreparacionTurnos
     {
-        return $validados['autogenerados']
-            ? $this->prepararTurnosAutomaticos($validados)
-            : $this->turnoService->prepararTurnosManuales($validados['turnos']);
+        if (!$validados['autogenerados']) {
+            return $this->turnoService->prepararExactos($validados['turnos']);
+        }
+
+        $cantidadSesiones = (int) ($validados['sesiones_cubiertas'] ?? $validados['cant_sesiones']);
+
+        return $this->turnoService->prepararDesdePatron(
+            Actividad::findOrFail($validados['id_actividad']),
+            (int) $validados['id_paciente'],
+            Carbon::parse($validados['fecha_ancla'])->startOfDay(),
+            $validados['turnos'],
+            $cantidadSesiones,
+            (int) $validados['frecuencia_semanal']
+        );
     }
 
     /**
@@ -305,26 +293,5 @@ class ActividadPacienteService
         $validados['fecha_emision_ord'] = Carbon::create($ahora->year, $validados['mes'], $validados['dia']);
 
         return $validados;
-    }
-
-    private function prepararTurnosAutomaticos(array $validados): ResultadoPreparacionTurnos
-    {
-        $cantidadSesiones = (int) ($validados['sesiones_cubiertas'] ?? $validados['cant_sesiones']);
-        $frecuenciaSemanal = (int) $validados['frecuencia_semanal'];
-        $fechaAncla = Carbon::parse($validados['fecha_ancla'])->startOfDay();
-
-        $expansion = $this->expansorTurnosPatron->expandir(
-            $fechaAncla,
-            $validados['turnos'],
-            $cantidadSesiones,
-            $frecuenciaSemanal
-        );
-
-        return $this->turnoService->prepararFechas(
-            Actividad::findOrFail($validados['id_actividad']),
-            $validados['id_paciente'],
-            $expansion['turnos'],
-            $expansion['semanas']
-        );
     }
 }

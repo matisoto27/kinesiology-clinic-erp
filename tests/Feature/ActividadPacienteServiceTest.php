@@ -261,7 +261,7 @@ class ActividadPacienteServiceTest extends TestCase
         $paciente = $this->crearPaciente();
 
         $this->mock(TurnoService::class, function ($mock) {
-            $mock->shouldReceive('prepararTurnosManuales')
+            $mock->shouldReceive('prepararExactos')
                 ->once()
                 ->andThrow(new Exception('Fallo simulado al persistir turnos.'));
         });
