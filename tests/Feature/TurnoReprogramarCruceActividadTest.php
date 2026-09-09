@@ -138,6 +138,24 @@ class TurnoReprogramarCruceActividadTest extends TestCase
         );
     }
 
+    public function test_livewire_no_ofrece_el_dia_si_ya_hay_turno_a_la_manana(): void
+    {
+        Carbon::setTestNow('2026-06-03 11:00:00');
+        $this->asociarHora(Actividad::PILATES, '09:00:00');
+        $this->asociarHora(Actividad::PILATES, '17:00:00');
+
+        $inscripcion = $this->crearInscripcion(Actividad::PILATES, cantSesiones: 8);
+        $this->crearTurnoAa($inscripcion, '2026-06-03 09:00:00', estado: 'Ausente');
+        $turno = $this->crearTurnoAa($inscripcion, '2026-06-05 17:00:00');
+
+        $fechas = Livewire::test('turnos.inicio', ['actividades' => Actividad::all()])
+            ->call('abrirModal', $turno->id)
+            ->get('fechasUnicas');
+
+        $this->assertNotContains('2026-06-03', $fechas);
+        $this->assertContains('2026-06-04', $fechas);
+    }
+
     public function test_livewire_muestra_selector_solo_en_dual_operativo(): void
     {
         ['turno' => $turnoDual] = $this->crearDualConTurnoPilates();

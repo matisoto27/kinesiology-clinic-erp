@@ -280,7 +280,7 @@ new class extends Component
             $diasOcupados = $inscripcionCupo->turnos()
                 ->whereDoesntHave('turnoRecuperacion')
                 ->where('estado', '!=', 'Ausente avisó')
-                ->whereBetween('fecha_hora', [$comienzo, $fin])
+                ->whereBetween('fecha_hora', [$comienzo->copy()->startOfDay(), $fin])
                 ->when(
                     (int) $inscripcionCupo->id === (int) $turno->id_act_pac,
                     fn ($q) => $q->where('id', '!=', $turno->id)
