@@ -290,6 +290,8 @@ class Actividad extends Model
 
     public function turnosDisponibles(?int $idPaciente, Carbon $comienzo, Carbon $fin, bool $esPacienteRegular = true): array
     {
+        $comienzo = $comienzo->copy()->startOfDay();
+        $fin = $fin->copy()->endOfDay();
         $idActividad = (int) $this->id;
 
         if ($this->esActividadGeneral()) {

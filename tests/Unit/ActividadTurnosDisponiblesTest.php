@@ -91,6 +91,25 @@ class ActividadTurnosDisponiblesTest extends TestCase
         $this->turnoService->reprogramar($turno, Carbon::parse(self::SLOT_NUEVO));
     }
 
+    public function test_rango_sin_hora_incluye_ocupacion_de_toda_la_jornada(): void
+    {
+        Carbon::setTestNow('2026-09-09 10:00:00');
+
+        $quiropraxia = $this->prepararActividad(Actividad::QUIROPRAXIA, ['17:00:00', '18:00:00']);
+        $consultante = $this->crearPaciente();
+
+        $this->crearTurno($this->crearPaciente(), Actividad::ATM, 'Ausente', '2026-09-09 17:00:00');
+
+        $disponibles = $quiropraxia->turnosDisponibles(
+            $consultante->id,
+            Carbon::parse('2026-09-09'),
+            Carbon::parse('2026-09-09')
+        );
+
+        $this->assertNotContains('2026-09-09 17:00:00', $disponibles);
+        $this->assertContains('2026-09-09 18:00:00', $disponibles);
+    }
+
     public function test_paciente_recupera_fecha_original_tras_reprogramar(): void
     {
         Config::set('app.max_turnos_gimnasio', 8);
@@ -129,14 +148,20 @@ class ActividadTurnosDisponiblesTest extends TestCase
         );
     }
 
-    private function prepararActividad(int $idActividad): Actividad
+    /**
+     * @param  list<string>  $horasInicio
+     */
+    private function prepararActividad(int $idActividad, array $horasInicio = ['10:00:00']): Actividad
     {
         $actividad = Actividad::findOrFail($idActividad);
-        $horario = Horario::create([
-            'hora_inicio' => '10:00:00',
-            'franja' => 'M',
-        ]);
-        $actividad->horarios()->attach($horario->id);
+
+        foreach ($horasInicio as $hora) {
+            $horario = Horario::create([
+                'hora_inicio' => $hora,
+                'franja' => 'M',
+            ]);
+            $actividad->horarios()->attach($horario->id);
+        }
 
         return $actividad->fresh(['horarios']);
     }

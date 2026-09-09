@@ -82,8 +82,8 @@ class ActividadController extends Controller
         ]);
 
         try {
-            $fechaComienzo = Carbon::parse($validados['fecha_comienzo']);
-            $fechaFin = Carbon::parse($validados['fecha_fin']);
+            $fechaComienzo = Carbon::parse($validados['fecha_comienzo'])->startOfDay();
+            $fechaFin = Carbon::parse($validados['fecha_fin'])->endOfDay();
 
             $turnosDisponibles = Actividad::findOrFail($id)->turnosDisponibles($validados['id_paciente'], $fechaComienzo, $fechaFin);
 
