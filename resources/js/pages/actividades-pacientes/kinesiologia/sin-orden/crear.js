@@ -19,6 +19,7 @@ import {
     manejarCambioSemanaTurnos,
     mostrarConfiguracionAutomatica
 } from '../../componentes/orquestacion-turnos-ui.js';
+import { mensajeExitoRegistroTurnos } from '../../componentes/mensaje-registro-turnos.js';
 import {
     construirPayloadKineSinOrden,
     recolectarPatronSemanal,
@@ -310,7 +311,7 @@ formulario.addEventListener('submit', async (e) => {
         await mostrarAlerta(
             'success',
             '¡Turnos registrados!',
-            'Los turnos del paciente han sido registrados correctamente.'
+            mensajeExitoRegistroTurnos(respuesta.reemplazos)
         );
 
         const eleccion = await Swal.fire({

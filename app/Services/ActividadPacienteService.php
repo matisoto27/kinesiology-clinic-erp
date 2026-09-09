@@ -11,7 +11,9 @@ use App\Models\PacienteFijo;
 use App\Models\PrecioMensual;
 use App\Support\Registros\ModalidadRegistro;
 use App\Support\Registros\ResultadoInscripcionGeneral;
+use App\Support\Registros\ResultadoRegistroActividadPaciente;
 use App\Support\Turnos\ExpansorTurnosPatron;
+use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +27,7 @@ class ActividadPacienteService
         private ExpansorTurnosPatron $expansorTurnosPatron,
     ) {}
 
-    public function registrar(array $validados): ActividadPaciente
+    public function registrar(array $validados): ResultadoRegistroActividadPaciente
     {
         return DB::transaction(function () use ($validados) {
             $esConOrden = ModalidadRegistro::esConOrden($validados);
@@ -41,7 +43,8 @@ class ActividadPacienteService
                 exigirComboExacto: $esConOrden
             );
 
-            $turnos = $this->prepararTurnos($validados);
+            $preparacion = $this->prepararTurnos($validados);
+            $turnos = $preparacion->paraPersistir();
             $this->asegurarCicloSinSolapamiento(
                 (int) $validados['id_paciente'],
                 (int) $validados['id_actividad'],
@@ -51,7 +54,10 @@ class ActividadPacienteService
             $actividadPaciente = $this->crearInscripcion($validados, $esConOrden);
             $actividadPaciente->turnos()->createMany($turnos);
 
-            return $actividadPaciente;
+            return new ResultadoRegistroActividadPaciente(
+                inscripcion: $actividadPaciente->fresh(['turnos']),
+                reemplazos: $preparacion->reemplazos(),
+            );
         });
     }
 
@@ -211,10 +217,7 @@ class ActividadPacienteService
         ]);
     }
 
-    /**
-     * @return list<array{fecha_hora: string}>
-     */
-    private function prepararTurnos(array $validados): array
+    private function prepararTurnos(array $validados): ResultadoPreparacionTurnos
     {
         return $validados['autogenerados']
             ? $this->prepararTurnosAutomaticos($validados)
@@ -304,7 +307,7 @@ class ActividadPacienteService
         return $validados;
     }
 
-    private function prepararTurnosAutomaticos(array $validados): array
+    private function prepararTurnosAutomaticos(array $validados): ResultadoPreparacionTurnos
     {
         $cantidadSesiones = (int) ($validados['sesiones_cubiertas'] ?? $validados['cant_sesiones']);
         $frecuenciaSemanal = (int) $validados['frecuencia_semanal'];

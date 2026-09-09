@@ -9,8 +9,11 @@ class ActividadPacienteController extends Controller
 {
     public function store(AlmacenarTurnoRequest $request, ActividadPacienteService $service)
     {
-        $actividadPaciente = $service->registrar($request->validated());
+        $resultado = $service->registrar($request->validated());
 
-        return response()->json(['id' => $actividadPaciente->id]);
+        return response()->json([
+            'id' => $resultado->inscripcion->id,
+            'reemplazos' => $resultado->reemplazos,
+        ]);
     }
 }

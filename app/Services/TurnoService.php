@@ -6,13 +6,22 @@ use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Turno;
+use App\Support\Turnos\AsignacionTurno;
+use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class TurnoService
 {
-    public function prepararFechas(Actividad $actividad, int $idPaciente, array $turnosSolicitados, int $semanasNecesarias): array
-    {
+    /**
+     * @param  list<Carbon>  $turnosSolicitados
+     */
+    public function prepararFechas(
+        Actividad $actividad,
+        int $idPaciente,
+        array $turnosSolicitados,
+        int $semanasNecesarias
+    ): ResultadoPreparacionTurnos {
         $primerTurno = $turnosSolicitados[0];
         $ultimoTurno = $turnosSolicitados[array_key_last($turnosSolicitados)];
 
@@ -21,35 +30,40 @@ class TurnoService
 
         $fechasDisponibles = array_flip($actividad->turnosDisponibles($idPaciente, $comienzo, $fin));
 
-        $turnosValidados = [];
-        $turnosSolicitadosStr = array_map(fn($t) => $t->toDateTimeString(), $turnosSolicitados);
+        $asignaciones = [];
+        $turnosAsignados = [];
+        $turnosSolicitadosStr = array_map(fn ($t) => $t->toDateTimeString(), $turnosSolicitados);
 
         foreach ($turnosSolicitados as $i => $turno) {
-            $turnoStr = $turnosSolicitadosStr[$i];
+            $solicitado = $turnosSolicitadosStr[$i];
             unset($turnosSolicitadosStr[$i]);
 
-            if ($turno->isPast() || !isset($fechasDisponibles[$turnoStr])) {
-                $fechasRestringidas = array_flip(array_merge($turnosValidados, $turnosSolicitadosStr));
-                $turnoStr = $actividad->buscarReemplazoTurno($turno, $fechasDisponibles, $fechasRestringidas);
+            $asignado = $solicitado;
 
-                if (!$turnoStr) {
+            if ($turno->isPast() || !isset($fechasDisponibles[$solicitado])) {
+                $fechasRestringidas = array_flip(array_merge($turnosAsignados, $turnosSolicitadosStr));
+                $asignado = $actividad->buscarReemplazoTurno($turno, $fechasDisponibles, $fechasRestringidas);
+
+                if (!$asignado) {
                     throw new ReglaNegocioException('No hay suficientes turnos disponibles para cubrir la cantidad de turnos solicitada.');
                 }
             }
 
-            $turnosValidados[] = $turnoStr;
+            $turnosAsignados[] = $asignado;
+            $asignaciones[] = new AsignacionTurno($solicitado, $asignado);
         }
 
-        sort($turnosValidados);
-
-        return array_map(fn ($fecha) => ['fecha_hora' => $fecha], $turnosValidados);
+        return new ResultadoPreparacionTurnos($asignaciones);
     }
 
-    public function prepararTurnosManuales(array $turnos): array
+    /**
+     * @param  list<string>  $turnos
+     */
+    public function prepararTurnosManuales(array $turnos): ResultadoPreparacionTurnos
     {
         sort($turnos);
 
-        return array_map(fn ($fecha) => ['fecha_hora' => $fecha], $turnos);
+        return ResultadoPreparacionTurnos::desdeFechasExactas($turnos);
     }
 
     public function validarCuposTurnosCasuales(

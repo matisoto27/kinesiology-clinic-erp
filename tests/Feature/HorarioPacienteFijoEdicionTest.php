@@ -15,6 +15,7 @@ use App\Services\ActividadPacienteService;
 use App\Services\HorarioPacienteFijoService;
 use App\Services\TurnoService;
 use App\Support\Registros\ResultadoInscripcionGeneral;
+use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -1098,9 +1099,11 @@ class HorarioPacienteFijoEdicionTest extends TestCase
         $this->mock(TurnoService::class, function ($mock) {
             $mock->shouldReceive('prepararFechas')
                 ->andReturnUsing(function ($actividad, $idPaciente, array $turnosSolicitados) {
-                    return collect($turnosSolicitados)->values()->map(fn ($fecha) => [
-                        'fecha_hora' => Carbon::parse($fecha)->format('Y-m-d H:i:s'),
-                    ])->all();
+                    return ResultadoPreparacionTurnos::desdeFechasExactas(
+                        collect($turnosSolicitados)->values()->map(
+                            fn ($fecha) => Carbon::parse($fecha)->format('Y-m-d H:i:s')
+                        )->all()
+                    );
                 });
         });
     }

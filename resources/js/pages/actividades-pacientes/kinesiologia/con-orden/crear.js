@@ -20,6 +20,7 @@ import {
     manejarCambioSemanaTurnos,
     mostrarConfiguracionAutomatica
 } from '../../componentes/orquestacion-turnos-ui.js';
+import { mensajeExitoRegistroTurnos } from '../../componentes/mensaje-registro-turnos.js';
 import {
     construirPayloadKineConOrden,
     recolectarPatronSemanal,
@@ -194,7 +195,7 @@ formulario.addEventListener('submit', async (e) => {
             fechaAncla: primerTurnoSelect.value
         });
 
-        await apiFetch(formulario.dataset.url, {
+        const respuesta = await apiFetch(formulario.dataset.url, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -207,7 +208,7 @@ formulario.addEventListener('submit', async (e) => {
         await mostrarAlerta(
             'success',
             '¡Turnos registrados!',
-            'Los turnos del paciente han sido registrados correctamente.'
+            mensajeExitoRegistroTurnos(respuesta.reemplazos)
         );
 
         window.location.replace('/');

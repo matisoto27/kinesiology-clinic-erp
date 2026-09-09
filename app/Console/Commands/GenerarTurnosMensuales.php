@@ -271,12 +271,20 @@ class GenerarTurnosMensuales extends Command
             throw new Exception('No se pudieron calcular turnos para el próximo ciclo del paciente fijo.');
         }
 
-        $turnosValidados = $turnoService->prepararFechas(
+        $preparacion = $turnoService->prepararFechas(
             $actPacOrigen->actividad,
             $idPaciente,
             $expansion['turnos'],
             $expansion['semanas']
         );
+
+        if ($preparacion->huboReemplazos()) {
+            Log::info('[(Command) GenerarTurnosMensuales] Se reasignaron turnos por falta de disponibilidad.', [
+                'id_paciente' => $idPaciente,
+                'id_actividad' => $actPacOrigen->id_actividad,
+                'reemplazos' => $preparacion->reemplazos(),
+            ]);
+        }
 
         $nuevoActPac = ActividadPaciente::create([
             'id_actividad' => $actPacOrigen->id_actividad,
@@ -285,7 +293,7 @@ class GenerarTurnosMensuales extends Command
             'total_a_pagar' => $totalAPagar,
             'pago_completado' => $totalAPagar <= 0, // La 2da inscripcion del par dual tendrá pago_completado = true
         ]);
-        $nuevoActPac->turnos()->createMany($turnosValidados);
+        $nuevoActPac->turnos()->createMany($preparacion->paraPersistir());
 
         return $nuevoActPac;
     }

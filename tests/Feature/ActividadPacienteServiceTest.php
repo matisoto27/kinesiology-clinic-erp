@@ -56,7 +56,7 @@ class ActividadPacienteServiceTest extends TestCase
             actividad: $actividad,
             paciente: $paciente,
             sesionesCubiertas: 5
-        ));
+        ))->inscripcion;
 
         $this->assertSame('9000.00', (string) $actividadPaciente->total_a_pagar);
         $this->assertTrue($actividadPaciente->pago_completado);
@@ -184,7 +184,7 @@ class ActividadPacienteServiceTest extends TestCase
             actividad: $actividad,
             paciente: $paciente,
             cantSesiones: 5
-        ));
+        ))->inscripcion;
 
         $this->assertSame('9000.00', (string) $actividadPaciente->total_a_pagar);
         $this->assertFalse($actividadPaciente->pago_completado);
@@ -204,7 +204,7 @@ class ActividadPacienteServiceTest extends TestCase
             actividad: $actividad,
             paciente: $paciente,
             cantSesiones: 5
-        ));
+        ))->inscripcion;
 
         $this->assertSame('10000.00', (string) $actividadPaciente->total_a_pagar);
         $this->assertFalse($actividadPaciente->pago_completado);
@@ -229,7 +229,7 @@ class ActividadPacienteServiceTest extends TestCase
                 ['dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
                 ['dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
             ],
-        ]);
+        ])->inscripcion;
 
         $this->assertSame(4, $actividadPaciente->cant_sesiones);
         $this->assertSame('8000.00', (string) $actividadPaciente->total_a_pagar);

@@ -46,7 +46,7 @@ class TurnoServiceTest extends TestCase
             1,
             $expansion['turnos'],
             $expansion['semanas']
-        );
+        )->paraPersistir();
 
         $this->assertCount(12, $resultado);
         $this->assertSame('2026-07-21 16:30:00', $resultado[11]['fecha_hora']);
