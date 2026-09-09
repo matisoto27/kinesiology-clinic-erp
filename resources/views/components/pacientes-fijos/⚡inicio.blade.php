@@ -37,7 +37,7 @@ new class extends Component
         return PacienteFijo::query()
             ->select(['pacientes_fijos.id', 'pacientes_fijos.id_paciente', 'pacientes_fijos.created_at'])
             ->with([
-                'paciente:id,nombre,apellido',
+                'paciente:id,nombre,apellido,es_gympass',
                 'horarios.actividad:id,nombre',
             ])
             ->when(!empty($this->consultaPaciente), fn ($consulta) => $consulta->whereHas(
@@ -148,7 +148,12 @@ new class extends Component
                         @php($esDualConPareja = $actividadesAgrupadas->count() > 1)
                         @php($puedeEditar = in_array($pacFijo->id_paciente, $this->idsPacientesCursandoInscripcion, true))
                         <tr class="group tabla-listado__fila" wire:key="paciente-fijo-{{ $pacFijo->id }}">
-                            <td>{{ $pacFijo->paciente->apellido_nombre }}</td>
+                            <td>
+                                @if ($pacFijo->paciente->es_gympass)
+                                    <span class="badge ml-1 bg-emerald-600">Gympass</span>
+                                @endif
+                                {{ $pacFijo->paciente->apellido_nombre }}
+                            </td>
                             <td>
                                 @if($esDualConPareja)
                                     Inscripción Dual (Gym + Pilates)

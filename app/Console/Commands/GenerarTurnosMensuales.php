@@ -28,7 +28,10 @@ class GenerarTurnosMensuales extends Command
         $consulta = PacienteFijo::query()
             ->select('id', 'id_paciente')
             ->whereHas('paciente')
-            ->with(['horarios:id,id_paciente_fijo,id_actividad,dia_semana,hora_inicio']);
+            ->with([
+                'horarios:id,id_paciente_fijo,id_actividad,dia_semana,hora_inicio',
+                'paciente:id,es_gympass',
+            ]);
 
         if ($id = $this->option('id_paciente_fijo')) {
             $consulta->where('id', $id);
@@ -90,7 +93,7 @@ class GenerarTurnosMensuales extends Command
                     $inicioProximoCiclo,
                     $horariosPaciente,
                     $turnoService,
-                    PrecioMensual::obtenerVigentePorFrecuencia(count($horariosPaciente))
+                    PrecioMensual::obtenerVigenteParaPaciente($pacFijo->paciente, count($horariosPaciente))
                 );
             });
         } catch (Throwable $ex) {
@@ -145,9 +148,10 @@ class GenerarTurnosMensuales extends Command
                 $turnoService,
                 $horariosGymFormateados,
                 $horariosPilatesFormateados,
-                $frecuenciaTotal
+                $frecuenciaTotal,
+                $pacFijo,
             ) {
-                $precioPlan = PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaTotal);
+                $precioPlan = PrecioMensual::obtenerVigenteParaPaciente($pacFijo->paciente, $frecuenciaTotal);
 
                 $nuevoGym = $this->crearInscripcionDesdeAncla(
                     $actPacGym,

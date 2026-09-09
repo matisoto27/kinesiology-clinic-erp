@@ -40,9 +40,47 @@ class ActividadPacienteModalidadCasualTest extends TestCase
         $this->assertFalse($actPac->esGympass());
     }
 
-    public function test_un_paciente_regular_nunca_es_gympass_ni_prueba_aunque_no_tenga_nada_a_pagar(): void
+    public function test_un_paciente_regular_particular_no_es_gympass_aunque_no_tenga_nada_a_pagar(): void
     {
-        $paciente = Paciente::create([
+        $paciente = $this->crearPacienteRegular();
+
+        // Caso real: la pata de Pilates de una inscripción dual, que se cobra en $0.
+        $actPac = $this->crearInscripcionRegular($paciente, Actividad::PILATES, totalAPagar: 0);
+
+        $this->assertFalse($actPac->esGympass());
+        $this->assertFalse($actPac->esPrueba());
+    }
+
+    #[DataProvider('actividades')]
+    public function test_un_paciente_regular_gympass_es_gympass_en_gimnasio_y_pilates(int $idActividad): void
+    {
+        $paciente = $this->crearPacienteRegular(['es_gympass' => true]);
+        $actPac = $this->crearInscripcionRegular($paciente, $idActividad, totalAPagar: 0);
+
+        $this->assertTrue($actPac->esGympass());
+        $this->assertFalse($actPac->esPrueba());
+    }
+
+    public function test_un_paciente_regular_gympass_no_es_gympass_en_kinesiologia(): void
+    {
+        $paciente = $this->crearPacienteRegular(['es_gympass' => true]);
+        $kine = Actividad::create([
+            'nombre' => 'Kine Test',
+            'id_tipo_actividad' => Actividad::TIPO_KINESIOLOGIA,
+        ]);
+
+        $actPac = $this->crearInscripcionRegular($paciente, $kine->id, totalAPagar: 9000);
+
+        $this->assertFalse($actPac->esGympass());
+        $this->assertFalse($actPac->esPrueba());
+    }
+
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function crearPacienteRegular(array $extra = []): Paciente
+    {
+        return Paciente::create(array_merge([
             'dni' => (string) random_int(10000000, 99999999),
             'nombre' => 'Nombre',
             'apellido' => 'Apellido',
@@ -52,19 +90,20 @@ class ActividadPacienteModalidadCasualTest extends TestCase
             'profesion' => 'Profesión',
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
-        ]);
+        ], $extra));
+    }
 
-        // Caso real: la pata de Pilates de una inscripción dual, que se cobra en $0.
+    private function crearInscripcionRegular(Paciente $paciente, int $idActividad, float $totalAPagar): ActividadPaciente
+    {
         $actPac = ActividadPaciente::create([
-            'id_actividad' => Actividad::PILATES,
+            'id_actividad' => $idActividad,
             'id_paciente' => $paciente->id,
             'cant_sesiones' => 4,
-            'total_a_pagar' => 0,
-            'pago_completado' => true,
+            'total_a_pagar' => $totalAPagar,
+            'pago_completado' => $totalAPagar <= 0,
         ]);
 
-        $this->assertFalse($actPac->esGympass());
-        $this->assertFalse($actPac->esPrueba());
+        return $actPac->load('pacienteRegular');
     }
 
     private function crearInscripcionCasual(int $idActividad, float $totalAPagar): ActividadPaciente

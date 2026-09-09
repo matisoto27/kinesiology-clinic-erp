@@ -371,6 +371,67 @@ class ActividadPacienteServiceTest extends TestCase
         $this->assertSame($gym->id, $resultado->inscripcionParaCobro->id);
     }
 
+    public function test_registrar_inscripciones_generales_gympass_no_cobra_simple_ni_dual(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([1 => 15000.00, 2 => 25000.00]);
+        $this->asociarHorario(Actividad::findOrFail(Actividad::GIMNASIO), '10:00:00');
+        $this->asociarHorario(Actividad::findOrFail(Actividad::PILATES), '10:00:00');
+
+        $pacienteSimple = $this->crearPaciente(['es_gympass' => true]);
+        $simple = $this->service->registrarInscripcionesGenerales([
+            'id_paciente' => $pacienteSimple->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::PILATES, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcionSimple = $simple->inscripciones->first();
+        $this->assertSame('0.00', (string) $inscripcionSimple->total_a_pagar);
+        $this->assertTrue($inscripcionSimple->pago_completado);
+        $this->assertTrue($inscripcionSimple->fresh('pacienteRegular')->esGympass());
+
+        $pacienteDual = $this->crearPaciente(['es_gympass' => true]);
+        $dual = $this->service->registrarInscripcionesGenerales([
+            'id_paciente' => $pacienteDual->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::PILATES, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $gym = $dual->inscripciones->firstWhere('id_actividad', Actividad::GIMNASIO);
+        $pilates = $dual->inscripciones->firstWhere('id_actividad', Actividad::PILATES);
+
+        $this->assertSame('0.00', (string) $gym->total_a_pagar);
+        $this->assertSame('0.00', (string) $pilates->total_a_pagar);
+        $this->assertTrue($gym->pago_completado);
+        $this->assertTrue($pilates->pago_completado);
+        $this->assertTrue($gym->fresh('pacienteRegular')->esGympass());
+        $this->assertTrue($pilates->fresh('pacienteRegular')->esGympass());
+    }
+
+    public function test_registrar_kine_cobra_aunque_el_paciente_sea_gympass(): void
+    {
+        Carbon::setTestNow('2026-06-02 09:00:00');
+
+        ['actividad' => $actividad] = $this->crearActividadKinesiologiaConPrecios(precioCombo5: 9000.00);
+        $paciente = $this->crearPaciente(['es_gympass' => true]);
+
+        $actividadPaciente = $this->service->registrar($this->payloadSinOrdenKine(
+            actividad: $actividad,
+            paciente: $paciente,
+            cantSesiones: 5
+        ))->inscripcion;
+
+        $this->assertSame('9000.00', (string) $actividadPaciente->total_a_pagar);
+        $this->assertFalse($actividadPaciente->pago_completado);
+        $this->assertFalse($actividadPaciente->fresh('pacienteRegular')->esGympass());
+    }
+
     public function test_registrar_inscripciones_generales_rechaza_si_no_hay_cupo_estructural(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
@@ -480,9 +541,9 @@ class ActividadPacienteServiceTest extends TestCase
         return $actividadCombo;
     }
 
-    private function crearPaciente(): Paciente
+    private function crearPaciente(array $extra = []): Paciente
     {
-        return Paciente::create([
+        return Paciente::create(array_merge([
             'dni' => (string) random_int(10000000, 99999999),
             'nombre' => 'Nombre',
             'apellido' => 'Apellido',
@@ -492,7 +553,7 @@ class ActividadPacienteServiceTest extends TestCase
             'profesion' => 'Profesion',
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
-        ]);
+        ], $extra));
     }
 
     private function crearPreciosMensuales(array $preciosPorFrecuencia): void

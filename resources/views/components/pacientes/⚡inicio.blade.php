@@ -201,6 +201,11 @@ new class extends Component
                         </div>
 
                         <div class="modal-informativo__seccion">
+                            <p class="modal-informativo__etiqueta">¿Es paciente Gympass?</p>
+                            <p class="modal-informativo__valor">{{ $datos['es_gympass'] ? 'Si' : 'No' }}</p>
+                        </div>
+
+                        <div class="modal-informativo__seccion">
                             <p class="modal-informativo__etiqueta">¿Es adulto mayor?</p>
                             <p class="modal-informativo__valor">{{ $datos['es_adulto_mayor'] ? 'Si' : 'No' }}</p>
 

@@ -533,6 +533,46 @@ class HorarioPacienteFijoEdicionTest extends TestCase
         $this->assertSame(4, Turno::where('id_act_pac', $inscripcion->id)->whereDate('fecha_hora', '>=', '2026-06-08')->whereDate('fecha_hora', '<', '2026-06-15')->count());
     }
 
+    public function test_aumento_de_frecuencia_gympass_sigue_sin_cobro(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 53000.00, 4 => 67000.00]);
+        $this->asociarHorarioAGimnasio();
+        $this->mockTurnoServiceSinValidarCupo();
+
+        $paciente = $this->crearPaciente(['es_gympass' => true]);
+        $resultado = app(ActividadPacienteService::class)->registrarInscripcionesGenerales([
+            'id_paciente' => $paciente->id,
+            'fecha_ancla' => '2026-06-01',
+            'horarios' => [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+            ],
+        ]);
+
+        $inscripcion = $resultado->inscripciones->first();
+        $this->assertSame('0.00', (string) $inscripcion->total_a_pagar);
+        $this->assertTrue($inscripcion->pago_completado);
+
+        Carbon::setTestNow('2026-06-08 09:00:00');
+
+        app(HorarioPacienteFijoService::class)->actualizar(
+            $resultado->pacienteFijo->id,
+            [
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Lunes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Martes', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Miércoles', 'hora_inicio' => '10:00:00'],
+                ['id_actividad' => Actividad::GIMNASIO, 'dia_semana' => 'Viernes', 'hora_inicio' => '10:00:00'],
+            ],
+            Carbon::parse('2026-06-08 09:00:00')
+        );
+
+        $inscripcion->refresh();
+        $this->assertSame('0.00', (string) $inscripcion->total_a_pagar);
+        $this->assertTrue($inscripcion->pago_completado);
+    }
+
     public function test_aumento_x2_a_x4_con_todos_los_extras_del_ciclo_queda_en_precio_x4(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
@@ -1080,9 +1120,12 @@ class HorarioPacienteFijoEdicionTest extends TestCase
         $inscripcion->update(['pago_completado' => true]);
     }
 
-    private function crearPaciente(): Paciente
+    /**
+     * @param  array<string, mixed>  $extra
+     */
+    private function crearPaciente(array $extra = []): Paciente
     {
-        return Paciente::create([
+        return Paciente::create(array_merge([
             'dni' => fake()->unique()->numerify('########'),
             'nombre' => 'Nombre',
             'apellido' => 'Apellido',
@@ -1092,7 +1135,7 @@ class HorarioPacienteFijoEdicionTest extends TestCase
             'profesion' => 'Profesion',
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
-        ]);
+        ], $extra));
     }
 
     private function mockTurnoServiceSinValidarCupo(): void

@@ -108,6 +108,26 @@ class ActividadPacienteGeneralCrearTest extends TestCase
         $this->assertSame(4, Turno::count());
     }
 
+    public function test_registrar_gympass_no_redirige_a_cobro(): void
+    {
+        Carbon::setTestNow('2026-06-03 10:00:00');
+
+        $this->crearPreciosMensuales([1 => 15000.00]);
+        $this->asociarHorarioAPilates();
+        $paciente = $this->crearPaciente(['es_gympass' => true]);
+
+        $componente = $this->completarGrillaPilates(['Lunes'], frecuencia: 1)
+            ->set('idPacienteSeleccionado', $paciente->id)
+            ->set('semanaInicio', 'subsiguiente')
+            ->call('almacenar');
+
+        $inscripcion = ActividadPaciente::query()->first();
+        $this->assertNotNull($inscripcion);
+        $this->assertSame('0.00', (string) $inscripcion->total_a_pagar);
+        $this->assertTrue($inscripcion->pago_completado);
+        $componente->assertRedirect(route('pacientes-fijos.inicio'));
+    }
+
     /**
      * @param  list<string>  $dias
      */
@@ -152,9 +172,9 @@ class ActividadPacienteGeneralCrearTest extends TestCase
         $pilates->horarios()->attach($horario->id);
     }
 
-    private function crearPaciente(): Paciente
+    private function crearPaciente(array $extra = []): Paciente
     {
-        return Paciente::create([
+        return Paciente::create(array_merge([
             'dni' => (string) random_int(10000000, 99999999),
             'nombre' => 'Nombre',
             'apellido' => 'Apellido',
@@ -164,6 +184,6 @@ class ActividadPacienteGeneralCrearTest extends TestCase
             'profesion' => 'Profesion',
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
-        ]);
+        ], $extra));
     }
 }

@@ -82,7 +82,8 @@ class ActividadPacienteService
             $esDual = $horariosPorActividad->count() === 2;
             $fechaAncla = Carbon::parse($datos['fecha_ancla'])->startOfDay();
             $frecuenciaTotal = count($datos['horarios']);
-            $precioMensual = PrecioMensual::obtenerVigentePorFrecuencia($frecuenciaTotal);
+            $paciente = Paciente::query()->select('id', 'es_gympass')->findOrFail($idPaciente);
+            $precioMensual = PrecioMensual::obtenerVigenteParaPaciente($paciente, $frecuenciaTotal);
 
             $inscripciones = collect();
 

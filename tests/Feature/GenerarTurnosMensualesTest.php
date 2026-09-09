@@ -68,6 +68,31 @@ class GenerarTurnosMensualesTest extends TestCase
         $this->assertSame('2026-06-29', $nueva->primerTurno->fecha_hora->format('Y-m-d'));
     }
 
+    public function test_renueva_inscripcion_gympass_sin_cobro(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAPilates();
+
+        $paciente = $this->crearPaciente(['es_gympass' => true]);
+        $pacienteFijo = $this->registrarInscripcionSimple($paciente)->pacienteFijo;
+
+        Carbon::setTestNow(Carbon::parse('2026-06-29 08:00:00')->subDays($this->diasAnticipacion() - 1));
+
+        $this->mockTurnoServiceParaUnaRenovacion();
+        $this->ejecutarGeneradorTurnosMensuales($pacienteFijo->id);
+
+        $nueva = ActividadPaciente::query()
+            ->where('id_paciente', $paciente->id)
+            ->where('id_actividad', Actividad::PILATES)
+            ->latest('id')
+            ->first();
+
+        $this->assertSame('0.00', (string) $nueva->total_a_pagar);
+        $this->assertTrue($nueva->pago_completado);
+    }
+
     public function test_no_renueva_inscripcion_simple_si_faltan_mas_dias_que_la_ventana_de_anticipacion(): void
     {
         Carbon::setTestNow('2026-06-01 08:00:00');
@@ -263,9 +288,9 @@ class GenerarTurnosMensualesTest extends TestCase
         $pilates->horarios()->attach($horario->id);
     }
 
-    private function crearPaciente(): Paciente
+    private function crearPaciente(array $extra = []): Paciente
     {
-        return Paciente::create([
+        return Paciente::create(array_merge([
             'dni' => fake()->unique()->numerify('########'),
             'nombre' => 'Nombre',
             'apellido' => 'Apellido',
@@ -275,7 +300,7 @@ class GenerarTurnosMensualesTest extends TestCase
             'profesion' => 'Profesion',
             'actividad_fisica' => 'Ninguna',
             'es_adulto_mayor' => false,
-        ]);
+        ], $extra));
     }
 
     private function diasAnticipacion(): int

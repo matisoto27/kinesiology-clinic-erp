@@ -80,7 +80,7 @@ new class extends Component
                 'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,cant_sesiones,id_act_pac_dual',
                 'actividadPaciente.actPacDual:id,cant_sesiones',
                 'actividadPaciente.actividad:id,nombre,id_tipo_actividad',
-                'actividadPaciente.pacienteRegular:id,nombre,apellido',
+                'actividadPaciente.pacienteRegular:id,nombre,apellido,es_gympass',
                 'actividadPaciente.pacienteCasual:id,nombre,apellido',
                 'turnoOriginal:id,fecha_hora',
                 'turnoRecuperacion:id,id_turno_original,fecha_hora,estado',
@@ -474,12 +474,12 @@ new class extends Component
             @forelse($this->turnos as $turno)
                 <tr class="tabla-listado__fila" wire:key="turno-{{ $turno->id }}">
                     <td>
-                        @if ($turno->actividadPaciente->esRegular())
-                            {{ $turno->actividadPaciente->nombre_actividad }} |
+                        @if ($turno->actividadPaciente->esGympass())
+                            <span class="badge bg-emerald-600">Gympass · {{ $turno->actividadPaciente->nombre_actividad }}</span>
                             {{ $turno->ap_nom_paciente }} |
                             Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cantSesionesGrupo() }}
-                        @elseif ($turno->actividadPaciente->esGympass())
-                            <span class="badge bg-emerald-600">Gympass · {{ $turno->actividadPaciente->nombre_actividad }}</span>
+                        @elseif ($turno->actividadPaciente->esRegular())
+                            {{ $turno->actividadPaciente->nombre_actividad }} |
                             {{ $turno->ap_nom_paciente }} |
                             Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cantSesionesGrupo() }}
                         @else

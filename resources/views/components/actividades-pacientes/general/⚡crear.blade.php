@@ -242,6 +242,12 @@ new class extends Component
             return;
         }
 
+        if ((float) $resultado->inscripcionParaCobro->total_a_pagar <= 0) {
+            return redirect()
+                ->route('pacientes-fijos.inicio')
+                ->with('exito', 'La inscripción Gympass fue registrada correctamente. No corresponde cobro.');
+        }
+
         return redirect()
             ->route('actividades-pacientes.pagos.crear', ['id' => $resultado->inscripcionParaCobro->id])
             ->with('exito', 'La inscripción fue registrada correctamente.');

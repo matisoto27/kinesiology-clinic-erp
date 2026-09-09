@@ -35,4 +35,13 @@ class PrecioMensual extends Model
 
         return (float) $precio->valor;
     }
+
+    public static function obtenerVigenteParaPaciente(Paciente $paciente, int $frecuenciaSemanal): float
+    {
+        if ($paciente->es_gympass) {
+            return 0.0;
+        }
+
+        return self::obtenerVigentePorFrecuencia($frecuenciaSemanal);
+    }
 }

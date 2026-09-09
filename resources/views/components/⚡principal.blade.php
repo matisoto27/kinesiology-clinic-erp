@@ -96,7 +96,7 @@ new class extends Component
             ->whereDoesntHave('pagos')
             ->conUltimoTurnoVigente()
             ->with([
-                'pacienteRegular:id,nombre,apellido',
+                'pacienteRegular:id,nombre,apellido,es_gympass',
                 'actividad:id,nombre',
                 'turnos' => fn ($q) => $q
                     ->where('fecha_hora', '<', $ahora)
@@ -164,7 +164,7 @@ new class extends Component
             ->whereHas('pacienteFijo')
             ->whereHas('actividad', fn ($q) => $q->porTipo(Actividad::TIPO_GENERAL))
             ->with([
-                'pacienteRegular:id,nombre,apellido',
+                'pacienteRegular:id,nombre,apellido,es_gympass',
                 'primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora,turnos.id_turno_original',
                 'actPacDual.primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora,turnos.id_turno_original',
                 'pagos:id,id_act_pac,monto',
@@ -249,7 +249,7 @@ new class extends Component
                 'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,cant_sesiones,id_act_pac_dual',
                 'actividadPaciente.actPacDual:id,cant_sesiones',
                 'actividadPaciente.actividad:id,nombre,id_tipo_actividad',
-                'actividadPaciente.pacienteRegular:id,nombre,apellido',
+                'actividadPaciente.pacienteRegular:id,nombre,apellido,es_gympass',
                 'actividadPaciente.pacienteCasual:id,nombre,apellido',
             ])
             ->whereBetween('turnos.fecha_hora', [$hoy, $hoy->copy()->endOfDay()])
@@ -451,12 +451,12 @@ new class extends Component
                         <tr class="h-24 border-b last:border-b-0" wire:key="turno-{{ $turno->id }}">
                             <td class="text-center">{{ $turno->fecha_hora->format('H:i') }}</td>
                             <td colspan="2" class="text-center">
-                                @if ($turno->actividadPaciente->esRegular())
-                                    {{ $turno->actividadPaciente->nombre_actividad }} |
+                                @if ($turno->actividadPaciente->esGympass())
+                                    <span class="badge bg-emerald-600">Gympass · {{ $turno->actividadPaciente->nombre_actividad }}</span>
                                     {{ $turno->ap_nom_paciente }} |
                                     Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cantSesionesGrupo() }}
-                                @elseif ($turno->actividadPaciente->esGympass())
-                                    <span class="badge bg-emerald-600">Gympass · {{ $turno->actividadPaciente->nombre_actividad }}</span>
+                                @elseif ($turno->actividadPaciente->esRegular())
+                                    {{ $turno->actividadPaciente->nombre_actividad }} |
                                     {{ $turno->ap_nom_paciente }} |
                                     Turno: {{ $turno->nro_turno }} / {{ $turno->actividadPaciente->cantSesionesGrupo() }}
                                 @else

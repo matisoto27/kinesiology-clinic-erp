@@ -29,12 +29,18 @@ class Paciente extends Model
         'profesion',
         'actividad_fisica',
         'es_adulto_mayor',
+        'es_gympass',
         'vive_con'
+    ];
+
+    protected $attributes = [
+        'es_gympass' => false,
     ];
 
     protected $casts = [
         'fecha_nac' => 'date',
-        'es_adulto_mayor' => 'boolean'
+        'es_adulto_mayor' => 'boolean',
+        'es_gympass' => 'boolean',
     ];
 
     protected $appends = [
@@ -80,6 +86,15 @@ class Paciente extends Model
     public function pacienteFijo(): HasOne
     {
         return $this->hasOne(PacienteFijo::class, 'id_paciente');
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (Paciente $paciente) {
+            if ($paciente->getOriginal('es_gympass')) {
+                $paciente->es_gympass = true;
+            }
+        });
     }
 
     public function patologias(): BelongsToMany

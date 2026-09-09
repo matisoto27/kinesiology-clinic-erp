@@ -20,6 +20,7 @@ class PacienteResource extends JsonResource
             'profesion' => $this->profesion,
             'actividad_fisica' => $this->actividad_fisica,
             'es_adulto_mayor' => $this->es_adulto_mayor,
+            'es_gympass' => $this->es_gympass,
             'vive_con' => $this->vive_con,
             'created_at' => $this->fecha_ingreso,
             'obra_social' => $this->afiliacionVigente?->nombre_mostrable,

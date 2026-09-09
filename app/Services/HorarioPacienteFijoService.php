@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
+use App\Models\Paciente;
 use App\Models\PacienteFijo;
 use App\Models\PrecioMensual;
 use App\Models\Turno;
@@ -332,7 +333,8 @@ class HorarioPacienteFijoService
             $inscripciones,
             $frecuenciaNueva,
             $turnosACrear,
-            $turnosAEliminar
+            $turnosAEliminar,
+            $pacienteFijo->paciente
         );
 
         $sinCambiosEfectivos = $turnosACrear->isEmpty() && $turnosAEliminar->isEmpty();
@@ -1019,13 +1021,22 @@ class HorarioPacienteFijoService
         Collection $inscripciones,
         int $frecuenciaNueva,
         Collection $turnosACrear,
-        Collection $turnosAEliminar
+        Collection $turnosAEliminar,
+        Paciente $paciente
     ): array {
         $liderActual = $this->resolverInscripcionLider($inscripciones, $inscripciones->count() === 2);
         $totalAnterior = $liderActual ? (float) $liderActual->total_a_pagar : 0.0;
 
         if ($totalAnterior <= 0) {
             $totalAnterior = (float) $inscripciones->sum('total_a_pagar');
+        }
+
+        if ($paciente->es_gympass) {
+            return [
+                'total_anterior' => $totalAnterior,
+                'total_nuevo' => 0.0,
+                'cargo_extra' => 0.0,
+            ];
         }
 
         $freqContrato = $this->frecuenciaContractualActual($inscripciones, $liderActual);

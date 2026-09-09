@@ -63,6 +63,70 @@ class PacienteRegistroTest extends TestCase
 
         $this->assertSame(1, Paciente::count());
         $this->assertSame('11223344', Paciente::first()->dni);
+        $this->assertFalse(Paciente::first()->es_gympass);
+    }
+
+    public function test_crea_paciente_gympass(): void
+    {
+        Livewire::test('pacientes.crear')
+            ->set($this->payloadLivewire([
+                'dni' => '22334455',
+                'esGympass' => true,
+            ]))
+            ->call('almacenar')
+            ->assertRedirect(route('pacientes.inicio'));
+
+        $this->assertTrue(Paciente::first()->es_gympass);
+    }
+
+    public function test_editar_no_permite_desmarcar_gympass(): void
+    {
+        $paciente = Paciente::create($this->datosPaciente([
+            'dni' => '33445566',
+            'actividad_fisica' => 'Moderada',
+            'es_gympass' => true,
+        ]));
+
+        Livewire::test('pacientes.editar', ['paciente' => $paciente])
+            ->set('esGympass', false)
+            ->call('actualizar')
+            ->assertRedirect(route('pacientes.inicio'));
+
+        $this->assertTrue($paciente->fresh()->es_gympass);
+    }
+
+    public function test_editar_permite_marcar_gympass_si_aun_no_lo_era(): void
+    {
+        $paciente = Paciente::create($this->datosPaciente([
+            'dni' => '44556677',
+            'actividad_fisica' => 'Moderada',
+        ]));
+
+        Livewire::test('pacientes.editar', ['paciente' => $paciente])
+            ->set('esGympass', true)
+            ->call('actualizar')
+            ->assertRedirect(route('pacientes.inicio'));
+
+        $this->assertTrue($paciente->fresh()->es_gympass);
+    }
+
+    public function test_restaurar_conserva_gympass_aunque_el_alta_lo_mande_desmarcado(): void
+    {
+        $eliminado = Paciente::create($this->datosPaciente([
+            'dni' => '55667788',
+            'es_gympass' => true,
+        ]));
+        $eliminado->delete();
+
+        Livewire::test('pacientes.crear')
+            ->set($this->payloadLivewire([
+                'dni' => '55667788',
+                'esGympass' => false,
+            ]))
+            ->call('almacenar')
+            ->assertRedirect(route('pacientes.inicio'));
+
+        $this->assertTrue(Paciente::first()->es_gympass);
     }
 
     /**

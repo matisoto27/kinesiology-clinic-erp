@@ -71,7 +71,7 @@ new class extends Component
             ])
             ->with([
                 'actividad:id,nombre,id_tipo_actividad',
-                'pacienteRegular:id,nombre,apellido',
+                'pacienteRegular:id,nombre,apellido,es_gympass',
                 'pacienteCasual:id,nombre,apellido',
                 'pacienteFijo:id,id_paciente',
                 'primerTurno:id,id_act_pac,fecha_hora',
@@ -286,10 +286,13 @@ new class extends Component
                     <td colspan="2">
                         @if ($par)
                             <span class="badge mr-1 bg-indigo-600">Dual (x{{ $actPac->frecuencia_total_dual }})</span>
-                        @elseif ($actPac->esRegular())
-                            {{ $actPac->nombre_actividad }} |
+                            @if ($actPac->esGympass())
+                                <span class="badge mr-1 bg-emerald-600">Gympass</span>
+                            @endif
                         @elseif ($actPac->esGympass())
                             <span class="badge bg-emerald-600">Gympass · {{ $actPac->nombre_actividad }}</span>
+                        @elseif ($actPac->esRegular())
+                            {{ $actPac->nombre_actividad }} |
                         @else
                             <span class="badge bg-purple-600">Prueba · {{ $actPac->nombre_actividad }}</span>
                         @endif
@@ -320,7 +323,9 @@ new class extends Component
                         @endif
                     </td>
                     <td>
-                        @if ($actPac->esRegular() || $actPac->esPrueba())
+                        @if ($actPac->esGympass())
+                            <span class="text-gray-400 italic">N/A</span>
+                        @elseif ($actPac->esRegular() || $actPac->esPrueba())
                             <div class="flex flex-col">
                                 <span class="{{ $cobro->fecha_recargo ? 'text-gray-500 text-sm line-through' : 'font-bold' }}">
                                     ${{ number_format($cobro->total_a_pagar, 2, ',', '.') }}

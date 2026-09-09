@@ -203,7 +203,13 @@ class ActividadPaciente extends Model
 
     public function esGympass(): bool
     {
-        return $this->esCasual() && (float) $this->total_a_pagar <= 0;
+        if ($this->esCasual()) {
+            return (float) $this->total_a_pagar <= 0;
+        }
+
+        return $this->esRegular()
+            && (bool) $this->pacienteRegular?->es_gympass
+            && in_array((int) $this->id_actividad, [Actividad::GIMNASIO, Actividad::PILATES], true);
     }
 
     public function esPrueba(): bool

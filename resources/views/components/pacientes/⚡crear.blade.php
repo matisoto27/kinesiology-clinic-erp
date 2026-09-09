@@ -25,6 +25,7 @@ new class extends Component
     public string $profesion = '';
     public string $actividadFisica = '';
     public bool $esAdultoMayor = false;
+    public bool $esGympass = false;
     public bool $viveSolo = true;
     public ?string $viveCon = null;
     public array $contactos = [];
@@ -47,6 +48,7 @@ new class extends Component
             'profesion' => 'required|string|max:40',
             'actividadFisica' => 'required|string|in:Sedentario,Ocasional,Moderada,Intensa,Alto rendimiento/Competencia',
             'esAdultoMayor' => 'required|boolean',
+            'esGympass' => 'required|boolean',
             'viveSolo' => 'exclude_if:esAdultoMayor,false|boolean',
             'viveCon' => 'exclude_if:esAdultoMayor,false|required_if:viveSolo,false|nullable|string|regex:/^[A-Za-z0-9\s.,()áéíóúÁÉÍÓÚñÑ]+$/|min:1|max:150',
             'contactos' => 'exclude_if:esAdultoMayor,false|nullable|array|max:3',
@@ -142,6 +144,7 @@ new class extends Component
                     'profesion' => $this->profesion,
                     'actividad_fisica' => $this->actividadFisica,
                     'es_adulto_mayor' => $this->esAdultoMayor,
+                    'es_gympass' => $this->esGympass,
                     'vive_con' => $this->esAdultoMayor
                         ? ($this->viveSolo ? 'SOLO' : $this->viveCon)
                         : null
@@ -198,6 +201,7 @@ new class extends Component
             'profesion' => $this->profesion,
             'actividad_fisica' => $this->actividadFisica,
             'es_adulto_mayor' => $this->esAdultoMayor,
+            'es_gympass' => $this->esGympass,
             'vive_con' => $this->esAdultoMayor
                 ? ($this->viveSolo ? 'SOLO' : $this->viveCon)
                 : null,
@@ -374,6 +378,8 @@ new class extends Component
             </div>
 
             @include('components.pacientes.buscador-obra-social')
+
+            @include('components.pacientes.partials.gympass', ['gympassBloqueado' => false])
 
             @include('components.pacientes.partials.adulto-mayor')
 
