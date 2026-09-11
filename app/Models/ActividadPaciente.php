@@ -121,6 +121,11 @@ class ActividadPaciente extends Model
         return $this->hasMany(Pago::class, 'id_act_pac');
     }
 
+    public function cobrosExternos(): HasMany
+    {
+        return $this->hasMany(CobroExterno::class, 'id_act_pac');
+    }
+
     public function actPacDual(): BelongsTo
     {
         return $this->belongsTo(self::class, 'id_act_pac_dual');

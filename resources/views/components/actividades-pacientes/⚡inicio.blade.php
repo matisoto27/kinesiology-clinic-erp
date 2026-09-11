@@ -1,7 +1,7 @@
 <?php
 
-use App\Models\Actividad;
 use App\Models\ActividadPaciente;
+use App\Models\CobroExterno;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
@@ -28,6 +28,10 @@ new class extends Component
     public ?ActividadPaciente $inscripcionSeleccionada = null;
 
     public bool $mostrarModal = false;
+
+    public bool $mostrarFormularioCobroExterno = false;
+
+    public string $claveCobroExterno = '';
 
     public function updatingFiltroPago(): void
     {
@@ -86,10 +90,11 @@ new class extends Component
                     ->orWhereColumn('actividades_pacientes.id', '<', 'actividades_pacientes.id_act_pac_dual');
             })
             ->addSelect(DB::raw('
-                GREATEST(
-                    actividades_pacientes.id,
-                    COALESCE(actividades_pacientes.id_act_pac_dual, actividades_pacientes.id)
-                ) as dual_group_key
+                CASE
+                    WHEN actividades_pacientes.id >= COALESCE(actividades_pacientes.id_act_pac_dual, actividades_pacientes.id)
+                        THEN actividades_pacientes.id
+                    ELSE COALESCE(actividades_pacientes.id_act_pac_dual, actividades_pacientes.id)
+                END as dual_group_key
             '))
             ->addSelect(DB::raw('
                 (
@@ -145,12 +150,82 @@ new class extends Component
             'actPacDual.turnos',
         ])->find($id);
         $this->mostrarModal = true;
+        $this->resetFormularioCobroExterno();
     }
 
     public function cerrarModal(): void
     {
         $this->mostrarModal = false;
         $this->inscripcionSeleccionada = null;
+        $this->resetFormularioCobroExterno();
+    }
+
+    public function abrirFormularioCobroExterno(): void
+    {
+        if (!$this->puedeMarcarCobroExterno()) {
+            return;
+        }
+
+        $this->mostrarFormularioCobroExterno = true;
+        $this->claveCobroExterno = '';
+        $this->resetErrorBag('claveCobroExterno');
+    }
+
+    public function cancelarCobroExterno(): void
+    {
+        $this->resetFormularioCobroExterno();
+    }
+
+    public function confirmarCobroExterno(): void
+    {
+        if (!$this->puedeMarcarCobroExterno()) {
+            session()->flash('error', 'No tiene permisos para realizar esta acción.');
+            $this->cerrarModal();
+            return;
+        }
+
+        $this->validate();
+
+        $codigoEsperado = (string) config('app.codigo_cobro_externo');
+        if ($codigoEsperado === '' || !hash_equals($codigoEsperado, $this->claveCobroExterno)) {
+            $this->addError('claveCobroExterno', 'Código incorrecto.');
+            $this->claveCobroExterno = '';
+            return;
+        }
+
+        try {
+            $inscripcion = ActividadPaciente::with('actividad')
+                ->withSum('pagos', 'monto')
+                ->findOrFail($this->inscripcionSeleccionada->id);
+
+            if ($inscripcion->actividad->esActividadGeneral() || $inscripcion->pago_completado) {
+                session()->flash('error', 'No se puede marcar el pago de esta inscripción.');
+                $this->cerrarModal();
+                return;
+            }
+
+            $monto = $inscripcion->calcularDeuda();
+
+            DB::transaction(function () use ($inscripcion, $monto) {
+                CobroExterno::create([
+                    'id_act_pac' => $inscripcion->id,
+                    'monto' => $monto,
+                ]);
+
+                $inscripcion->update(['pago_completado' => true]);
+            });
+
+            session()->flash('exito', 'El pago ha sido marcado como completado.');
+            $this->cerrarModal();
+        } catch (\Throwable $ex) {
+            Log::error('[(Livewire) actividades-pacientes.inicio@confirmarCobroExterno] Error al marcar cobro externo.', [
+                'id' => $this->inscripcionSeleccionada?->id,
+                'excepción' => $ex->getMessage(),
+            ]);
+
+            session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
+            $this->cerrarModal();
+        }
     }
 
     public function eliminar(int $id): void
@@ -188,6 +263,47 @@ new class extends Component
 
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
+    }
+
+    protected function rules(): array
+    {
+        return [
+            'claveCobroExterno' => ['required', 'string'],
+        ];
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'claveCobroExterno.required' => 'Debe ingresar el código.',
+        ];
+    }
+
+    protected function validationAttributes(): array
+    {
+        return [
+            'claveCobroExterno' => 'código',
+        ];
+    }
+
+    private function puedeMarcarCobroExterno(): bool
+    {
+        if (!session('acceso_admin') || !$this->inscripcionSeleccionada) {
+            return false;
+        }
+
+        $inscripcion = $this->inscripcionSeleccionada;
+        $inscripcion->loadMissing('actividad');
+
+        return !$inscripcion->pago_completado
+            && !$inscripcion->actividad->esActividadGeneral();
+    }
+
+    private function resetFormularioCobroExterno(): void
+    {
+        $this->mostrarFormularioCobroExterno = false;
+        $this->claveCobroExterno = '';
+        $this->resetErrorBag('claveCobroExterno');
     }
 };
 ?>
@@ -504,7 +620,53 @@ new class extends Component
                     </div>
                 </div>
 
-                <div class="mt-8">
+                <div class="mt-8 space-y-3">
+                    @if (session('acceso_admin')
+                        && !$inscripcionSeleccionada->pago_completado
+                        && !$inscripcionSeleccionada->actividad->esActividadGeneral())
+                        @if (!$mostrarFormularioCobroExterno)
+                            <button
+                                type="button"
+                                class="modal-informativo__accion bg-emerald-600 hover:bg-emerald-700 text-white w-full"
+                                wire:click="abrirFormularioCobroExterno"
+                            >
+                                Marcar pago completado
+                            </button>
+                        @else
+                            <div class="space-y-2">
+                                <label for="clave-cobro-externo" class="etiqueta-formulario text-[#3A8F8E]">Código de confirmación</label>
+                                <input
+                                    id="clave-cobro-externo"
+                                    type="password"
+                                    class="entrada w-full"
+                                    wire:model="claveCobroExterno"
+                                    wire:keydown.enter="confirmarCobroExterno"
+                                    autocomplete="off"
+                                    autofocus
+                                >
+                                @error('claveCobroExterno')
+                                    <p class="text-red-500 text-sm">{{ $message }}</p>
+                                @enderror
+                                <div class="flex gap-2">
+                                    <button
+                                        type="button"
+                                        class="modal-informativo__accion bg-emerald-600 hover:bg-emerald-700 text-white flex-1"
+                                        wire:click="confirmarCobroExterno"
+                                    >
+                                        Confirmar
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="modal-informativo__accion bg-gray-200 hover:bg-gray-400 text-gray-700 flex-1"
+                                        wire:click="cancelarCobroExterno"
+                                    >
+                                        Cancelar
+                                    </button>
+                                </div>
+                            </div>
+                        @endif
+                    @endif
+
                     <button class="modal-informativo__accion bg-gray-200 hover:bg-gray-400 text-gray-700 w-full" wire:click="cerrarModal">Cerrar</button>
                 </div>
             </div>
