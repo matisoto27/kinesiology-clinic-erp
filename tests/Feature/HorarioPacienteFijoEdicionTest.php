@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\InscripcionGeneralRegistrada;
 use App\Exceptions\ReglaNegocioException;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
@@ -19,11 +20,20 @@ use App\Support\Turnos\ExpansorTurnosPatron;
 use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 class HorarioPacienteFijoEdicionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // La edición se prueba sobre el ciclo vigente; la próxima la cubre RenovacionInscripcionServiceTest.
+        Event::fake([InscripcionGeneralRegistrada::class]);
+    }
 
     protected function tearDown(): void
     {

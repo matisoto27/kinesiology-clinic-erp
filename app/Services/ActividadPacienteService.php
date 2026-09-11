@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ReglaNegocioException;
+use App\Events\InscripcionGeneralRegistrada;
 use App\Models\Actividad;
 use App\Models\ActividadCombo;
 use App\Models\ActividadPaciente;
@@ -148,6 +149,8 @@ class ActividadPacienteService
                     ])
                     ->all()
             );
+
+            InscripcionGeneralRegistrada::dispatch($pacienteFijo->id);
 
             $inscripcionParaCobro = $esDual
                 ? $inscripciones->get(Actividad::GIMNASIO)

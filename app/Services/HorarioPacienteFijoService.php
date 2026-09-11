@@ -19,6 +19,10 @@ class HorarioPacienteFijoService
 {
     private const SEMANAS_CICLO = 4;
 
+    public function __construct(
+        private RenovacionInscripcionService $renovacionInscripcionService,
+    ) {}
+
     /**
      * @param  array<int, array{id_actividad: int, dia_semana: string, hora_inicio: string}>  $horariosNuevos
      */
@@ -61,6 +65,11 @@ class HorarioPacienteFijoService
             if (!$plan['sin_cambios_efectivos']) {
                 $this->asegurarSinSolapesConTurnosExistentes($plan);
                 $this->aplicarPlan($plan);
+
+                $this->renovacionInscripcionService->regenerarInscripcionesFuturas(
+                    $plan['paciente_fijo']->fresh(['horarios', 'paciente']),
+                    $plan['limite_exclusivo_ciclo']->copy()
+                );
             }
 
             return $this->resultadoDesdePlan($plan, persistido: true);
@@ -347,6 +356,7 @@ class HorarioPacienteFijoService
             'frecuencia_contractual' => $frecuenciaContractual,
             'hubo_primer_turno' => true,
             'fecha_corte' => $fechaCorte,
+            'limite_exclusivo_ciclo' => $limiteExclusivo,
             'es_dual_nuevo' => $esDualFinal,
             'contrato_ciclo' => $contratoCiclo,
             'turnos_a_crear' => $turnosACrear->values(),

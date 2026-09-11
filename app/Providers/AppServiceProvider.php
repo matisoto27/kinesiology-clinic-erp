@@ -2,12 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\InscripcionGeneralRegistrada;
+use App\Listeners\GenerarProximaInscripcionTrasAlta;
 use App\Models\Actividad;
 use App\Models\TipoActividad;
 use Carbon\Carbon;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\View;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +28,11 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Carbon::setLocale('es');
+
+        Event::listen(
+            InscripcionGeneralRegistrada::class,
+            GenerarProximaInscripcionTrasAlta::class,
+        );
 
         View::composer(['principal', 'turnos.calendario'], function ($vista) {
             $vista->with('tiposActividad', Cache::remember('todos_tipos_actividad', now()->addHours(12), function () {

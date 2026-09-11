@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Events\InscripcionGeneralRegistrada;
 use App\Models\Actividad;
 use App\Models\ActividadPaciente;
 use App\Models\Horario;
@@ -16,16 +17,23 @@ use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Event;
 use Tests\TestCase;
 
 /**
- * Regla de negocio: La renovación mensual se dispara cuando faltan (turnos.dias_anticipacion_renovacion) días o menos
- * para el fin del ciclo (primer turno original + 4 semanas), no en base al último turno generado.
- * En dual, la ancla del ciclo es el menor primer turno entre las dos inscripciones del par.
+ * Aísla el command: Se apaga el auto-renew del alta para poder testear el cron en aislamiento.
  */
 class GenerarTurnosMensualesTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config(['turnos.dias_anticipacion_renovacion' => 28]);
+        Event::fake([InscripcionGeneralRegistrada::class]);
+    }
 
     protected function tearDown(): void
     {
@@ -223,6 +231,27 @@ class GenerarTurnosMensualesTest extends TestCase
 
         $this->assertSame($inscripcionesIniciales, ActividadPaciente::count());
         $this->assertSame($turnosIniciales, Turno::count());
+    }
+
+    public function test_segunda_ejecucion_del_cron_no_duplica_inscripcion_simple(): void
+    {
+        Carbon::setTestNow('2026-06-01 08:00:00');
+
+        $this->crearPreciosMensuales([2 => 20000.00]);
+        $this->asociarHorarioAPilates();
+
+        $paciente = $this->crearPaciente();
+        $pacienteFijo = $this->registrarInscripcionSimple($paciente)->pacienteFijo;
+
+        Carbon::setTestNow(Carbon::parse('2026-06-29 08:00:00')->subDays($this->diasAnticipacion() - 1));
+
+        $this->mockTurnoServiceParaUnaRenovacion();
+        $this->ejecutarGeneradorTurnosMensuales($pacienteFijo->id);
+        $cantidad = ActividadPaciente::count();
+
+        $this->ejecutarGeneradorTurnosMensuales($pacienteFijo->id);
+
+        $this->assertSame($cantidad, ActividadPaciente::count());
     }
 
     private function registrarInscripcionSimple(Paciente $paciente, string $fechaAncla = '2026-06-01'): ResultadoInscripcionGeneral
