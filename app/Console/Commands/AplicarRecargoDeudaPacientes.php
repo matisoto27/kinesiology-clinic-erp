@@ -18,6 +18,12 @@ class AplicarRecargoDeudaPacientes extends Command
 
     public function handle(): int
     {
+        if (! config('app.recargo_mora_habilitado')) {
+            $this->info('Recargo por mora deshabilitado.');
+
+            return self::SUCCESS;
+        }
+
         $hoy = now()->startOfDay();
         $porcentaje = config('app.recargo_mora', 0.15);
         $porcentajeCien = round($porcentaje * 100, 2);

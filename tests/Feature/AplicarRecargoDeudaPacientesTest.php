@@ -20,6 +20,7 @@ class AplicarRecargoDeudaPacientesTest extends TestCase
         parent::setUp();
 
         config(['app.recargo_mora' => 0.15]);
+        config(['app.recargo_mora_habilitado' => true]);
     }
 
     protected function tearDown(): void
@@ -135,6 +136,22 @@ class AplicarRecargoDeudaPacientesTest extends TestCase
         $inscripcion->refresh();
         $this->assertSame('2026-06-12', $inscripcion->fecha_recargo->format('Y-m-d'));
         $this->assertSame('2250.00', (string) $inscripcion->monto_recargo);
+    }
+
+    public function test_no_aplica_recargo_si_esta_deshabilitado(): void
+    {
+        config(['app.recargo_mora_habilitado' => false]);
+
+        $inscripcion = $this->crearInscripcion(
+            Actividad::PILATES,
+            total: 15000,
+            primerTurno: '2026-06-01 10:00:00'
+        );
+
+        Carbon::setTestNow('2026-06-12 08:00:00');
+        Artisan::call('app:aplicar-recargo-deuda-pacientes');
+
+        $this->assertNull($inscripcion->fresh()->fecha_recargo);
     }
 
     /**
