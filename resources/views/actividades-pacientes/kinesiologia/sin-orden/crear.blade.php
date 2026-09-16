@@ -6,6 +6,11 @@
             @csrf
 
             <h2 class="titulo-formulario">Turnos kinesiología sin orden médica</h2>
+            <p class="mb-4 text-sm text-gray-400">
+                Si más tarde el paciente trae una orden médica utilice
+                <a href="{{ route('actividades-pacientes.aplicar-orden') }}" class="underline text-gray-300 hover:text-white">Aplicar orden a particular</a>.
+                (Aplica solo para kinesiología convencional y sin pagos registrados)
+            </p>
 
             <div class="fila-formulario">
 

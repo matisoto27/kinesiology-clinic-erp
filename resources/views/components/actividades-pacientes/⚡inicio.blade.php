@@ -384,7 +384,7 @@ new class extends Component
                         ?? $actPac;
                     $cantidad = (int) $actPac->cant_sesiones + (int) ($par?->cant_sesiones ?? 0);
                     $esGeneral = $actPac->actividad->esActividadGeneral();
-                    $cubiertaOS = !$esGeneral && $actPac->fecha_emision_ord !== null;
+                    $cubiertaOS = !$esGeneral && $actPac->tieneOrdenMedica();
                     $primerTurno = collect([$actPac->primerTurno, $par?->primerTurno])
                         ->filter()
                         ->sortBy(fn ($turno) => $turno->fecha_hora->timestamp)
@@ -560,8 +560,10 @@ new class extends Component
                     @if (!$inscripcionSeleccionada->actividad->esActividadGeneral())
                         <div class="modal-informativo__seccion">
                             <p class="modal-informativo__etiqueta">Orden Médica</p>
-                            @if(!$inscripcionSeleccionada->fecha_emision_ord)
+                            @if(!$inscripcionSeleccionada->tieneOrdenMedica())
                                 <p class="modal-informativo__sin-valor">No se ha aplicado una orden médica.</p>
+                            @elseif($inscripcionSeleccionada->ordenPendiente())
+                                <p class="modal-informativo__sin-valor">Orden médica no cargada.</p>
                             @else
                                 <p class="modal-informativo__valor">
                                     Emitida el {{ $inscripcionSeleccionada->fecha_emision_ord->format('d/m/Y') }}

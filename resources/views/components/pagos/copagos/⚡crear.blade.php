@@ -1,5 +1,6 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
 use App\Models\ActividadPaciente;
 use App\Models\Caja;
 use App\Models\Pago;
@@ -28,25 +29,30 @@ new class extends Component
     public function mount(): void
     {
         $this->profesionales = Profesional::select('id', 'nombre', 'apellido')->get();
+        $this->montoStr = $this->formatearMonto((float) config('precios.copago'));
+        $this->monto = (float) config('precios.copago');
     }
 
     #[Computed]
     public function actividadesPacientes()
     {
         $desde = Carbon::now()->subMonth()->startOfMonth();
-        $hasta = Carbon::now();
+        $hasta = Carbon::now()->addWeeks(2)->endOfDay();
 
         return ActividadPaciente::query()
             ->with([
                 'actividad:id,nombre',
                 'pacienteRegular:id,nombre,apellido',
                 'primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora',
+                'pagos:id,id_act_pac,es_copago',
             ])
-            ->whereNotNull('fecha_emision_ord')
+            ->conOrdenMedica()
             ->whereHas('primerTurno', fn ($consulta) => $consulta->whereBetween('fecha_hora', [$desde, $hasta]))
             ->tienePacienteRegular()
             ->get()
-            ->sortByDesc(fn (ActividadPaciente $actPac) => $actPac->primerTurno->fecha_hora);
+            ->filter(fn (ActividadPaciente $actPac) => $actPac->puedeRegistrarCopago())
+            ->sortByDesc(fn (ActividadPaciente $actPac) => $actPac->primerTurno->fecha_hora)
+            ->values();
     }
 
     public function almacenar()
@@ -67,6 +73,18 @@ new class extends Component
             ]);
 
             DB::transaction(function () {
+                $registro = ActividadPaciente::query()
+                    ->whereKey($this->idActPac)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (!$registro->puedeRegistrarCopago()) {
+                    throw new ReglaNegocioException(sprintf(
+                        'Ya se registraron todos los copagos permitidos para este registro (%d).',
+                        $registro->cant_sesiones
+                    ));
+                }
+
                 $columna = $this->metodo === 'Efectivo' ? 'saldo_efectivo' : 'saldo_transferencia';
                 Caja::lockForUpdate()->firstOrFail()->increment($columna, $this->monto);
 
@@ -83,6 +101,8 @@ new class extends Component
 
         } catch (ValidationException $ex) {
             throw $ex;
+        } catch (ReglaNegocioException $ex) {
+            $this->addError('idActPac', $ex->getMessage());
         } catch (\Throwable $th) {
             Log::error('[(Livewire) pagos.copagos.crear@almacenar] Error al registrar copago.', ['excepción' => $th->getMessage()]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
@@ -99,6 +119,11 @@ new class extends Component
 
         $limpio = str_replace(['.', ','], ['', '.'], $montoStr);
         return (float) $limpio;
+    }
+
+    private function formatearMonto(float $monto): string
+    {
+        return number_format($monto, 2, ',', '.');
     }
 };
 ?>
@@ -126,7 +151,9 @@ new class extends Component
                     @foreach($this->actividadesPacientes as $actPac)
                         <option value="{{ $actPac->id }}">
                             [{{ $actPac->primerTurno->fecha_hora->format('d/m/Y') }}]
-                            {{ $actPac->nombre_actividad }} ({{ $actPac->cant_sesiones === 1 ? '1 sesión' : $actPac->cant_sesiones . ' sesiones' }}) - {{ $actPac->ap_nom_paciente }}
+                            {{ $actPac->nombre_actividad }}
+                            ({{ $actPac->cantidadCopagos() }}/{{ $actPac->cant_sesiones }} copagos)
+                            - {{ $actPac->ap_nom_paciente }}
                         </option>
                     @endforeach
                 </select>
@@ -161,7 +188,7 @@ new class extends Component
                 <input
                     id="monto-input"
                     type="text"
-                    placeholder="Ejemplo: 25000,00"
+                    placeholder="Ejemplo: 7000,00"
                     @class([
                         'entrada',
                         'border-red-500 border-2' => $errors->has('monto')

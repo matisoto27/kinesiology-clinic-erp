@@ -5,7 +5,7 @@
         <form data-url="{{ route('actividades-pacientes.store') }}" method="POST" class="formulario" id="formulario">
             @csrf
 
-            <h2 class="titulo-formulario">Turnos kinesiología con orden médica</h2>
+            <h2 class="titulo-formulario">Turnos kinesiología con orden médica (bloque completo · old)</h2>
 
             <div class="fila-formulario">
 

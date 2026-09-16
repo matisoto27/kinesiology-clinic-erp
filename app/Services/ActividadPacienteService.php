@@ -10,16 +10,22 @@ use App\Models\ActividadPaciente;
 use App\Models\Paciente;
 use App\Models\PacienteFijo;
 use App\Models\PrecioMensual;
+use App\Models\Turno;
 use App\Support\Registros\ModalidadRegistro;
 use App\Support\Registros\ResultadoInscripcionGeneral;
 use App\Support\Registros\ResultadoRegistroActividadPaciente;
 use App\Support\Turnos\ResultadoPreparacionTurnos;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ActividadPacienteService
 {
     public const MENSAJE_PACIENTE_YA_FIJO = 'El paciente ya fue registrado como fijo previamente. Para modificar sus horarios, edite su registro existente en Inscripciones Mensuales.';
+
+    public const MENSAJE_KINESIO_SIN_ORDEN_CON_REGISTRO_EN_CURSO = 'El paciente tiene un registro de sesiones con orden médica en curso. Continuá ese registro en lugar de cargar kinesiología sin orden.';
+
+    public const MENSAJE_KINESIO_PARTICULAR_EN_CURSO = 'El paciente ya tiene un registro de kinesiología sin orden en curso para esta actividad.';
 
     public function __construct(
         private TurnoService $turnoService,
@@ -30,24 +36,25 @@ class ActividadPacienteService
         return DB::transaction(function () use ($validados) {
             $esConOrden = ModalidadRegistro::esConOrden($validados);
             $ahora = Carbon::now();
+            $idPaciente = (int) $validados['id_paciente'];
+            $idActividad = (int) $validados['id_actividad'];
+
+            if (!$esConOrden) {
+                $this->asegurarKinesioSinOrdenPermitido($idPaciente, $idActividad);
+            }
 
             if ($esConOrden) {
                 $validados = $this->enriquecerDatosConOrden($validados, $ahora);
             }
 
             $validados['total_a_pagar'] = ActividadCombo::calcularTotalAPagar(
-                (int) $validados['id_actividad'],
+                $idActividad,
                 (int) $validados['cant_sesiones'],
                 exigirComboExacto: $esConOrden
             );
 
             $preparacion = $this->prepararTurnos($validados);
             $turnos = $preparacion->paraPersistir();
-            $this->asegurarCicloSinSolapamiento(
-                (int) $validados['id_paciente'],
-                (int) $validados['id_actividad'],
-                $turnos
-            );
 
             $actividadPaciente = $this->crearInscripcion($validados, $esConOrden);
             $actividadPaciente->turnos()->createMany($turnos);
@@ -56,6 +63,224 @@ class ActividadPacienteService
                 inscripcion: $actividadPaciente->fresh(['turnos']),
                 reemplazos: $preparacion->reemplazos(),
             );
+        });
+    }
+
+    /**
+     * Registros de sesiones de kinesio con orden médica aún en curso
+     * (turnos efectivos < sesiones que cubre la orden).
+     */
+    public function kinesioConOrdenEnCurso(int $idPaciente): Collection
+    {
+        return ActividadPaciente::query()
+            ->where('id_paciente', $idPaciente)
+            ->where('id_actividad', Actividad::KINESIOLOGIA_CONVENCIONAL)
+            ->whereIn('cant_sesiones', [5, 10])
+            ->conOrdenMedica()
+            ->with([
+                'turnos' => fn ($q) => $q
+                    ->whereNull('id_turno_original')
+                    ->orderBy('fecha_hora'),
+            ])
+            ->withCount([
+                'turnos as turnos_efectivos_count' => fn ($q) => $q->whereNull('id_turno_original'),
+            ])
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (ActividadPaciente $registroSesiones) => $registroSesiones->turnos_efectivos_count < $registroSesiones->cant_sesiones)
+            ->values();
+    }
+
+    /**
+     * Particulares de kinesio aún en curso (sin orden, turnos efectivos < cant_sesiones).
+     */
+    public function kinesioParticularEnCurso(int $idPaciente, int $idActividad): Collection
+    {
+        return ActividadPaciente::query()
+            ->where('id_paciente', $idPaciente)
+            ->where('id_actividad', $idActividad)
+            ->sinOrdenMedica()
+            ->withCount([
+                'turnos as turnos_efectivos_count' => fn ($q) => $q->whereNull('id_turno_original'),
+            ])
+            ->orderByDesc('id')
+            ->get()
+            ->filter(fn (ActividadPaciente $registro) => $registro->turnos_efectivos_count < (int) $registro->cant_sesiones)
+            ->values();
+    }
+
+    /**
+     * Abre un registro de sesiones de kinesio con orden y agenda el primer turno.
+     * Si no hay fecha de emisión, se guarda como orden pendiente.
+     */
+    public function abrirKinesioConOrden(
+        int $idPaciente,
+        int $cantSesiones,
+        string $fechaHora,
+        ?string $fechaEmisionOrd = null,
+    ): ActividadPaciente {
+        return DB::transaction(function () use ($idPaciente, $cantSesiones, $fechaHora, $fechaEmisionOrd) {
+            if (!in_array($cantSesiones, [5, 10], true)) {
+                throw new ReglaNegocioException('La orden médica solo puede cubrir 5 o 10 sesiones.');
+            }
+
+            $this->asegurarAfiliacionObraSocial($idPaciente);
+
+            if ($this->kinesioConOrdenEnCurso($idPaciente)->isNotEmpty()) {
+                throw new ReglaNegocioException(
+                    'El paciente ya tiene un registro de sesiones con orden médica en curso.'
+                );
+            }
+
+            $this->asegurarSlotDisponible($idPaciente, $fechaHora);
+
+            $fechaHoraNormalizada = Carbon::parse($fechaHora)->toDateTimeString();
+
+            $totalAPagar = ActividadCombo::calcularTotalAPagar(
+                Actividad::KINESIOLOGIA_CONVENCIONAL,
+                $cantSesiones,
+                exigirComboExacto: true
+            );
+
+            $registroSesiones = ActividadPaciente::create([
+                'id_actividad' => Actividad::KINESIOLOGIA_CONVENCIONAL,
+                'id_paciente' => $idPaciente,
+                'cant_sesiones' => $cantSesiones,
+                'total_a_pagar' => $totalAPagar,
+                'pago_completado' => true,
+                'fecha_emision_ord' => ActividadPaciente::normalizarFechaOrden($fechaEmisionOrd),
+            ]);
+
+            $registroSesiones->turnos()->create(['fecha_hora' => $fechaHoraNormalizada]);
+
+            return $registroSesiones->fresh([
+                'turnos' => fn ($q) => $q->whereNull('id_turno_original')->orderBy('fecha_hora'),
+            ]);
+        });
+    }
+
+    public function agregarTurnoAKinesioConOrden(ActividadPaciente $registroSesiones, string $fechaHora): Turno
+    {
+        return DB::transaction(function () use ($registroSesiones, $fechaHora) {
+            $registroSesiones = ActividadPaciente::query()
+                ->whereKey($registroSesiones->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $registroSesiones->id_actividad !== Actividad::KINESIOLOGIA_CONVENCIONAL) {
+                throw new ReglaNegocioException('Solo se pueden agregar turnos a registros de Kinesiología Convencional.');
+            }
+
+            if (!$registroSesiones->tieneOrdenMedica()) {
+                throw new ReglaNegocioException('El registro de sesiones seleccionado no está cubierto por orden médica.');
+            }
+
+            $efectivos = $registroSesiones->turnos()->whereNull('id_turno_original')->count();
+
+            if ($efectivos >= (int) $registroSesiones->cant_sesiones) {
+                throw new ReglaNegocioException('El registro ya tiene todas las sesiones de la orden agendadas.');
+            }
+
+            $this->asegurarSlotDisponible((int) $registroSesiones->id_paciente, $fechaHora);
+
+            $fechaHoraNormalizada = Carbon::parse($fechaHora)->toDateTimeString();
+
+            return $registroSesiones->turnos()->create(['fecha_hora' => $fechaHoraNormalizada]);
+        });
+    }
+
+    public function cargarFechaOrdenMedica(ActividadPaciente $registroSesiones, string $fechaEmisionOrd): ActividadPaciente
+    {
+        $fecha = ActividadPaciente::normalizarFechaOrden($fechaEmisionOrd);
+
+        if ($fecha === ActividadPaciente::FECHA_ORDEN_PENDIENTE) {
+            throw new ReglaNegocioException('Debe ingresar una fecha de orden médica válida.');
+        }
+
+        $registroSesiones->update(['fecha_emision_ord' => $fecha]);
+
+        return $registroSesiones->fresh();
+    }
+
+    /**
+     * Convierte un particular de Kinesiología Convencional (sin pagos) en registro con orden.
+     * Amplía cant_sesiones al cupo de la orden (5|10) si los turnos efectivos no lo exceden.
+     */
+    public function aplicarOrdenAParticular(
+        ActividadPaciente $particular,
+        int $cantSesionesOrden,
+        string $fechaEmisionOrd,
+    ): ActividadPaciente {
+        return DB::transaction(function () use ($particular, $cantSesionesOrden, $fechaEmisionOrd) {
+            $particular = ActividadPaciente::query()
+                ->whereKey($particular->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ((int) $particular->id_actividad !== Actividad::KINESIOLOGIA_CONVENCIONAL) {
+                throw new ReglaNegocioException(
+                    'Solo se puede aplicar orden médica a registros de Kinesiología Convencional.'
+                );
+            }
+
+            if ($particular->tieneOrdenMedica()) {
+                throw new ReglaNegocioException('El registro seleccionado ya tiene orden médica.');
+            }
+
+            if ($particular->pagos()->exists()) {
+                throw new ReglaNegocioException(
+                    'Este registro ya tiene pagos. No se puede aplicar orden; dejalo como particular o abrí un registro con orden nuevo.'
+                );
+            }
+
+            if (!in_array($cantSesionesOrden, [5, 10], true)) {
+                throw new ReglaNegocioException('La orden médica solo puede cubrir 5 o 10 sesiones.');
+            }
+
+            $efectivos = $particular->turnos()->whereNull('id_turno_original')->count();
+
+            if ($efectivos > $cantSesionesOrden) {
+                throw new ReglaNegocioException(sprintf(
+                    'El registro ya tiene %d turnos; una orden de %d sesiones no los cubre.',
+                    $efectivos,
+                    $cantSesionesOrden
+                ));
+            }
+
+            if ($particular->id_paciente === null) {
+                throw new ReglaNegocioException('El registro no está asociado a un paciente regular.');
+            }
+
+            $this->asegurarAfiliacionObraSocial((int) $particular->id_paciente);
+
+            if ($this->kinesioConOrdenEnCurso((int) $particular->id_paciente)->isNotEmpty()) {
+                throw new ReglaNegocioException(
+                    'El paciente ya tiene un registro de sesiones con orden médica en curso.'
+                );
+            }
+
+            $fecha = ActividadPaciente::normalizarFechaOrden($fechaEmisionOrd);
+
+            if ($fecha === ActividadPaciente::FECHA_ORDEN_PENDIENTE) {
+                throw new ReglaNegocioException('Debe ingresar una fecha de orden médica válida.');
+            }
+
+            $totalAPagar = ActividadCombo::calcularTotalAPagar(
+                Actividad::KINESIOLOGIA_CONVENCIONAL,
+                $cantSesionesOrden,
+                exigirComboExacto: true
+            );
+
+            $particular->update([
+                'cant_sesiones' => $cantSesionesOrden,
+                'total_a_pagar' => $totalAPagar,
+                'pago_completado' => true,
+                'fecha_emision_ord' => $fecha,
+            ]);
+
+            return $particular->fresh([
+                'turnos' => fn ($q) => $q->whereNull('id_turno_original')->orderBy('fecha_hora'),
+            ]);
         });
     }
 
@@ -216,82 +441,75 @@ class ActividadPacienteService
         );
     }
 
-    /**
-     * Impide un ciclo paralelo de la misma actividad: los intervalos
-     * [primer turno, último turno] (por día) no pueden solaparse.
-     *
-     * @param  list<array{fecha_hora: string}>  $turnos
-     */
-    private function asegurarCicloSinSolapamiento(int $idPaciente, int $idActividad, array $turnos): void
+    private function asegurarAfiliacionObraSocial(int $idPaciente): void
     {
-        $rangoNuevo = $this->rangoDeTurnos($turnos);
-
-        if ($rangoNuevo === null) {
-            return;
-        }
-
-        [$inicioNuevo, $finNuevo] = $rangoNuevo;
-
-        $ciclos = ActividadPaciente::query()
-            ->where('id_paciente', $idPaciente)
-            ->where('id_actividad', $idActividad)
-            ->join('turnos', 'turnos.id_act_pac', '=', 'actividades_pacientes.id')
-            ->whereNull('turnos.id_turno_original')
-            ->groupBy('actividades_pacientes.id')
-            ->select('actividades_pacientes.id')
-            ->selectRaw('MIN(turnos.fecha_hora) as ciclo_inicio')
-            ->selectRaw('MAX(turnos.fecha_hora) as ciclo_fin')
-            ->orderBy('actividades_pacientes.id')
-            ->get();
-
-        foreach ($ciclos as $ciclo) {
-            $inicio = Carbon::parse($ciclo->ciclo_inicio)->startOfDay();
-            $fin = Carbon::parse($ciclo->ciclo_fin)->startOfDay();
-
-            if ($inicioNuevo->gt($fin) || $finNuevo->lt($inicio)) {
-                continue;
-            }
-
-            $nombreActividad = Actividad::query()->whereKey($idActividad)->value('nombre');
-
-            throw new ReglaNegocioException(sprintf(
-                'El paciente ya tiene una inscripción de %s con turnos entre el %s y el %s. Reprograme esos turnos o elimine esa inscripción antes de cargar otra.',
-                $nombreActividad,
-                $inicio->format('d/m/Y'),
-                $fin->format('d/m/Y'),
-            ));
-        }
-    }
-
-    /**
-     * @param  list<array{fecha_hora: string}>  $turnos
-     * @return array{0: Carbon, 1: Carbon}|null
-     */
-    private function rangoDeTurnos(array $turnos): ?array
-    {
-        if ($turnos === []) {
-            return null;
-        }
-
-        $inicio = null;
-        $fin = null;
-
-        foreach ($turnos as $turno) {
-            $fecha = Carbon::parse($turno['fecha_hora'])->startOfDay();
-            $inicio = $inicio === null || $fecha->lt($inicio) ? $fecha : $inicio;
-            $fin = $fin === null || $fecha->gt($fin) ? $fecha : $fin;
-        }
-
-        return [$inicio, $fin];
-    }
-
-    private function enriquecerDatosConOrden(array $validados, Carbon $ahora): array
-    {
-        $paciente = Paciente::with('afiliacionVigente')->findOrFail($validados['id_paciente']);
+        $paciente = Paciente::with('afiliacionVigente')->findOrFail($idPaciente);
 
         if (!$paciente->afiliacionVigente?->id_obra_social) {
             throw new ReglaNegocioException('El paciente seleccionado no posee una afiliación vigente a una obra social.');
         }
+    }
+
+    private function asegurarKinesioSinOrdenPermitido(int $idPaciente, int $idActividad): void
+    {
+        $actividad = Actividad::query()->find($idActividad);
+
+        if ($actividad === null || (int) $actividad->id_tipo_actividad !== Actividad::TIPO_KINESIOLOGIA) {
+            return;
+        }
+
+        if ($this->kinesioConOrdenEnCurso($idPaciente)->isNotEmpty()) {
+            throw new ReglaNegocioException(self::MENSAJE_KINESIO_SIN_ORDEN_CON_REGISTRO_EN_CURSO);
+        }
+
+        if ($this->kinesioParticularEnCurso($idPaciente, $idActividad)->isNotEmpty()) {
+            throw new ReglaNegocioException(self::MENSAJE_KINESIO_PARTICULAR_EN_CURSO);
+        }
+    }
+
+    private function asegurarSlotDisponible(int $idPaciente, string $fechaHora): void
+    {
+        $instante = Carbon::parse($fechaHora);
+        $actividad = Actividad::findOrFail(Actividad::KINESIOLOGIA_CONVENCIONAL);
+        $disponibles = $actividad->turnosDisponibles(
+            $idPaciente,
+            $instante->copy()->startOfDay(),
+            $instante->copy()->endOfDay()
+        );
+
+        if (!in_array($instante->toDateTimeString(), $disponibles, true)) {
+            throw new ReglaNegocioException('El horario seleccionado no tiene cupo disponible.');
+        }
+
+        $this->asegurarSinOtroTurnoKinesioElMismoDia($idPaciente, $fechaHora);
+    }
+
+    private function asegurarSinOtroTurnoKinesioElMismoDia(int $idPaciente, string $fechaHora): void
+    {
+        $dia = Carbon::parse($fechaHora)->toDateString();
+
+        $yaTieneTurno = Turno::query()
+            ->whereNull('id_turno_original')
+            ->whereDate('fecha_hora', $dia)
+            ->whereHas(
+                'actividadPaciente',
+                fn ($q) => $q
+                    ->where('id_paciente', $idPaciente)
+                    ->whereHas(
+                        'actividad',
+                        fn ($actividad) => $actividad->where('id_tipo_actividad', Actividad::TIPO_KINESIOLOGIA)
+                    )
+            )
+            ->exists();
+
+        if ($yaTieneTurno) {
+            throw new ReglaNegocioException('El paciente ya tiene un turno de kinesiología ese día.');
+        }
+    }
+
+    private function enriquecerDatosConOrden(array $validados, Carbon $ahora): array
+    {
+        $this->asegurarAfiliacionObraSocial((int) $validados['id_paciente']);
 
         $validados['cant_sesiones'] = (int) $validados['sesiones_cubiertas'];
         $validados['fecha_emision_ord'] = Carbon::create($ahora->year, $validados['mes'], $validados['dia']);

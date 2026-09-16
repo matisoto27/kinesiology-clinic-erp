@@ -20,7 +20,7 @@ Route::middleware(['verificar.acceso'])->group(function () {
     });
 
     Route::livewire('/actividades-pacientes/general/crear', 'actividades-pacientes.general.crear')->name('actividades-pacientes.general.crear');
-    Route::view('/actividades-pacientes/kinesiologia/orden/crear', 'actividades-pacientes.kinesiologia.con-orden.crear')->name('actividades-pacientes.kinesiologia.con-orden.crear');
+    Route::livewire('/actividades-pacientes/kinesiologia/orden/crear', 'actividades-pacientes.kinesiologia.con-orden.crear')->name('actividades-pacientes.kinesiologia.con-orden.crear');
     Route::view('/actividades-pacientes/kinesiologia/sin-orden/crear', 'actividades-pacientes.kinesiologia.sin-orden.crear')->name('actividades-pacientes.kinesiologia.sin-orden.crear');
 
     Route::livewire('/actividades-pacientes', 'actividades-pacientes.inicio')->name('actividades-pacientes.inicio');

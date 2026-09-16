@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
@@ -12,6 +13,9 @@ use Illuminate\Support\Collection;
 
 class ActividadPaciente extends Model
 {
+    /** Fecha sentinel: ciclo con orden médica cuya emisión aún no cargó el mostrador. */
+    public const FECHA_ORDEN_PENDIENTE = '2000-01-01';
+
     protected $table = 'actividades_pacientes';
 
     public $timestamps = true;
@@ -121,6 +125,25 @@ class ActividadPaciente extends Model
         return $this->hasMany(Pago::class, 'id_act_pac');
     }
 
+    public function copagos(): HasMany
+    {
+        return $this->pagos()->where('es_copago', true);
+    }
+
+    public function cantidadCopagos(): int
+    {
+        if ($this->relationLoaded('pagos')) {
+            return $this->pagos->where('es_copago', true)->count();
+        }
+
+        return $this->copagos()->count();
+    }
+
+    public function puedeRegistrarCopago(): bool
+    {
+        return $this->cantidadCopagos() < (int) $this->cant_sesiones;
+    }
+
     public function cobrosExternos(): HasMany
     {
         return $this->hasMany(CobroExterno::class, 'id_act_pac');
@@ -204,6 +227,51 @@ class ActividadPaciente extends Model
     public function esCasual(): bool
     {
         return $this->id_paciente_casual !== null;
+    }
+
+    public function tieneOrdenMedica(): bool
+    {
+        return $this->fecha_emision_ord !== null;
+    }
+
+    public function ordenPendiente(): bool
+    {
+        return $this->tieneOrdenMedica()
+            && $this->fecha_emision_ord->toDateString() === self::FECHA_ORDEN_PENDIENTE;
+    }
+
+    public function ordenCargada(): bool
+    {
+        return $this->tieneOrdenMedica() && !$this->ordenPendiente();
+    }
+
+    /**
+     * Normaliza la fecha de orden: vacía/null → sentinel pendiente.
+     */
+    public static function normalizarFechaOrden(?string $fecha): string
+    {
+        if ($fecha === null || trim($fecha) === '') {
+            return self::FECHA_ORDEN_PENDIENTE;
+        }
+
+        return Carbon::parse($fecha)->toDateString();
+    }
+
+    public function scopeConOrdenMedica(Builder $consulta): Builder
+    {
+        return $consulta->whereNotNull('fecha_emision_ord');
+    }
+
+    public function scopeConOrdenCargada(Builder $consulta): Builder
+    {
+        return $consulta
+            ->whereNotNull('fecha_emision_ord')
+            ->whereDate('fecha_emision_ord', '!=', self::FECHA_ORDEN_PENDIENTE);
+    }
+
+    public function scopeSinOrdenMedica(Builder $consulta): Builder
+    {
+        return $consulta->whereNull('fecha_emision_ord');
     }
 
     public function esGympass(): bool

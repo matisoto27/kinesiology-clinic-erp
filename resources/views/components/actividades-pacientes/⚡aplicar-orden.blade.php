@@ -1,8 +1,10 @@
 <?php
 
+use App\Exceptions\ReglaNegocioException;
+use App\Models\Actividad;
 use App\Models\ActividadPaciente;
+use App\Services\ActividadPacienteService;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
@@ -10,17 +12,14 @@ use Livewire\Component;
 new class extends Component
 {
     public $cantidadSesiones = '';
-    public $dia;
-    public $mes;
+    public $dia = '';
+    public $mes = '';
     public $anio;
     public $idActPac = '';
 
     public function mount()
     {
-        $ahora = now();
-        $this->anio = $ahora->year;
-        $this->mes = $ahora->month;
-        $this->dia = $ahora->day;
+        $this->anio = now()->year;
     }
 
     public function updatedCantidadSesiones()
@@ -33,8 +32,12 @@ new class extends Component
 
     private function validarDia()
     {
-        $maxDias = cal_days_in_month(CAL_GREGORIAN, (int)$this->mes, (int)$this->anio);
-        if ((int) $this->dia > $maxDias) {
+        if ($this->mes === '' || $this->mes === null || empty($this->anio)) {
+            return;
+        }
+
+        $maxDias = cal_days_in_month(CAL_GREGORIAN, (int) $this->mes, (int) $this->anio);
+        if ($this->dia !== '' && (int) $this->dia > $maxDias) {
             $this->dia = $maxDias;
         }
     }
@@ -46,22 +49,27 @@ new class extends Component
             return collect();
         }
 
+        $cupoOrden = (int) $this->cantidadSesiones;
+
         return ActividadPaciente::select('actividades_pacientes.*')
             ->with([
                 'actividad:id,nombre',
                 'pacienteRegular:id,nombre,apellido',
                 'primerTurno:turnos.id,turnos.id_act_pac,turnos.fecha_hora',
             ])
+            ->withCount([
+                'turnos as turnos_efectivos_count' => fn ($q) => $q->whereNull('id_turno_original'),
+            ])
             ->tienePacienteRegular()
-            ->conActividad()
-            ->deTipo(2)
+            ->where('id_actividad', Actividad::KINESIOLOGIA_CONVENCIONAL)
             ->whereNull('actividades_pacientes.fecha_emision_ord')
-            ->where('cant_sesiones', $this->cantidadSesiones)
-            ->whereHas('pacienteRegular', function($consulta) {
+            ->whereHas('pacienteRegular', function ($consulta) {
                 $consulta->tieneObraSocial();
             })
             ->doesntHave('pagos')
-            ->get();
+            ->get()
+            ->filter(fn (ActividadPaciente $actPac) => (int) $actPac->turnos_efectivos_count <= $cupoOrden)
+            ->values();
     }
 
     #[Computed]
@@ -73,7 +81,7 @@ new class extends Component
         return range(1, $cantidadDias);
     }
 
-    public function aplicarOrden()
+    public function aplicarOrden(ActividadPacienteService $service)
     {
         $this->validate([
             'idActPac' => 'required|exists:actividades_pacientes,id',
@@ -83,23 +91,30 @@ new class extends Component
             'cantidadSesiones'=>'required|in:5,10'
         ]);
 
-        DB::beginTransaction();
-
         try {
-            $inscripcion = ActividadPaciente::findOrFail($this->idActPac);
-            $inscripcion->update([
-                'fecha_emision_ord'  => Carbon::create($this->anio, $this->mes, $this->dia),
-                'pago_completado'    => true
-            ]);
+            $particular = ActividadPaciente::findOrFail($this->idActPac);
+            $fechaEmision = Carbon::create((int) $this->anio, (int) $this->mes, (int) $this->dia)
+                ->toDateString();
 
-            DB::commit();
+            $registro = $service->aplicarOrdenAParticular(
+                $particular,
+                (int) $this->cantidadSesiones,
+                $fechaEmision
+            );
 
-            session()->flash('exito', '¡La orden médica ha sido aplicada con éxito!');
-            return redirect()->route('actividades-pacientes.inicio');
+            session()->flash('exito', 'Orden médica aplicada. Continuá agendando los turnos que faltan.');
 
+            return $this->redirectRoute(
+                'actividades-pacientes.kinesiologia.con-orden.crear',
+                ['id_paciente' => $registro->id_paciente],
+                navigate: true
+            );
+        } catch (ReglaNegocioException $e) {
+            session()->flash('error', $e->getMessage());
         } catch (\Throwable $ex) {
-            DB::rollBack();
-            Log::error('[(Livewire) actividades-pacientes.aplicar-orden@aplicarOrden] Error al aplicar la orden médica.', ['excepción' => $ex->getMessage()]);
+            Log::error('[(Livewire) actividades-pacientes.aplicar-orden@aplicarOrden] Error al aplicar la orden médica.', [
+                'excepción' => $ex->getMessage(),
+            ]);
             session()->flash('error', 'Error interno del servidor. Si el error persiste contactar con el Equipo de Soporte (Matías).');
         }
     }
@@ -109,6 +124,9 @@ new class extends Component
 <div class="contenedor max-w-3xl">
     <form class="formulario" wire:submit.prevent="aplicarOrden">
         <h2 class="titulo-formulario">Aplicar orden médica</h2>
+        <p class="mb-4 text-sm text-gray-400">
+            Solo particulares de Kinesiología Convencional sin pagos, con turnos que no excedan el cupo de la orden.
+        </p>
 
         <x-alerta tipo="exito" />
         <x-alerta tipo="error" />
@@ -131,12 +149,14 @@ new class extends Component
                 <h3 class="etiqueta-formulario">Fecha de emisión de la orden médica</h3>
                 <div class="flex gap-2">
                     <select id="dia-select" class="entrada flex-1" wire:model.live="dia" required>
+                        <option value="" disabled selected>Día</option>
                         @foreach($this->diasDelMes as $dia)
                             <option value="{{ $dia }}">{{ $dia }}</option>
                         @endforeach
                     </select>
 
                     <select id="mes-select" class="entrada flex-1" wire:model.live="mes" required>
+                        <option value="" disabled selected>Mes</option>
                         @foreach(range(1, 12) as $numeroMes)
                             <option value="{{ $numeroMes }}">
                                 {{ ucfirst(Carbon::create(null, $numeroMes, 1)->translatedFormat('F')) }}
@@ -155,7 +175,7 @@ new class extends Component
         <div class="fila-formulario">
             <div class="columna-campo">
                 <label for="act-pac-select" class="etiqueta-formulario">Sesiones del paciente</label>
-                <p class="mb-1 text-gray-300 italic">Solo se muestran sesiones sin pagos registrados.</p>
+                <p class="mb-1 text-gray-300 italic">Sin pagos · Convencional · turnos ≤ cupo de la orden.</p>
                 <select
                     id="act-pac-select"
                     class="entrada @error('idActPac') border-red-500 @enderror"
@@ -167,15 +187,17 @@ new class extends Component
                         @if(empty($this->cantidadSesiones))
                             Primero seleccione una cantidad
                         @elseif($this->inscripcionesFiltradas->isEmpty())
-                            No hay inscripciones de {{ $this->cantidadSesiones }} sesiones
+                            No existe ningún registro que tenga una cantidad de sesiones compatible para una orden médica de {{ $this->cantidadSesiones }} sesiones
                         @else
                             Seleccione un registro de sesiones
                         @endif
                     </option>
                     @foreach($this->inscripcionesFiltradas as $insc)
                         <option value="{{ $insc->id }}">
-                            [{{ $insc->primerTurno->fecha_hora->format('d/m/Y') }}]
-                            {{ $insc->nombre_actividad }} - {{ $insc->ap_nom_paciente }}
+                            [{{ $insc->primerTurno?->fecha_hora?->format('d/m/Y') ?? 'sin turnos' }}]
+                            {{ $insc->ap_nom_paciente }}
+                            · {{ $insc->turnos_efectivos_count }}/{{ $insc->cant_sesiones }} turnos
+                            → orden {{ $this->cantidadSesiones }}
                         </option>
                     @endforeach
                 </select>

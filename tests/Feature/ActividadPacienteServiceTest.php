@@ -237,7 +237,34 @@ class ActividadPacienteServiceTest extends TestCase
         $this->assertCount(4, $actividadPaciente->turnos);
     }
 
-    public function test_rechaza_segunda_inscripcion_kine_si_los_ciclos_se_solapan(): void
+    public function test_rechaza_segundo_particular_si_hay_uno_en_curso_misma_actividad(): void
+    {
+        Carbon::setTestNow('2026-06-02 09:00:00');
+
+        ['actividad' => $actividad] = $this->crearActividadKinesiologiaConPrecios(precioCombo5: 9000.00);
+        $paciente = $this->crearPaciente();
+
+        $particular = ActividadPaciente::create([
+            'id_actividad' => $actividad->id,
+            'id_paciente' => $paciente->id,
+            'cant_sesiones' => 5,
+            'total_a_pagar' => 9000,
+            'pago_completado' => false,
+            'fecha_emision_ord' => null,
+        ]);
+
+        Turno::create([
+            'id_act_pac' => $particular->id,
+            'fecha_hora' => '2026-06-03 10:00:00',
+        ]);
+
+        $this->expectException(ReglaNegocioException::class);
+        $this->expectExceptionMessage(ActividadPacienteService::MENSAJE_KINESIO_PARTICULAR_EN_CURSO);
+
+        $this->service->registrar($this->payloadSinOrdenKine($actividad, $paciente, 5));
+    }
+
+    public function test_permite_segundo_particular_si_el_anterior_ya_completo_los_turnos(): void
     {
         Carbon::setTestNow('2026-06-02 09:00:00');
 
@@ -247,10 +274,19 @@ class ActividadPacienteServiceTest extends TestCase
 
         $this->service->registrar($payload);
 
-        $this->expectException(ReglaNegocioException::class);
-        $this->expectExceptionMessage('El paciente ya tiene una inscripción de');
+        $segundo = $this->service->registrar([
+            ...$payload,
+            'turnos' => [
+                Carbon::now()->addDays(10)->setTime(10, 0, 0)->format('Y-m-d H:i:s'),
+                Carbon::now()->addDays(11)->setTime(10, 0, 0)->format('Y-m-d H:i:s'),
+                Carbon::now()->addDays(12)->setTime(10, 0, 0)->format('Y-m-d H:i:s'),
+                Carbon::now()->addDays(13)->setTime(10, 0, 0)->format('Y-m-d H:i:s'),
+                Carbon::now()->addDays(14)->setTime(10, 0, 0)->format('Y-m-d H:i:s'),
+            ],
+        ])->inscripcion;
 
-        $this->service->registrar($payload);
+        $this->assertSame(2, ActividadPaciente::where('id_paciente', $paciente->id)->count());
+        $this->assertNull($segundo->fecha_emision_ord);
     }
 
     public function test_revierte_transaccion_si_falla_creacion_de_turnos(): void
