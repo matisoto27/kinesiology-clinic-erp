@@ -111,7 +111,14 @@ new class extends Component
     public function pendientesDePago()
     {
         $inscripciones = ActividadPaciente::query()
-            ->with(['actividad', 'pacienteRegular', 'pacienteCasual', 'primerTurno', 'ultimoTurno'])
+            ->with([
+                'actividad',
+                'pacienteRegular',
+                'pacienteCasual',
+                'primerTurno',
+                'ultimoTurno',
+                'actPacDual:id,cant_sesiones',
+            ])
             ->withSum('pagos', 'monto')
             ->sinPagar()
             ->get();
@@ -141,50 +148,36 @@ new class extends Component
     }
 
     #[Computed]
-    public function mesCicloSeleccionado(): string
+    public function rangoCicloSeleccionado(): string
     {
-        $primer = $this->inscripcionSeleccionada?->primerTurno?->fecha_hora;
-
-        if (!$primer) {
-            return '';
-        }
-
-        return Str::upper($primer->translatedFormat('F Y'));
+        return $this->formatearRangoCiclo($this->inscripcionSeleccionada);
     }
 
     #[Computed]
-    public function rangoCicloSeleccionado(): string
+    public function contextoCicloSeleccionado(): string
     {
         $inscripcion = $this->inscripcionSeleccionada;
 
-        if (!$inscripcion?->primerTurno) {
+        if (!$inscripcion || $inscripcion->esPrueba()) {
             return '';
         }
 
-        $inicio = $inscripcion->primerTurno->fecha_hora->format('d/m/Y');
-        $fin = $inscripcion->ultimoTurno?->fecha_hora?->format('d/m/Y');
+        $sesiones = $inscripcion->esDualCompleto()
+            ? $inscripcion->cantSesionesGrupo()
+            : (int) $inscripcion->cant_sesiones;
+        $etiquetaSesiones = $sesiones === 1 ? '1 sesión' : "{$sesiones} sesiones";
 
-        return $fin ? "{$inicio} → {$fin}" : $inicio;
+        if ($inscripcion->actividad?->esActividadGeneral()) {
+            return "4 semanas · {$etiquetaSesiones}";
+        }
+
+        return $etiquetaSesiones;
     }
 
     #[Computed]
     public function nombreActividadSeleccionada(): string
     {
-        $inscripcion = $this->inscripcionSeleccionada;
-
-        if (!$inscripcion) {
-            return '';
-        }
-
-        if ($inscripcion->esPrueba()) {
-            return 'Prueba de '.$inscripcion->nombre_actividad;
-        }
-
-        if ($inscripcion->esPrimeraDual() && $inscripcion->esDualCompleto()) {
-            return sprintf('Gym/Pilates (x%d)', (int) $inscripcion->frecuencia_total_dual);
-        }
-
-        return (string) $inscripcion->nombre_actividad;
+        return $this->formatearNombreActividad($this->inscripcionSeleccionada);
     }
 
     /**
@@ -205,6 +198,7 @@ new class extends Component
                 'actividadPaciente:id,id_actividad,id_paciente,id_paciente_casual,frecuencia_total_dual,id_act_pac_dual',
                 'actividadPaciente.actividad:id,nombre',
                 'actividadPaciente.primerTurno',
+                'actividadPaciente.ultimoTurno',
             ])
             ->where('created_at', '>=', Carbon::now()->subDays(self::DIAS_PAGOS_RECIENTES))
             ->whereHas('actividadPaciente', function ($consulta) use ($inscripcion) {
@@ -234,12 +228,12 @@ new class extends Component
 
         if ($transferenciasHoy->isNotEmpty()) {
             $pago = $transferenciasHoy->first();
-            $ciclo = $pago->actividadPaciente?->primerTurno?->fecha_hora;
+            $ciclo = $this->formatearRangoCiclo($pago->actividadPaciente);
 
             return sprintf(
                 'Ya hay una transferencia de $%s registrada hoy%s. Revisá que este comprobante no sea el mismo.',
                 number_format((float) $pago->monto, 2, ',', '.'),
-                $ciclo ? ' para el ciclo de '.Str::upper($ciclo->translatedFormat('F Y')) : ''
+                $ciclo !== '' ? ' para el ciclo '.$ciclo : ''
             );
         }
 
@@ -264,15 +258,18 @@ new class extends Component
         $inscripcion = $this->inscripcionSeleccionada;
         $monto = $this->obtenerMontoParaEnviar($this->montoStr);
 
-        if (!$inscripcion?->primerTurno) {
+        $rango = $this->formatearRangoCiclo($inscripcion);
+        $actividad = $this->formatearNombreActividad($inscripcion);
+
+        if ($rango === '' || $actividad === '') {
             return '¿Confirmar el registro del pago?';
         }
 
         return sprintf(
-            'Vas a imputar $%s a la inscripción de %s (inicia %s). ¿Continuar?',
+            'Vas a registrar $%s al ciclo %s (%s). ¿Continuar?',
             number_format($monto, 2, ',', '.'),
-            $this->mesCicloSeleccionado,
-            $inscripcion->primerTurno->fecha_hora->format('d/m/Y')
+            $rango,
+            $actividad
         );
     }
 
@@ -386,31 +383,13 @@ new class extends Component
 
     public function formatearEtiquetaInscripcion(ActividadPaciente $actPac): string
     {
-        $mesCiclo = $actPac->primerTurno
-            ? Str::upper($actPac->primerTurno->fecha_hora->translatedFormat('F Y'))
-            : '';
+        $rango = $this->formatearRangoCiclo($actPac);
+        $actividad = $this->formatearNombreActividad($actPac);
+        $paciente = (string) $actPac->ap_nom_paciente;
 
-        if ($actPac->esPrueba()) {
-            return sprintf(
-                '%s · Prueba de %s · %s (turno %s)',
-                $mesCiclo,
-                $actPac->nombre_actividad,
-                $actPac->ap_nom_paciente,
-                $actPac->primerTurno->fecha_hora->format('d/m/Y')
-            );
-        }
-
-        $nombreActividad = $actPac->esPrimeraDual() && $actPac->esDualCompleto()
-            ? sprintf('Gym/Pilates (x%d)', (int) $actPac->frecuencia_total_dual)
-            : $actPac->nombre_actividad;
-
-        return sprintf(
-            '%s · %s · %s (inicia %s)',
-            $mesCiclo,
-            $nombreActividad,
-            $actPac->ap_nom_paciente,
-            $actPac->primerTurno->fecha_hora->format('d/m/Y')
-        );
+        return collect([$paciente, $actividad, $rango])
+            ->filter(fn (string $parte) => $parte !== '')
+            ->implode(' · ');
     }
 
     public function formatearEtiquetaPagoReciente(Pago $pago): string
@@ -420,14 +399,8 @@ new class extends Component
             ? 'Hoy '.$pago->created_at->format('H:i')
             : $pago->created_at->format('d/m H:i');
 
-        $ciclo = $actPac?->primerTurno
-            ? Str::upper($actPac->primerTurno->fecha_hora->translatedFormat('F Y'))
-            : 'sin ciclo';
-
-        $actividad = $actPac?->esPrimeraDual() && $actPac->esDualCompleto()
-            ? sprintf('Gym/Pilates (x%d)', (int) $actPac->frecuencia_total_dual)
-            : ($actPac?->nombre_actividad ?? 'Actividad');
-
+        $ciclo = $this->formatearRangoCiclo($actPac);
+        $actividad = $this->formatearNombreActividad($actPac) ?: 'Actividad';
         $profesional = $pago->profesional
             ? trim($pago->profesional->apellido.', '.$pago->profesional->nombre)
             : '—';
@@ -437,10 +410,48 @@ new class extends Component
             $cuando,
             number_format((float) $pago->monto, 2, ',', '.'),
             $pago->metodo,
-            $ciclo,
+            $ciclo !== '' ? $ciclo : 'sin ciclo',
             $actividad,
             $profesional
         );
+    }
+
+    public function formatearRangoCiclo(?ActividadPaciente $actPac): string
+    {
+        $inicio = $actPac?->primerTurno?->fecha_hora;
+
+        if (!$inicio) {
+            return '';
+        }
+
+        $fin = $actPac->ultimoTurno?->fecha_hora;
+
+        if (!$fin || $fin->isSameDay($inicio)) {
+            return $inicio->format('d/m');
+        }
+
+        if ($inicio->year !== $fin->year) {
+            return $inicio->format('d/m/Y').' → '.$fin->format('d/m/Y');
+        }
+
+        return $inicio->format('d/m').' → '.$fin->format('d/m');
+    }
+
+    public function formatearNombreActividad(?ActividadPaciente $actPac): string
+    {
+        if (!$actPac) {
+            return '';
+        }
+
+        if ($actPac->esPrueba()) {
+            return 'Prueba de '.$actPac->nombre_actividad;
+        }
+
+        if ($actPac->esPrimeraDual() && $actPac->esDualCompleto()) {
+            return sprintf('Gym/Pilates (x%d)', (int) $actPac->frecuencia_total_dual);
+        }
+
+        return (string) $actPac->nombre_actividad;
     }
 };
 ?>
@@ -533,15 +544,17 @@ new class extends Component
                 @if($this->inscripcionSeleccionada)
                     <div class="mt-3 p-3 bg-[#014745]/60 border border-white/20 rounded-lg space-y-2">
                         <p class="text-amber-300 text-2xl font-bold tracking-wide leading-tight">
-                            {{ $this->mesCicloSeleccionado }}
+                            {{ $this->rangoCicloSeleccionado }}
                         </p>
                         <p class="text-white text-sm">
                             {{ $this->nombreActividadSeleccionada }}
                             · {{ $this->inscripcionSeleccionada->ap_nom_paciente }}
                         </p>
-                        <p class="text-gray-300 text-sm">
-                            Ciclo: {{ $this->rangoCicloSeleccionado }}
-                        </p>
+                        @if($this->contextoCicloSeleccionado !== '')
+                            <p class="text-gray-300 text-sm">
+                                {{ $this->contextoCicloSeleccionado }}
+                            </p>
+                        @endif
                         <div class="flex font-semibold italic text-yellow-300 pt-1">
                             <p class="text-lg">Saldo pendiente de esta inscripción: $</p>
                             <p class="text-xl">{{ number_format($this->deudaActual, 2, ',', '.') }}</p>
