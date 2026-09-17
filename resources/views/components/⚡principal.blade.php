@@ -502,7 +502,13 @@ new class extends Component
                                                 </button>
                                             @endif
                                         @else
-                                            @if ($turno->estado === 'Ausente')
+                                            @if ($turno->esAusenteAviso())
+                                                <div class="col-span-2 flex justify-center">
+                                                    <span class="px-4 py-2 bg-red-600 text-white font-semibold rounded-md cursor-not-allowed">
+                                                        Ausente avisó (AA)
+                                                    </span>
+                                                </div>
+                                            @elseif ($turno->estado === 'Ausente')
                                                 <button
                                                     class="px-4 py-2 bg-[#F5D500] hover:bg-green-600 hover:text-white text-lg font-medium rounded-full transition-all duration-100 active:scale-95 hover:scale-105"
                                                     wire:click="confirmarAsistencia({{ $turno->id }})"
